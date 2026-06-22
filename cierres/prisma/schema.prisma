@@ -1,0 +1,185 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Marca {
+  id      Int     @id @default(autoincrement())
+  nombre  String  @unique
+  activo  Boolean @default(true)
+  locales Local[]
+  @@map("marcas")
+}
+
+model Local {
+  id               Int               @id @default(autoincrement())
+  nombre           String
+  marca            Marca             @relation(fields: [marcaId], references: [id])
+  marcaId          Int               @map("marca_id")
+  direccion        String?
+  ciudad           String?
+  pais             String            @default("AR")
+  moneda           String            @default("ARS")
+  fondoFijoDefault Decimal           @default(0) @map("fondo_fijo_default") @db.Decimal(14, 2)
+  activo           Boolean           @default(true)
+  mapeos           LocalPlataforma[]
+  cierres          Cierre[]
+  ventasApp        VentaApp[]
+  usuarios         Usuario[]
+  @@map("locales")
+}
+
+model Plataforma {
+  id            Int               @id @default(autoincrement())
+  nombre        String            @unique
+  codigo        String            @unique
+  activo        Boolean           @default(true)
+  mapeos        LocalPlataforma[]
+  ventasApp     VentaApp[]
+  importaciones Importacion[]
+  @@map("plataformas")
+}
+
+model LocalPlataforma {
+  id                  Int        @id @default(autoincrement())
+  local               Local      @relation(fields: [localId], references: [id])
+  localId             Int        @map("local_id")
+  plataforma          Plataforma @relation(fields: [plataformaId], references: [id])
+  plataformaId        Int        @map("plataforma_id")
+  restaurantIdExterno String     @map("restaurant_id_externo")
+  nombreExterno       String?    @map("nombre_externo")
+  activo              Boolean    @default(true)
+  @@unique([plataformaId, restaurantIdExterno])
+  @@map("local_plataforma")
+}
+
+enum Rol {
+  encargado
+  central
+  admin
+}
+
+model Usuario {
+  id           Int     @id @default(autoincrement())
+  nombre       String
+  email        String  @unique
+  passwordHash String  @map("password_hash")
+  rol          Rol
+  local        Local?  @relation(fields: [localId], references: [id])
+  localId      Int?    @map("local_id")
+  activo       Boolean @default(true)
+  @@map("usuarios")
+}
+
+enum EstadoCierre {
+  borrador
+  cerrado
+}
+
+model Cierre {
+  id              Int           @id @default(autoincrement())
+  local           Local         @relation(fields: [localId], references: [id])
+  localId         Int           @map("local_id")
+  fecha           DateTime      @db.Date
+  fondoFijo       Decimal       @default(0) @map("fondo_fijo") @db.Decimal(14, 2)
+  gastosTotal     Decimal       @default(0) @map("gastos_total") @db.Decimal(14, 2)
+  notaCredito     Decimal       @default(0) @map("nota_credito") @db.Decimal(14, 2)
+  cantidadTickets Int?          @map("cantidad_tickets")
+  estado          EstadoCierre  @default(borrador)
+  nota            String?
+  creadoPor       Int           @map("creado_por")
+  creadoEn        DateTime      @default(now()) @map("creado_en")
+  actualizadoEn   DateTime      @updatedAt @map("actualizado_en")
+  cerradoPor      Int?          @map("cerrado_por")
+  cerradoEn       DateTime?     @map("cerrado_en")
+  turnos          CierreTurno[]
+  ventas          CierreVenta[]
+  @@unique([localId, fecha])
+  @@map("cierres")
+}
+
+enum Turno {
+  T1
+  T2
+}
+
+model CierreTurno {
+  id       Int     @id @default(autoincrement())
+  cierre   Cierre  @relation(fields: [cierreId], references: [id], onDelete: Cascade)
+  cierreId Int     @map("cierre_id")
+  turno    Turno
+  montoZ   Decimal @default(0) @map("monto_z") @db.Decimal(14, 2)
+  @@unique([cierreId, turno])
+  @@map("cierre_turnos")
+}
+
+enum Canal {
+  efectivo
+  tarjetas
+  rappi
+  pedidosya
+  mercadopago
+  uber
+  delivery_propio
+  varios
+}
+
+model CierreVenta {
+  id       Int     @id @default(autoincrement())
+  cierre   Cierre  @relation(fields: [cierreId], references: [id], onDelete: Cascade)
+  cierreId Int     @map("cierre_id")
+  canal    Canal
+  monto    Decimal @default(0) @db.Decimal(14, 2)
+  @@unique([cierreId, canal])
+  @@map("cierre_ventas")
+}
+
+model VentaApp {
+  id              Int         @id @default(autoincrement())
+  local           Local       @relation(fields: [localId], references: [id])
+  localId         Int         @map("local_id")
+  plataforma      Plataforma  @relation(fields: [plataformaId], references: [id])
+  plataformaId    Int         @map("plataforma_id")
+  fecha           DateTime    @db.Date
+  pedidosEfectivo Int         @default(0) @map("pedidos_efectivo")
+  pedidosOnline   Int         @default(0) @map("pedidos_online")
+  ventaEfectivo   Decimal     @default(0) @map("venta_efectivo") @db.Decimal(14, 2)
+  ventaOnline     Decimal     @default(0) @map("venta_online") @db.Decimal(14, 2)
+  importacion     Importacion @relation(fields: [importacionId], references: [id])
+  importacionId   Int         @map("importacion_id")
+  creadoEn        DateTime    @default(now()) @map("creado_en")
+  actualizadoEn   DateTime    @updatedAt @map("actualizado_en")
+  @@unique([localId, plataformaId, fecha])
+  @@map("ventas_app")
+}
+
+model Importacion {
+  id             Int                    @id @default(autoincrement())
+  plataforma     Plataforma             @relation(fields: [plataformaId], references: [id])
+  plataformaId   Int                    @map("plataforma_id")
+  fechaReporte   DateTime               @db.Date @map("fecha_reporte")
+  archivoNombre  String                 @map("archivo_nombre")
+  filasTotal     Int                    @map("filas_total")
+  filasMapeadas  Int                    @map("filas_mapeadas")
+  filasSinMapear Int                    @map("filas_sin_mapear")
+  subidoPor      Int                    @map("subido_por")
+  creadoEn       DateTime               @default(now()) @map("creado_en")
+  ventasApp      VentaApp[]
+  sinMapear      ImportacionSinMapear[]
+  @@map("importaciones")
+}
+
+model ImportacionSinMapear {
+  id                  Int         @id @default(autoincrement())
+  importacion         Importacion @relation(fields: [importacionId], references: [id], onDelete: Cascade)
+  importacionId       Int         @map("importacion_id")
+  plataformaId        Int         @map("plataforma_id")
+  restaurantIdExterno String      @map("restaurant_id_externo")
+  nombreExterno       String?     @map("nombre_externo")
+  ventaEfectivo       Decimal     @default(0) @map("venta_efectivo") @db.Decimal(14, 2)
+  ventaOnline         Decimal     @default(0) @map("venta_online") @db.Decimal(14, 2)
+  @@map("importacion_sin_mapear")
+}
