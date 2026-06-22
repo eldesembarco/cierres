@@ -40,16 +40,18 @@ export async function guardarCierre(fecha: string, payloadJson: string, cerrar: 
       cantidadTickets: input.cantidadTickets ?? null, nota,
       estado: cerrar ? 'cerrado' : 'borrador',
       cerradoPor: cerrar ? userId : null, cerradoEn: cerrar ? new Date() : null,
-      turnos: { deleteMany: {}, create: input.turnos.map((t) => ({ turno: t.turno, montoZ: t.montoZ })) },
+      turnos: { deleteMany: {}, create: input.turnos.map((t) => ({ turno: t.turno, montoZ: t.montoZ, efectivoDepositado: t.efectivoDepositado })) },
       ventas: { deleteMany: {}, create: input.ventas.map((v) => ({ canal: v.canal, monto: v.monto })) },
+      tarjetas: { deleteMany: {}, create: input.tarjetas.map((t) => ({ turno: t.turno, tipo: t.tipo, monto: t.monto, lote: t.lote ?? null })) },
     },
     create: {
       localId, fecha: fechaDate, fondoFijo: input.fondoFijo, gastosTotal: input.gastosTotal,
       notaCredito: input.notaCredito, cantidadTickets: input.cantidadTickets ?? null,
       nota, estado: cerrar ? 'cerrado' : 'borrador',
       creadoPor: userId, cerradoPor: cerrar ? userId : null, cerradoEn: cerrar ? new Date() : null,
-      turnos: { create: input.turnos.map((t) => ({ turno: t.turno, montoZ: t.montoZ })) },
+      turnos: { create: input.turnos.map((t) => ({ turno: t.turno, montoZ: t.montoZ, efectivoDepositado: t.efectivoDepositado })) },
       ventas: { create: input.ventas.map((v) => ({ canal: v.canal, monto: v.monto })) },
+      tarjetas: { create: input.tarjetas.map((t) => ({ turno: t.turno, tipo: t.tipo, monto: t.monto, lote: t.lote ?? null })) },
     },
   })
 

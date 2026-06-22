@@ -97,6 +97,7 @@ model Cierre {
   cerradoEn       DateTime?     @map("cerrado_en")
   turnos          CierreTurno[]
   ventas          CierreVenta[]
+  tarjetas        CierreTarjeta[]
   @@unique([localId, fecha])
   @@map("cierres")
 }
@@ -107,11 +108,12 @@ enum Turno {
 }
 
 model CierreTurno {
-  id       Int     @id @default(autoincrement())
-  cierre   Cierre  @relation(fields: [cierreId], references: [id], onDelete: Cascade)
-  cierreId Int     @map("cierre_id")
-  turno    Turno
-  montoZ   Decimal @default(0) @map("monto_z") @db.Decimal(14, 2)
+  id                 Int     @id @default(autoincrement())
+  cierre             Cierre  @relation(fields: [cierreId], references: [id], onDelete: Cascade)
+  cierreId           Int     @map("cierre_id")
+  turno              Turno
+  montoZ             Decimal @default(0) @map("monto_z") @db.Decimal(14, 2)
+  efectivoDepositado Decimal @default(0) @map("efectivo_depositado") @db.Decimal(14, 2)
   @@unique([cierreId, turno])
   @@map("cierre_turnos")
 }
@@ -121,10 +123,31 @@ enum Canal {
   tarjetas
   rappi
   pedidosya
+  mercado_pedidos
   mercadopago
   uber
   delivery_propio
   varios
+}
+
+enum TipoTarjeta {
+  mastercard
+  maestro
+  visa_credito
+  visa_debito
+  amex
+}
+
+model CierreTarjeta {
+  id       Int          @id @default(autoincrement())
+  cierre   Cierre       @relation(fields: [cierreId], references: [id], onDelete: Cascade)
+  cierreId Int          @map("cierre_id")
+  turno    Turno
+  tipo     TipoTarjeta
+  monto    Decimal      @default(0) @db.Decimal(14, 2)
+  lote     String?
+  @@unique([cierreId, turno, tipo])
+  @@map("cierre_tarjetas")
 }
 
 model CierreVenta {
