@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import { calcularTotales } from '@/lib/cierre/calculations'
 import type { Canal, CierreInput } from '@/lib/cierre/types'
 import { guardarCierre } from '@/app/cierres/actions'
@@ -59,7 +59,7 @@ export function CierreForm({ fecha, fondoFijoDefault, initial }: { fecha: string
 
       <section className="rounded border p-3">
         <h2 className="mb-2 font-medium">Ventas por canal</h2>
-        {CANALES.map((c) => num(ventas[c], (n) => setVentas((p) => ({ ...p, [c]: n })), c))}
+        {CANALES.map((c) => <Fragment key={c}>{num(ventas[c], (n) => setVentas((p) => ({ ...p, [c]: n })), c)}</Fragment>)}
       </section>
 
       <section className="sticky bottom-0 rounded border bg-white p-3 shadow">
