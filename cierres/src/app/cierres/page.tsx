@@ -2,6 +2,25 @@ import { auth } from '@/lib/auth/auth'
 import { prisma } from '@/lib/db'
 import Link from 'next/link'
 import { esCentral } from '@/lib/auth/rbac'
+import { ScrollText, Plus, ChevronRight } from 'lucide-react'
+
+function StatusBadge({ estado }: { estado: string }) {
+  const cerrado = estado === 'cerrado'
+  return (
+    <span
+      className={`rounded-md px-2.5 py-1 text-xs font-medium ${
+        cerrado ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
+      }`}
+    >
+      {cerrado ? 'Cerrado' : 'Borrador'}
+    </span>
+  )
+}
+
+function formatFecha(iso: string) {
+  const d = new Date(`${iso}T00:00:00`)
+  return d.toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' })
+}
 
 export default async function CierresPage() {
   const session = await auth()
@@ -19,31 +38,51 @@ export default async function CierresPage() {
   const hoy = new Date().toISOString().slice(0, 10)
 
   return (
-    <main className="mx-auto max-w-2xl p-4">
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Cierres</h1>
-        <Link href={`/cierres/${hoy}`} className="rounded bg-black px-3 py-2 text-white">
-          + Cierre de hoy
+    <main className="mx-auto w-full max-w-2xl px-4 py-6">
+      <div className="mb-5 flex items-center justify-between gap-3">
+        <h1 className="text-xl font-semibold text-slate-900">Cierres</h1>
+        <Link
+          href={`/cierres/${hoy}`}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700"
+        >
+          <Plus size={18} />
+          <span className="hidden sm:inline">+ Cierre de hoy</span>
+          <span className="sm:hidden">Cierre de hoy</span>
         </Link>
       </div>
-      <ul className="divide-y">
-        {cierres.map((c) => (
-          <li key={c.id} className="flex justify-between py-2">
-            <Link
-              href={`/cierres/${c.fecha.toISOString().slice(0, 10)}`}
-              className="underline"
-            >
-              {c.fecha.toISOString().slice(0, 10)} · {c.local.nombre}
-            </Link>
-            <span className={c.estado === 'cerrado' ? 'text-green-600' : 'text-amber-600'}>
-              {c.estado}
-            </span>
-          </li>
-        ))}
-        {cierres.length === 0 && (
-          <li className="py-2 text-gray-500">Sin cierres todavía.</li>
-        )}
-      </ul>
+
+      {cierres.length === 0 ? (
+        <div className="flex flex-col items-center rounded-xl border border-slate-200 bg-white px-6 py-14 text-center shadow-sm">
+          <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+            <ScrollText size={22} />
+          </span>
+          <p className="font-medium text-slate-900">Sin cierres todavía.</p>
+          <p className="mt-1 text-sm text-slate-500">Creá el primero con “+ Cierre de hoy”.</p>
+        </div>
+      ) : (
+        <ul className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          {cierres.map((c) => {
+            const fecha = c.fecha.toISOString().slice(0, 10)
+            return (
+              <li key={c.id}>
+                <Link
+                  href={`/cierres/${fecha}`}
+                  className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-slate-50"
+                >
+                  <div className="min-w-0">
+                    <p className="font-medium text-slate-900">{formatFecha(fecha)}</p>
+                    <p className="truncate text-sm text-slate-500">{c.local.nombre}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <StatusBadge estado={c.estado} />
+                    <ChevronRight size={16} className="text-slate-300" />
+                  </div>
+                </Link>
+              </li>
+            )
+          })}
+        </ul>
+      )}
     </main>
   )
 }
