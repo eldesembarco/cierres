@@ -26,7 +26,7 @@ import {
   Paperclip,
   Plus,
   X,
-  ChevronDown,
+  Pencil,
 } from 'lucide-react'
 
 const CANALES: Canal[] = [
@@ -68,7 +68,6 @@ const canalDeMedio = (m: Medio): Canal => (isCardMedio(m) ? 'tarjetas' : m)
 
 // Línea de ingreso individual (una por transacción de tarjeta/app).
 type IngresoRow = { medio: Medio; monto: number; referencia: string }
-const nuevaIngresoRow = (medio: Medio): IngresoRow => ({ medio, monto: 0, referencia: '' })
 
 const TIPOS_GASTO: TipoGasto[] = [
   'mercaderia', 'descartable', 'limpieza', 'bazar', 'uniformes',
@@ -105,15 +104,6 @@ type GastoRow = {
   comprobanteId: number | null
   subiendo: boolean
 }
-
-const nuevaGastoRow = (tipo: TipoGasto): GastoRow => ({
-  tipo,
-  formaPago: 'efectivo',
-  monto: 0,
-  descripcion: '',
-  comprobanteId: null,
-  subiendo: false,
-})
 
 function gastosFromInicial(gastos?: Gasto[]): GastoRow[] {
   if (!gastos || gastos.length === 0) return []
@@ -165,103 +155,274 @@ function ingresosFromInicial(inicial?: Partial<TurnoInput>): IngresoRow[] {
   return rows
 }
 
-// Grupo de opciones para el menú desplegable (con etiqueta opcional de sección).
-type MenuGrupo<T extends string> = { label?: string; items: readonly T[] }
-
 /**
- * Botón con menú desplegable de opciones (popover). Mobile-first: usa un wrapper
- * relativo + menú absoluto (NO position:fixed). Cierra al elegir, al click afuera y con Escape.
+ * Modal reutilizable: overlay fijo + tarjeta centrada. Cierra con la X / botón
+ * Cancelar (lo provee el contenido vía `onClose`), al hacer click en el overlay y
+ * con Escape. Mobile-first: casi ancho completo en teléfono, max-w-md en desktop,
+ * con scroll interno sólo si el contenido lo necesita.
  */
-function MenuAgregar<T extends string>({
-  label,
-  grupos,
-  etiquetas,
-  onSelect,
-  variant,
+function Modal({
+  title,
+  onClose,
+  children,
 }: {
-  label: string
-  grupos: readonly MenuGrupo<T>[]
-  etiquetas: Record<T, string>
-  onSelect: (value: T) => void
-  variant: 'primary' | 'secondary'
+  title: string
+  onClose: () => void
+  children: React.ReactNode
 }) {
-  const [open, setOpen] = useState(false)
-  const wrapRef = useRef<HTMLDivElement>(null)
-
   useEffect(() => {
-    if (!open) return
-    const onDown = (e: MouseEvent) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false)
-    }
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false)
+      if (e.key === 'Escape') onClose()
     }
-    document.addEventListener('mousedown', onDown)
     document.addEventListener('keydown', onKey)
-    return () => {
-      document.removeEventListener('mousedown', onDown)
-      document.removeEventListener('keydown', onKey)
-    }
-  }, [open])
-
-  const btnClass =
-    variant === 'primary'
-      ? 'flex w-full items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700'
-      : 'flex w-full items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50'
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
 
   return (
-    <div ref={wrapRef} className="relative w-full">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        className={btnClass}
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+    >
+      <div
+        className="flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
+        onClick={(e) => e.stopPropagation()}
       >
-        <Plus size={17} /> {label}
-        <ChevronDown size={15} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
-      {open && (
-        <div
-          role="menu"
-          className="absolute left-0 right-0 z-20 mt-1 max-h-72 overflow-auto rounded-lg border border-slate-200 bg-white p-1 shadow-lg"
-        >
-          {grupos.map((g, gi) => (
-            <div key={gi} className={gi > 0 ? 'mt-1 border-t border-slate-100 pt-1' : undefined}>
-              {g.label && (
-                <p className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                  {g.label}
-                </p>
-              )}
-              {g.items.map((it) => (
-                <button
-                  key={it}
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    onSelect(it)
-                    setOpen(false)
-                  }}
-                  className="block w-full rounded-md px-3 py-2 text-left text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700"
-                >
-                  {etiquetas[it]}
-                </button>
-              ))}
-            </div>
-          ))}
+        <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
+          <h3 className="text-base font-semibold text-slate-900">{title}</h3>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Cerrar"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+          >
+            <X size={18} />
+          </button>
         </div>
-      )}
+        <div className="overflow-y-auto px-4 py-4">{children}</div>
+      </div>
     </div>
   )
 }
 
-// Grupos para el menú de ingresos: Tarjetas + Apps / otros.
-const MEDIO_GRUPOS: readonly MenuGrupo<Medio>[] = [
-  { label: 'Tarjetas', items: MEDIOS_TARJETA },
-  { label: 'Apps / otros', items: MEDIOS_APP },
-]
-// Un solo grupo plano para los tipos de gasto.
-const GASTO_GRUPOS: readonly MenuGrupo<TipoGasto>[] = [{ items: TIPOS_GASTO }]
+// Etiqueta de campo dentro de los modales.
+function Campo({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-sm font-medium text-slate-700">{label}</span>
+      {children}
+    </label>
+  )
+}
+
+const selectClass =
+  'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500'
+
+/**
+ * Modal de carga/edición de un ingreso (línea de tarjeta/app). Edita un borrador
+ * local y, al confirmar, devuelve la fila al padre. `inicial` = editar; sin él = nuevo.
+ */
+function IngresoModal({
+  inicial,
+  onClose,
+  onConfirm,
+}: {
+  inicial?: IngresoRow
+  onClose: () => void
+  onConfirm: (row: IngresoRow) => void
+}) {
+  const editando = inicial != null
+  const [medio, setMedio] = useState<Medio>(inicial?.medio ?? 'visa_credito')
+  const [monto, setMonto] = useState<number>(inicial?.monto ?? 0)
+  const [referencia, setReferencia] = useState<string>(inicial?.referencia ?? '')
+
+  return (
+    <Modal title={editando ? 'Editar ingreso' : 'Agregar ingreso'} onClose={onClose}>
+      <div className="flex flex-col gap-3">
+        <Campo label="Medio">
+          <select
+            value={medio}
+            onChange={(e) => setMedio(e.target.value as Medio)}
+            className={selectClass}
+          >
+            <optgroup label="Tarjetas">
+              {MEDIOS_TARJETA.map((m) => (
+                <option key={m} value={m}>{MEDIO_LABEL[m]}</option>
+              ))}
+            </optgroup>
+            <optgroup label="Apps / otros">
+              {MEDIOS_APP.map((m) => (
+                <option key={m} value={m}>{MEDIO_LABEL[m]}</option>
+              ))}
+            </optgroup>
+          </select>
+        </Campo>
+        <Campo label="Monto">
+          <MoneyInput value={monto} onChange={setMonto} />
+        </Campo>
+        <Campo label="Referencia (cupón / lote)">
+          <input
+            type="text"
+            value={referencia}
+            onChange={(e) => setReferencia(e.target.value)}
+            placeholder="Cupón / lote / ref."
+            className={selectClass}
+          />
+        </Campo>
+      </div>
+      <div className="mt-5 flex gap-2">
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex-1 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          onClick={() => onConfirm({ medio, monto, referencia })}
+          className="flex-1 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
+        >
+          {editando ? 'Guardar' : 'Agregar'}
+        </button>
+      </div>
+    </Modal>
+  )
+}
+
+/**
+ * Modal de carga/edición de un gasto. La subida del comprobante ocurre dentro del
+ * modal: POST a /api/comprobante y guarda el comprobanteId en el borrador local.
+ * Al confirmar, devuelve la fila completa al padre.
+ */
+function GastoModal({
+  inicial,
+  onClose,
+  onConfirm,
+}: {
+  inicial?: GastoRow
+  onClose: () => void
+  onConfirm: (row: GastoRow) => void
+}) {
+  const editando = inicial != null
+  const [tipo, setTipo] = useState<TipoGasto>(inicial?.tipo ?? 'mercaderia')
+  const [formaPago, setFormaPago] = useState<FormaPago>(inicial?.formaPago ?? 'efectivo')
+  const [monto, setMonto] = useState<number>(inicial?.monto ?? 0)
+  const [descripcion, setDescripcion] = useState<string>(inicial?.descripcion ?? '')
+  const [comprobanteId, setComprobanteId] = useState<number | null>(inicial?.comprobanteId ?? null)
+  const [subiendo, setSubiendo] = useState(false)
+
+  async function subir(file: File) {
+    setSubiendo(true)
+    try {
+      const fd = new FormData()
+      fd.append('archivo', file)
+      const res = await fetch('/api/comprobante', { method: 'POST', body: fd })
+      if (!res.ok) throw new Error('bad status')
+      const { id } = (await res.json()) as { id: number }
+      setComprobanteId(id)
+    } catch {
+      // dejamos el comprobante como estaba
+    } finally {
+      setSubiendo(false)
+    }
+  }
+
+  return (
+    <Modal title={editando ? 'Editar gasto' : 'Agregar gasto'} onClose={onClose}>
+      <div className="flex flex-col gap-3">
+        <Campo label="Rubro">
+          <select
+            value={tipo}
+            onChange={(e) => setTipo(e.target.value as TipoGasto)}
+            className={selectClass}
+          >
+            {TIPOS_GASTO.map((tg) => (
+              <option key={tg} value={tg}>{TIPO_GASTO_LABEL[tg]}</option>
+            ))}
+          </select>
+        </Campo>
+        <Campo label="Forma de pago">
+          <select
+            value={formaPago}
+            onChange={(e) => setFormaPago(e.target.value as FormaPago)}
+            className={selectClass}
+          >
+            {FORMAS_PAGO.map((fp) => (
+              <option key={fp} value={fp}>{FORMA_PAGO_LABEL[fp]}</option>
+            ))}
+          </select>
+        </Campo>
+        <Campo label="Monto">
+          <MoneyInput value={monto} onChange={setMonto} />
+        </Campo>
+        <Campo label="Descripción">
+          <input
+            type="text"
+            value={descripcion}
+            onChange={(e) => setDescripcion(e.target.value)}
+            placeholder="Descripción"
+            className={selectClass}
+          />
+        </Campo>
+        <div>
+          <span className="mb-1 block text-sm font-medium text-slate-700">Comprobante</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-600 hover:bg-slate-50">
+              {subiendo ? (
+                <Loader2 size={15} className="animate-spin text-blue-600" />
+              ) : (
+                <Paperclip size={15} />
+              )}
+              {comprobanteId != null ? 'Cambiar' : 'Subir comprobante'}
+              <input
+                type="file"
+                accept="image/*,application/pdf"
+                capture="environment"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) subir(file)
+                  e.target.value = ''
+                }}
+              />
+            </label>
+            {comprobanteId != null && (
+              <a
+                href={`/api/comprobante/${comprobanteId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex shrink-0 items-center gap-1 text-sm font-medium text-emerald-700"
+              >
+                <CheckCircle2 size={15} /> ver
+              </a>
+            )}
+          </div>
+        </div>
+      </div>
+      <div className="mt-5 flex gap-2">
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex-1 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            onConfirm({ tipo, formaPago, monto, descripcion, comprobanteId, subiendo: false })
+          }
+          className="flex-1 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
+        >
+          {editando ? 'Guardar' : 'Agregar'}
+        </button>
+      </div>
+    </Modal>
+  )
+}
 
 export function TurnoCierre({
   fecha,
@@ -294,6 +455,11 @@ export function TurnoCierre({
   const [msg, setMsg] = useState('')
   const [ok, setOk] = useState<boolean | null>(null)
   const [pending, setPending] = useState(false)
+
+  // Estado de los modales de carga/edición. `null` = cerrado.
+  // `index` null = nuevo; número = editar esa fila.
+  const [ingresoModal, setIngresoModal] = useState<{ index: number | null } | null>(null)
+  const [gastoModal, setGastoModal] = useState<{ index: number | null } | null>(null)
 
   // Aplicar precarga (Tango) cuando cambia: mergeamos ventas, montoZ y tickets.
   // Usamos un ref para no re-aplicar la misma referencia dos veces.
@@ -392,20 +558,6 @@ export function TurnoCierre({
         ? { tile: 'bg-amber-50 text-amber-700 border border-amber-200', dot: 'bg-amber-500', emoji: '🟡' }
         : { tile: 'bg-red-50 text-red-700 border border-red-200', dot: 'bg-red-500', emoji: '🔴' }
 
-  async function subirComprobante(i: number, file: File) {
-    setGastos((p) => p.map((g, j) => (j === i ? { ...g, subiendo: true } : g)))
-    try {
-      const fd = new FormData()
-      fd.append('archivo', file)
-      const res = await fetch('/api/comprobante', { method: 'POST', body: fd })
-      if (!res.ok) throw new Error('bad status')
-      const { id } = (await res.json()) as { id: number }
-      setGastos((p) => p.map((g, j) => (j === i ? { ...g, comprobanteId: id, subiendo: false } : g)))
-    } catch {
-      setGastos((p) => p.map((g, j) => (j === i ? { ...g, subiendo: false } : g)))
-    }
-  }
-
   async function submit(cerrar: boolean) {
     setPending(true)
     const res = await guardarCierre(fecha, turno, JSON.stringify({ ...input, nota }), cerrar)
@@ -414,14 +566,28 @@ export function TurnoCierre({
     setPending(false)
   }
 
-  // Líneas de ingreso individuales: agregamos arriba para que la última quede visible.
-  // El medio se fija al elegir la opción del menú desplegable (chip en la línea).
-  const agregarIngreso = (medio: Medio) => setIngresos((p) => [nuevaIngresoRow(medio), ...p])
-  // Gastos: agregamos al final con el tipo ya fijado desde el menú.
-  const agregarGasto = (tipo: TipoGasto) => setGastos((p) => [...p, nuevaGastoRow(tipo)])
-  const setIngresoRow = (i: number, patch: Partial<IngresoRow>) =>
-    setIngresos((p) => p.map((r, j) => (j === i ? { ...r, ...patch } : r)))
+  // Ingresos: la carga/edición ocurre en el modal. Al confirmar agregamos la línea
+  // arriba (nueva) o reemplazamos la línea editada.
+  const confirmarIngreso = (row: IngresoRow) => {
+    setIngresos((p) => {
+      if (ingresoModal?.index == null) return [row, ...p]
+      const idx = ingresoModal.index
+      return p.map((r, j) => (j === idx ? row : r))
+    })
+    setIngresoModal(null)
+  }
   const quitarIngreso = (i: number) => setIngresos((p) => p.filter((_, j) => j !== i))
+
+  // Gastos: misma lógica vía modal (agregamos al final cuando es nuevo).
+  const confirmarGasto = (row: GastoRow) => {
+    setGastos((p) => {
+      if (gastoModal?.index == null) return [...p, row]
+      const idx = gastoModal.index
+      return p.map((g, j) => (j === idx ? row : g))
+    })
+    setGastoModal(null)
+  }
+  const quitarGasto = (i: number) => setGastos((p) => p.filter((_, j) => j !== i))
 
   // Subtotal de ingresos (efectivo + todas las líneas). Útil para verificar contra el Z.
   const ingresoSubtotal = efectivoVenta + ingresos.reduce((acc, r) => acc + r.monto, 0)
@@ -452,27 +618,23 @@ export function TurnoCierre({
       </header>
 
       {/* Barra de carga rápida — siempre arriba del bloque.
-          Cada botón abre un menú desplegable con las opciones; al elegir, se agrega
-          la línea con el medio/tipo ya fijado. */}
+          Cada botón abre un modal con TODOS los campos de esa entrada; al confirmar,
+          la línea se agrega a la lista compacta de abajo (sin scrollear el form). */}
       <div className="flex flex-col gap-2 sm:flex-row">
-        <div className="flex-1">
-          <MenuAgregar
-            label="Agregar ingreso"
-            variant="primary"
-            grupos={MEDIO_GRUPOS}
-            etiquetas={MEDIO_LABEL}
-            onSelect={agregarIngreso}
-          />
-        </div>
-        <div className="flex-1">
-          <MenuAgregar
-            label="Agregar gasto"
-            variant="secondary"
-            grupos={GASTO_GRUPOS}
-            etiquetas={TIPO_GASTO_LABEL}
-            onSelect={agregarGasto}
-          />
-        </div>
+        <button
+          type="button"
+          onClick={() => setIngresoModal({ index: null })}
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
+        >
+          <Plus size={17} /> Agregar ingreso
+        </button>
+        <button
+          type="button"
+          onClick={() => setGastoModal({ index: null })}
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+        >
+          <Plus size={17} /> Agregar gasto
+        </button>
       </div>
 
       {/* Resumen — tiles en vivo */}
@@ -554,15 +716,13 @@ export function TurnoCierre({
             <Coins size={18} className="text-slate-500" />
             <h3 className="font-medium text-slate-900">Ingresos</h3>
           </div>
-          <div className="w-44 shrink-0">
-            <MenuAgregar
-              label="Agregar ingreso"
-              variant="primary"
-              grupos={MEDIO_GRUPOS}
-              etiquetas={MEDIO_LABEL}
-              onSelect={agregarIngreso}
-            />
-          </div>
+          <button
+            type="button"
+            onClick={() => setIngresoModal({ index: null })}
+            className="flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
+          >
+            <Plus size={16} /> Agregar ingreso
+          </button>
         </div>
 
         {/* Efectivo: no se itemiza, es un único monto */}
@@ -573,45 +733,54 @@ export function TurnoCierre({
           </label>
         </div>
 
-        {/* Líneas individuales (tarjetas/apps), una por transacción */}
+        {/* Lista compacta de ingresos cargados (tarjetas/apps). Tap en la fila o en
+            el lápiz reabre el modal pre-cargado para editar; la × la quita. */}
         {ingresos.length === 0 ? (
           <p className="text-sm text-slate-400">
             Sin ingresos con tarjeta o app. Usá <span className="font-medium">Agregar ingreso</span> para cargar cada cobro.
           </p>
         ) : (
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-1.5">
             {ingresos.map((row, i) => (
               <div
                 key={i}
-                className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2 sm:flex-row sm:items-center"
+                className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2"
               >
-                {/* Medio fijo (se eligió al agregar la línea desde el menú) */}
-                <span
-                  className={`inline-flex w-full shrink-0 items-center justify-center rounded-lg border px-3 py-2 text-sm font-medium sm:w-40 ${
-                    isCardMedio(row.medio)
-                      ? 'border-blue-200 bg-blue-50 text-blue-700'
-                      : 'border-slate-300 bg-white text-slate-700'
-                  }`}
+                <button
+                  type="button"
+                  onClick={() => setIngresoModal({ index: i })}
+                  className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                  aria-label="Editar ingreso"
                 >
-                  {MEDIO_LABEL[row.medio]}
-                </span>
-                <MoneyInput
-                  value={row.monto}
-                  onChange={(n) => setIngresoRow(i, { monto: n })}
-                  className="w-full sm:w-32"
-                />
-                <input
-                  type="text"
-                  value={row.referencia}
-                  onChange={(e) => setIngresoRow(i, { referencia: e.target.value })}
-                  placeholder="Cupón / lote / ref."
-                  className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
-                />
+                  <span
+                    className={`inline-flex shrink-0 items-center rounded-md border px-2 py-1 text-xs font-medium ${
+                      isCardMedio(row.medio)
+                        ? 'border-blue-200 bg-blue-50 text-blue-700'
+                        : 'border-slate-300 bg-white text-slate-700'
+                    }`}
+                  >
+                    {MEDIO_LABEL[row.medio]}
+                  </span>
+                  <span className="shrink-0 font-medium tabular-nums text-slate-900">
+                    {formatMoney(row.monto)}
+                  </span>
+                  {row.referencia.trim() !== '' && (
+                    <span className="truncate text-xs text-slate-400">{row.referencia}</span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIngresoModal({ index: i })}
+                  aria-label="Editar ingreso"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-white hover:text-blue-600"
+                >
+                  <Pencil size={15} />
+                </button>
                 <button
                   type="button"
                   onClick={() => quitarIngreso(i)}
                   aria-label="Quitar ingreso"
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-400 hover:text-red-600 sm:ml-auto"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-white hover:text-red-600"
                 >
                   <X size={16} />
                 </button>
@@ -644,93 +813,61 @@ export function TurnoCierre({
             <Receipt size={18} className="text-slate-500" />
             <h3 className="font-medium text-slate-900">Gastos</h3>
           </div>
-          <div className="w-44 shrink-0">
-            <MenuAgregar
-              label="Agregar gasto"
-              variant="secondary"
-              grupos={GASTO_GRUPOS}
-              etiquetas={TIPO_GASTO_LABEL}
-              onSelect={agregarGasto}
-            />
-          </div>
+          <button
+            type="button"
+            onClick={() => setGastoModal({ index: null })}
+            className="flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+          >
+            <Plus size={16} /> Agregar gasto
+          </button>
         </div>
 
+        {/* Lista compacta de gastos cargados. Tap en la fila / lápiz → editar; × quita. */}
         {gastos.length === 0 ? (
           <p className="text-sm text-slate-400">Sin gastos cargados.</p>
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1.5">
             {gastos.map((g, i) => (
-              <div key={i} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-                  {/* Tipo de gasto fijo (se eligió al agregar la línea desde el menú) */}
-                  <span className="inline-flex w-full shrink-0 items-center justify-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 sm:w-40">
+              <div
+                key={i}
+                className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2"
+              >
+                <button
+                  type="button"
+                  onClick={() => setGastoModal({ index: i })}
+                  className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                  aria-label="Editar gasto"
+                >
+                  <span className="inline-flex shrink-0 items-center rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-700">
                     {TIPO_GASTO_LABEL[g.tipo]}
                   </span>
-                  <select
-                    value={g.formaPago}
-                    onChange={(e) =>
-                      setGastos((p) => p.map((x, j) => (j === i ? { ...x, formaPago: e.target.value as FormaPago } : x)))
-                    }
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500 sm:w-40"
-                  >
-                    {FORMAS_PAGO.map((fp) => (
-                      <option key={fp} value={fp}>{FORMA_PAGO_LABEL[fp]}</option>
-                    ))}
-                  </select>
-                  <MoneyInput
-                    value={g.monto}
-                    onChange={(n) => setGastos((p) => p.map((x, j) => (j === i ? { ...x, monto: n } : x)))}
-                    className="w-full sm:w-32"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setGastos((p) => p.filter((_, j) => j !== i))}
-                    aria-label="Quitar gasto"
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-400 hover:text-red-600 sm:ml-auto"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-                <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
-                  <input
-                    type="text"
-                    value={g.descripcion}
-                    onChange={(e) =>
-                      setGastos((p) => p.map((x, j) => (j === i ? { ...x, descripcion: e.target.value } : x)))
-                    }
-                    placeholder="Descripción"
-                    className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
-                  />
-                  <label className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-600 hover:bg-slate-50">
-                    {g.subiendo ? (
-                      <Loader2 size={15} className="animate-spin text-blue-600" />
-                    ) : (
-                      <Paperclip size={15} />
-                    )}
-                    {g.comprobanteId != null ? 'Cambiar' : 'Comprobante'}
-                    <input
-                      type="file"
-                      accept="image/*,application/pdf"
-                      capture="environment"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0]
-                        if (file) subirComprobante(i, file)
-                        e.target.value = ''
-                      }}
-                    />
-                  </label>
-                  {g.comprobanteId != null && (
-                    <a
-                      href={`/api/comprobante/${g.comprobanteId}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex shrink-0 items-center gap-1 text-sm font-medium text-emerald-700"
-                    >
-                      <CheckCircle2 size={15} /> ver
-                    </a>
+                  <span className="shrink-0 text-xs text-slate-500">{FORMA_PAGO_LABEL[g.formaPago]}</span>
+                  <span className="shrink-0 font-medium tabular-nums text-slate-900">
+                    {formatMoney(g.monto)}
+                  </span>
+                  {g.descripcion.trim() !== '' && (
+                    <span className="truncate text-xs text-slate-400">{g.descripcion}</span>
                   )}
-                </div>
+                  {g.comprobanteId != null && (
+                    <CheckCircle2 size={14} className="shrink-0 text-emerald-600" aria-label="Con comprobante" />
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGastoModal({ index: i })}
+                  aria-label="Editar gasto"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-white hover:text-blue-600"
+                >
+                  <Pencil size={15} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => quitarGasto(i)}
+                  aria-label="Quitar gasto"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-white hover:text-red-600"
+                >
+                  <X size={16} />
+                </button>
               </div>
             ))}
           </div>
@@ -791,6 +928,25 @@ export function TurnoCierre({
           </button>
         </div>
       </div>
+
+      {/* Modales de carga/edición. La key fuerza un remount al cambiar de fila para
+          que el borrador interno arranque del valor correcto. */}
+      {ingresoModal && (
+        <IngresoModal
+          key={`ingreso-${ingresoModal.index ?? 'new'}`}
+          inicial={ingresoModal.index != null ? ingresos[ingresoModal.index] : undefined}
+          onClose={() => setIngresoModal(null)}
+          onConfirm={confirmarIngreso}
+        />
+      )}
+      {gastoModal && (
+        <GastoModal
+          key={`gasto-${gastoModal.index ?? 'new'}`}
+          inicial={gastoModal.index != null ? gastos[gastoModal.index] : undefined}
+          onClose={() => setGastoModal(null)}
+          onConfirm={confirmarGasto}
+        />
+      )}
     </section>
   )
 }

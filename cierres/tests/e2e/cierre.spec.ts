@@ -23,18 +23,19 @@ test('encargado carga y cierra el turno Mañana', async ({ page }) => {
   await manana.locator('label', { hasText: /^Efectivo\$?$/ }).locator('input').fill('100000')
 
   // Agregar un ingreso individual (tarjeta) — no afecta la diferencia de caja, pero
-  // ejercita el flujo nuevo: el botón abre un menú desplegable con las opciones y, al
-  // elegir "Visa crédito", se agrega la línea con ese medio ya fijado (chip).
+  // ejercita el flujo nuevo: el botón abre un MODAL con todos los campos; elegimos el
+  // medio "Visa crédito", cargamos el monto y confirmamos con "Agregar". Al confirmar
+  // el modal se cierra y la línea aparece en la lista compacta.
   await manana.getByRole('button', { name: 'Agregar ingreso' }).first().click()
-  await manana.getByRole('menuitem', { name: 'Visa crédito' }).click()
-  // La línea recién agregada muestra el medio como chip (<span>) + su MoneyInput.
-  // Desde el chip subimos al contenedor de la línea y tomamos su input numérico.
-  const chipVisa = manana.getByText('Visa crédito', { exact: true })
-  await chipVisa
-    .locator('xpath=ancestor::div[.//input[@inputmode="numeric"]][1]')
-    .locator('input[inputmode="numeric"]')
-    .first()
-    .fill('25000')
+  const modal = page.getByRole('dialog', { name: 'Agregar ingreso' })
+  await expect(modal).toBeVisible()
+  await modal.getByRole('combobox').selectOption({ label: 'Visa crédito' })
+  await modal.locator('input[inputmode="numeric"]').first().fill('25000')
+  await modal.getByRole('button', { name: 'Agregar', exact: true }).click()
+  // El modal se cierra y la línea queda en la lista (chip "Visa crédito"). Puede
+  // haber más de una si quedó un borrador previo persistido; basta con que aparezca.
+  await expect(modal).toBeHidden()
+  await expect(manana.getByText('Visa crédito', { exact: true }).first()).toBeVisible()
 
   await manana.getByRole('button', { name: 'Cerrar', exact: true }).click()
   await expect(manana.getByText('Cerrado correctamente.')).toBeVisible()
