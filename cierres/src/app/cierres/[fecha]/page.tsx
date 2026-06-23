@@ -1,13 +1,55 @@
 import { auth } from '@/lib/auth/auth'
 import { prisma } from '@/lib/db'
-import { CierreForm } from '@/components/CierreForm'
+import { PlanillaDia } from '@/components/PlanillaDia'
 import { esCentral } from '@/lib/auth/rbac'
+import type { Canal, FormaPago, TipoGasto, TipoTarjeta, Turno, TurnoInput } from '@/lib/cierre/types'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 
 function formatFecha(iso: string) {
   const d = new Date(`${iso}T00:00:00`)
   return d.toLocaleDateString('es-AR', { day: '2-digit', month: 'long', year: 'numeric' })
+}
+
+type CierreConHijos = {
+  fondoFijo: unknown
+  montoZ: unknown
+  efectivoDepositado: unknown
+  notaCredito: unknown
+  cantidadTickets: number | null
+  nota: string | null
+  estado: string
+  ventas: { canal: string; monto: unknown }[]
+  tarjetas: { tipo: string; monto: unknown; lote: string | null }[]
+  detalles: { canal: string; referencia: string; importe: unknown }[]
+  gastos: { tipo: string; formaPago: string; monto: unknown; descripcion: string | null; comprobanteId: number | null }[]
+}
+
+function toInicial(c: CierreConHijos | undefined): (Partial<TurnoInput> & { nota?: string }) | undefined {
+  if (!c) return undefined
+  return {
+    fondoFijo: Number(c.fondoFijo),
+    montoZ: Number(c.montoZ),
+    efectivoDepositado: Number(c.efectivoDepositado),
+    notaCredito: Number(c.notaCredito),
+    cantidadTickets: c.cantidadTickets,
+    ventas: c.ventas.map((v) => ({ canal: v.canal as Canal, monto: Number(v.monto) })),
+    tarjetas: c.tarjetas.map((t) => ({ tipo: t.tipo as TipoTarjeta, monto: Number(t.monto), lote: t.lote })),
+    detalles: c.detalles.map((d) => ({ canal: d.canal as Canal, referencia: d.referencia, importe: Number(d.importe) })),
+    gastos: c.gastos.map((g) => ({
+      tipo: g.tipo as TipoGasto,
+      formaPago: g.formaPago as FormaPago,
+      monto: Number(g.monto),
+      descripcion: g.descripcion,
+      comprobanteId: g.comprobanteId,
+    })),
+    nota: c.nota ?? '',
+  }
+}
+
+function estadoLabel(c: CierreConHijos | undefined) {
+  if (!c) return '—'
+  return c.estado === 'cerrado' ? 'cerrado' : 'borrador'
 }
 
 export default async function CierreDiaPage({ params }: { params: Promise<{ fecha: string }> }) {
@@ -17,15 +59,18 @@ export default async function CierreDiaPage({ params }: { params: Promise<{ fech
   const localId = esCentral(session.user.rol) ? 1 : session.user.localId ?? 1
   const local = await prisma.local.findUniqueOrThrow({ where: { id: localId } })
 
-  // Solo para mostrar el badge de estado en el header (lectura, no cambia el form).
-  const existente = await prisma.cierre.findUnique({
-    where: { localId_fecha: { localId, fecha: new Date(fecha) } },
-    select: { estado: true },
+  const cierres = await prisma.cierre.findMany({
+    where: { localId, fecha: new Date(fecha) },
+    include: { ventas: true, tarjetas: true, detalles: true, gastos: true },
   })
-  const cerrado = existente?.estado === 'cerrado'
+
+  const byTurno = new Map<Turno, (typeof cierres)[number]>()
+  for (const c of cierres) byTurno.set(c.turno as Turno, c)
+  const manana = byTurno.get('manana') as CierreConHijos | undefined
+  const tarde = byTurno.get('tarde') as CierreConHijos | undefined
 
   return (
-    <main className="mx-auto w-full max-w-2xl px-4 py-6">
+    <main className="mx-auto w-full max-w-3xl px-4 py-6">
       <div className="mb-5">
         <Link
           href="/cierres"
@@ -38,18 +83,23 @@ export default async function CierreDiaPage({ params }: { params: Promise<{ fech
             <h1 className="text-xl font-semibold text-slate-900">{local.nombre}</h1>
             <p className="text-sm text-slate-500">Cierre del {formatFecha(fecha)}</p>
           </div>
-          {existente && (
-            <span
-              className={`mt-1 rounded-md px-2.5 py-1 text-xs font-medium ${
-                cerrado ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
-              }`}
-            >
-              {cerrado ? 'Cerrado' : 'Borrador'}
+          <div className="mt-1 flex flex-col items-end gap-1 text-xs">
+            <span className="rounded-md bg-slate-100 px-2.5 py-1 font-medium text-slate-600">
+              Mañana {estadoLabel(manana)}
             </span>
-          )}
+            <span className="rounded-md bg-slate-100 px-2.5 py-1 font-medium text-slate-600">
+              Tarde {estadoLabel(tarde)}
+            </span>
+          </div>
         </div>
       </div>
-      <CierreForm fecha={fecha} fondoFijoDefault={Number(local.fondoFijoDefault)} />
+
+      <PlanillaDia
+        fecha={fecha}
+        fondoFijoDefault={Number(local.fondoFijoDefault)}
+        inicialManana={toInicial(manana)}
+        inicialTarde={toInicial(tarde)}
+      />
     </main>
   )
 }
