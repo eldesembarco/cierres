@@ -1,13 +1,15 @@
 'use client'
 
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { TurnoCierre } from '@/components/TurnoCierre'
 import type { GastoFactura, CierreAuditoria } from '@/components/TurnoCierre'
 import { sumarDia } from '@/lib/cierre/calculations'
 import type { DiaTotales, Turno, TurnoInput, TurnoTotales } from '@/lib/cierre/types'
-import type { TangoParseResult } from '@/lib/ingest/parseTango'
+import type { TangoParseResult, TangoTurno } from '@/lib/ingest/parseTango'
 import { formatMoney } from '@/lib/money'
-import { CheckCircle2, AlertCircle, Loader2, RefreshCw, Receipt } from 'lucide-react'
+import { CheckCircle2, AlertCircle, Loader2, RefreshCw, Receipt, ShieldAlert } from 'lucide-react'
+
+const TURNO_LABEL: Record<Turno, string> = { manana: 'Mañana', tarde: 'Tarde' }
 
 const TURNO_VACIO: TurnoTotales = {
   ventaTotal: 0,
@@ -105,6 +107,29 @@ export function PlanillaDia({
   const [importError, setImportError] = useState('')
   const reqIdRef = useRef(0)
 
+  // Control Tango (solo admin/central): turnos reales de Tango del día, para
+  // mostrar ventas/anulaciones/devoluciones como señal de auditoría. El encargado
+  // NO ve esto (gated por `puedeImportar`, que es central/admin). Se carga al
+  // montar para que el panel aparezca sin tener que tocar "Importar desde Tango".
+  const [tangoTurnos, setTangoTurnos] = useState<TangoTurno[]>([])
+
+  useEffect(() => {
+    if (!puedeImportar) return
+    let cancelado = false
+    const params = new URLSearchParams({ fecha, localId: String(localId) })
+    fetch(`/api/tango?${params.toString()}`)
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error('bad status'))))
+      .then((r: TangoParseResult) => {
+        if (!cancelado) setTangoTurnos(r.turnos)
+      })
+      .catch(() => {
+        if (!cancelado) setTangoTurnos([])
+      })
+    return () => {
+      cancelado = true
+    }
+  }, [puedeImportar, fecha, localId])
+
   async function importarTango() {
     setImportLoading(true)
     setImportMsg('')
@@ -118,6 +143,7 @@ export function PlanillaDia({
       // reqId no se usa más que como marca de depuración; cada slice es una
       // referencia nueva, así que el efecto de precarga en cada turno se dispara.
       void reqId
+      setTangoTurnos(r.turnos)
       if (r.turnos.length === 0) {
         setImportMsg('Sin datos de Tango para este día todavía.')
         return
@@ -171,6 +197,75 @@ export function PlanillaDia({
           </span>
         )}
       </div>
+      )}
+
+      {/* Control Tango — SOLO admin/central (gated por puedeImportar). El encargado
+          es ciego y NO debe ver anulaciones/devoluciones. Se oculta si no hay datos
+          de Tango para el día. Marca en ámbar/rojo cuando hay anulaciones o
+          devoluciones > 0 como señal de auditoría. */}
+      {puedeImportar && tangoTurnos.length > 0 && (
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="mb-3 flex items-center gap-2">
+            <ShieldAlert size={16} className="text-blue-600" />
+            <p className="text-sm font-semibold text-slate-900">Control Tango</p>
+            <span className="text-xs text-slate-400">solo administración · datos reales de Tango</span>
+          </div>
+          <div className="flex flex-col gap-2">
+            {tangoTurnos.map((t) => {
+              const afectan = t.anulacionesAfectanCaja ?? 0
+              const anulTotal = t.anulacionesTotal ?? 0
+              const devol = t.devolucionesTotal ?? 0
+              const hayAnul = anulTotal > 0 || afectan > 0
+              const hayDevol = devol > 0
+              return (
+                <div
+                  key={t.turno}
+                  className="rounded-lg border border-slate-200 bg-slate-50 p-3"
+                >
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-sm font-medium text-slate-800">{TURNO_LABEL[t.turno]}</span>
+                    <span className="text-xs text-slate-500">
+                      Ventas Tango{' '}
+                      <span className="font-medium tabular-nums text-slate-800">{formatMoney(t.montoZ)}</span>
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <div
+                      className={`rounded-md border px-3 py-2 text-sm ${
+                        hayAnul
+                          ? 'border-red-200 bg-red-50 text-red-700'
+                          : 'border-slate-200 bg-white text-slate-600'
+                      }`}
+                    >
+                      <p className="text-[12px] opacity-80">Anulaciones</p>
+                      <p className="mt-0.5 flex flex-wrap items-center gap-x-3 tabular-nums">
+                        <span>
+                          afectan caja{' '}
+                          <span className="font-semibold">{formatMoney(afectan)}</span>
+                        </span>
+                        <span className="opacity-80">
+                          total <span className="font-semibold">{formatMoney(anulTotal)}</span>
+                        </span>
+                      </p>
+                    </div>
+                    <div
+                      className={`rounded-md border px-3 py-2 text-sm ${
+                        hayDevol
+                          ? 'border-amber-200 bg-amber-50 text-amber-700'
+                          : 'border-slate-200 bg-white text-slate-600'
+                      }`}
+                    >
+                      <p className="text-[12px] opacity-80">Devoluciones</p>
+                      <p className="mt-0.5 tabular-nums">
+                        <span className="font-semibold">{formatMoney(devol)}</span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
       )}
 
       {/* Total del día */}

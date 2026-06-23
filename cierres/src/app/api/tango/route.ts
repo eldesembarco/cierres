@@ -10,6 +10,10 @@ interface TangoTurnoResponse {
   ventas: { canal: Canal; monto: number }[]
   montoZ: number
   cantidadTickets: number | null
+  // Para el panel "Control Tango" (solo admin/central).
+  anulacionesAfectanCaja: number
+  anulacionesTotal: number
+  devolucionesTotal: number
 }
 
 const ORDEN_TURNO: Turno[] = ['manana', 'tarde']
@@ -34,6 +38,9 @@ export async function GET(request: Request) {
       ventas: (r.ventas as { canal: Canal; monto: number }[]) ?? [],
       montoZ: Number(r.montoZ),
       cantidadTickets: r.cantidadTickets,
+      anulacionesAfectanCaja: r.anulacionesAfectanCaja == null ? 0 : Number(r.anulacionesAfectanCaja),
+      anulacionesTotal: r.anulacionesTotal == null ? 0 : Number(r.anulacionesTotal),
+      devolucionesTotal: r.devolucionesTotal == null ? 0 : Number(r.devolucionesTotal),
     }))
     .sort((a, b) => ORDEN_TURNO.indexOf(a.turno) - ORDEN_TURNO.indexOf(b.turno))
 

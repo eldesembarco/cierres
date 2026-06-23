@@ -7,6 +7,27 @@ export interface TangoPdfResult {
   ventas: { canal: Canal; monto: number }[]
   montoZ: number
   cantidadTickets: number | null
+  // Anulaciones y devoluciones del cierre (para control/auditoría del admin).
+  // Default 0 si la sección no aparece en el PDF.
+  anulacionesAfectanCaja: number
+  anulacionesTotal: number
+  devolucionesTotal: number
+}
+
+// Patrón de monto en formato del PDF de Tango (en-US: coma = miles, punto = decimal).
+const MONEY = '([\\d]{1,3}(?:,\\d{3})*(?:\\.\\d+)?|\\d+(?:\\.\\d+)?)'
+
+// Aísla el cuerpo de una sección "-- NOMBRE --" hasta el siguiente separador "--"
+// (o el fin del texto). El texto real de unpdf viene en una sola línea con las
+// secciones marcadas por "-- … --", así que scopeamos por esos marcadores para no
+// confundir "TOTAL GENERAL:"/"TOTAL IMPORTE:" de otras secciones.
+function sectionBody(text: string, nombre: string): string | null {
+  const re = new RegExp(`--\\s*${nombre}\\s*--`, 'i')
+  const m = text.match(re)
+  if (!m || m.index === undefined) return null
+  const after = text.slice(m.index + m[0].length)
+  const next = after.search(/--[^-]/)
+  return next === -1 ? after : after.slice(0, next)
 }
 
 // Mapea la descripción de la forma de cobro del PDF de Tango (en MAYÚSCULAS, sin
@@ -99,5 +120,38 @@ export function parseTangoPdf(text: string): TangoPdfResult {
 
   const ventas = [...ventasMap.entries()].map(([canal, monto]) => ({ canal, monto }))
 
-  return { fecha, turno, ventas, montoZ, cantidadTickets }
+  // --- Anulaciones (sección "-- ANULACIONES --") ---
+  // "AFECTARON CAJA TOTAL: <a>" es el que afecta caja, distinto del
+  // "NO AFECTARON CAJA TOTAL: <b>". Matcheamos el AFECTARON que NO viene
+  // precedido por "NO " (lookbehind negativo). El total de la sección es su
+  // "TOTAL GENERAL:" (scopeado, porque hay varios en el PDF).
+  let anulacionesAfectanCaja = 0
+  let anulacionesTotal = 0
+  const anulBody = sectionBody(text, 'ANULACIONES')
+  if (anulBody !== null) {
+    const mAfecta = anulBody.match(new RegExp(`(?<!NO\\s)AFECTARON\\s+CAJA\\s+TOTAL:\\s*${MONEY}`, 'i'))
+    if (mAfecta) anulacionesAfectanCaja = parseMoney(mAfecta[1])
+    const mGeneral = anulBody.match(new RegExp(`TOTAL\\s+GENERAL:\\s*${MONEY}`, 'i'))
+    if (mGeneral) anulacionesTotal = parseMoney(mGeneral[1])
+  }
+
+  // --- Devoluciones (sección "-- DEVOLUCIONES --") ---
+  // El importe es su "TOTAL IMPORTE:" (scopeado a la sección).
+  let devolucionesTotal = 0
+  const devBody = sectionBody(text, 'DEVOLUCIONES')
+  if (devBody !== null) {
+    const mImporte = devBody.match(new RegExp(`TOTAL\\s+IMPORTE:\\s*${MONEY}`, 'i'))
+    if (mImporte) devolucionesTotal = parseMoney(mImporte[1])
+  }
+
+  return {
+    fecha,
+    turno,
+    ventas,
+    montoZ,
+    cantidadTickets,
+    anulacionesAfectanCaja,
+    anulacionesTotal,
+    devolucionesTotal,
+  }
 }

@@ -29,6 +29,11 @@ export interface TangoTurno {
   ventas: { canal: Canal; monto: number }[]
   montoZ: number
   cantidadTickets: number | null
+  // Solo presentes en la respuesta de GET /api/tango (cierre real guardado);
+  // el parser de CSV (parseTango) no los completa. Opcionales por eso.
+  anulacionesAfectanCaja?: number
+  anulacionesTotal?: number
+  devolucionesTotal?: number
 }
 
 export interface TangoParseResult {

@@ -63,12 +63,18 @@ export async function POST(request: Request) {
       ventas: parsed.ventas,
       montoZ: parsed.montoZ,
       cantidadTickets: parsed.cantidadTickets,
+      anulacionesAfectanCaja: parsed.anulacionesAfectanCaja,
+      anulacionesTotal: parsed.anulacionesTotal,
+      devolucionesTotal: parsed.devolucionesTotal,
       recibidoEn: new Date(),
     },
     update: {
       ventas: parsed.ventas,
       montoZ: parsed.montoZ,
       cantidadTickets: parsed.cantidadTickets,
+      anulacionesAfectanCaja: parsed.anulacionesAfectanCaja,
+      anulacionesTotal: parsed.anulacionesTotal,
+      devolucionesTotal: parsed.devolucionesTotal,
       recibidoEn: new Date(),
     },
   })

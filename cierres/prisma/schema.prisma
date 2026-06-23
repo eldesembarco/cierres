@@ -212,6 +212,11 @@ model CierreTango {
   ventas          Json
   montoZ          Decimal  @default(0) @map("monto_z") @db.Decimal(14, 2)
   cantidadTickets Int?     @map("cantidad_tickets")
+  // Anulaciones y devoluciones del cierre (control/auditoría del admin). Nullable:
+  // los cierres viejos no las tienen, y el PDF puede no traer esas secciones.
+  anulacionesAfectanCaja Decimal? @map("anulaciones_afectan_caja") @db.Decimal(14, 2)
+  anulacionesTotal       Decimal? @map("anulaciones_total") @db.Decimal(14, 2)
+  devolucionesTotal      Decimal? @map("devoluciones_total") @db.Decimal(14, 2)
   recibidoEn      DateTime @default(now()) @map("recibido_en")
   @@unique([localId, fecha, turno])
   @@map("cierre_tango")

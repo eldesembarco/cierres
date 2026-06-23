@@ -80,6 +80,35 @@ describe('parseTangoPdf', () => {
     expect(r.ventas).toEqual([{ canal: 'pedidosya', monto: 126200 }])
   })
 
+  it('anulaciones/devoluciones = 0 cuando no hay esas secciones', () => {
+    const r = parseTangoPdf(flat)
+    expect(r.anulacionesAfectanCaja).toBe(0)
+    expect(r.anulacionesTotal).toBe(0)
+    expect(r.devolucionesTotal).toBe(0)
+  })
+
+  // Muestra (texto plano, formato real) CON anulaciones y devoluciones NO cero.
+  // Verifica el scope por sección y que "AFECTARON" se distingue de "NO AFECTARON".
+  const flatConAnul =
+    '01/01/2026-TURNO TARDE Caja: CAJA1 ' +
+    '--VENTAS POR FORMA DE COBRO-- Descripción Total ____ EFECTIVO 10,000.00 ____ TOTAL: 10,000.00 ' +
+    '--RESUMEN DE VENTAS POR RUBROS-- Rubro Cantidad Total ____ TOTAL GENERAL: 1.00 10,000.00 ' +
+    '-- ANULACIONES -- Comprobante Importe Fecha Hora ____ FAC001 5,000.00 01/01 10:00 ' +
+    'AFECTARON CAJA TOTAL: 5,000.00 NO AFECTARON CAJA TOTAL: 1,200.00 TOTAL GENERAL: 6,200.00 ' +
+    '-- DEVOLUCIONES -- Comprobante Importe Fecha Hora ____ NC001 3,400.00 01/01 11:00 ' +
+    'TOTAL: 2.00 TOTAL IMPORTE: 3,400.00 ' +
+    '-- COMANDAS POR ESTADO -- Estado Cantidad ____ TOTAL: 4'
+
+  it('extrae anulaciones (afectan caja / total) y devoluciones del texto plano', () => {
+    const r = parseTangoPdf(flatConAnul)
+    expect(r.anulacionesAfectanCaja).toBe(5000)
+    expect(r.anulacionesTotal).toBe(6200)
+    expect(r.devolucionesTotal).toBe(3400)
+    // No debe romper el parseo de ventas/montoZ que ya andaba.
+    expect(r.montoZ).toBe(10000)
+    expect(r.turno).toBe('tarde')
+  })
+
   it('es tolerante a espacios extra', () => {
     const messy = `   21/06/2026   -   TURNO    TARDE
     TOTAL  VENTAS:   156,200.00    CANT.  VENTAS:  4   PROMEDIO: 39,050.00
