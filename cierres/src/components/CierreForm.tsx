@@ -1,10 +1,10 @@
 'use client'
 
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { calcularTotales } from '@/lib/cierre/calculations'
 import type { Canal, CierreInput, Cupon, TipoTarjeta, Turno } from '@/lib/cierre/types'
 import { formatMoney } from '@/lib/money'
-import { parseTango } from '@/lib/ingest/parseTango'
+import type { TangoParseResult } from '@/lib/ingest/parseTango'
 import { guardarCierre } from '@/app/cierres/actions'
 import { MoneyInput } from '@/components/MoneyInput'
 import { CuponesDetalle } from '@/components/CuponesDetalle'
@@ -16,7 +16,8 @@ import {
   TrendingUp,
   CheckCircle2,
   AlertCircle,
-  Upload,
+  RefreshCw,
+  Loader2,
 } from 'lucide-react'
 
 const CANALES: Canal[] = [
@@ -84,13 +85,19 @@ export function CierreForm({
   const [ok, setOk] = useState<boolean | null>(null)
   const [pending, setPending] = useState(false)
 
-  const fileRef = useRef<HTMLInputElement>(null)
+  const [importLoading, setImportLoading] = useState(false)
   const [importMsg, setImportMsg] = useState('')
+  const [importError, setImportError] = useState('')
 
-  async function importarTango(file: File) {
+  async function importarTango() {
+    setImportLoading(true)
+    setImportMsg('')
+    setImportError('')
     try {
-      const text = await file.text()
-      const r = parseTango(text)
+      const params = new URLSearchParams({ fecha, localId: '' })
+      const res = await fetch(`/api/tango?${params.toString()}`)
+      if (!res.ok) throw new Error('bad status')
+      const r: TangoParseResult = await res.json()
       for (const { canal, monto } of r.ventas) {
         setVentas((p) => ({ ...p, [canal]: monto }))
       }
@@ -99,9 +106,11 @@ export function CierreForm({
         else if (turno === 'T2') setZ2(montoZ)
       }
       if (r.cantidadTickets != null) setTickets(r.cantidadTickets)
-      setImportMsg('Precargado desde Tango — revisá y guardá.')
+      setImportMsg('Información actualizada desde Tango ✓ — revisá y guardá.')
     } catch {
-      setImportMsg('No se pudo leer el archivo. Revisá el formato.')
+      setImportError('No se pudo actualizar la información. Probá de nuevo.')
+    } finally {
+      setImportLoading(false)
     }
   }
 
@@ -173,32 +182,32 @@ export function CierreForm({
 
   return (
     <div className="flex flex-col gap-4 pb-32">
-      {/* Importar desde Tango (prototipo) */}
+      {/* Importar desde Tango (pull automático) */}
       <div className="flex flex-wrap items-center gap-3">
-        <input
-          ref={fileRef}
-          type="file"
-          accept=".csv"
-          className="hidden"
-          onChange={(e) => {
-            const f = e.target.files?.[0]
-            if (f) importarTango(f)
-            e.target.value = ''
-          }}
-        />
         <button
           type="button"
-          onClick={() => fileRef.current?.click()}
-          className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          onClick={importarTango}
+          disabled={importLoading}
+          className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          <Upload size={16} className="text-slate-500" />
-          Importar desde Tango
+          {importLoading ? (
+            <Loader2 size={16} className="animate-spin text-blue-600" />
+          ) : (
+            <RefreshCw size={16} className="text-slate-500" />
+          )}
+          {importLoading ? 'Actualizando información del local…' : 'Importar desde Tango'}
         </button>
-        <span className="text-xs text-slate-400">formato preliminar</span>
-        {importMsg && (
+        <span className="text-xs text-slate-400">datos de ejemplo (preliminar)</span>
+        {!importLoading && importMsg && (
           <span className="flex items-center gap-1.5 text-sm font-medium text-emerald-700">
             <CheckCircle2 size={14} />
             {importMsg}
+          </span>
+        )}
+        {!importLoading && importError && (
+          <span className="flex items-center gap-1.5 text-sm text-slate-400">
+            <AlertCircle size={14} />
+            {importError}
           </span>
         )}
       </div>
