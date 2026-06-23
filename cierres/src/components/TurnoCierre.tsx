@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { calcularTotales } from '@/lib/cierre/calculations'
 import type {
   Canal,
-  Cupon,
   FormaPago,
   Gasto,
   TipoGasto,
@@ -16,11 +15,9 @@ import type {
 import { formatMoney } from '@/lib/money'
 import { guardarCierre } from '@/app/cierres/actions'
 import { MoneyInput } from '@/components/MoneyInput'
-import { CuponesDetalle } from '@/components/CuponesDetalle'
 import {
   Wallet,
   Receipt,
-  CreditCard,
   Coins,
   TrendingUp,
   CheckCircle2,
@@ -36,26 +33,41 @@ const CANALES: Canal[] = [
   'mercadopago', 'uber', 'delivery_propio', 'varios',
 ]
 
-const CANAL_LABEL: Record<Canal, string> = {
-  efectivo: 'Efectivo',
-  tarjetas: 'Tarjetas',
-  rappi: 'Rappi',
-  mercado_pedidos: 'Mercado Pedidos',
+const TIPOS: TipoTarjeta[] = ['mastercard', 'maestro', 'visa_credito', 'visa_debito', 'amex']
+
+// Medios de ingreso individuales: tarjetas (cada una es su propia transacción) +
+// apps/otros canales. Cada línea de ingreso usa uno de estos medios.
+const MEDIOS_TARJETA: TipoTarjeta[] = ['visa_credito', 'visa_debito', 'mastercard', 'maestro', 'amex']
+// Canales tipo app/otro disponibles como medio de ingreso (todo lo que no es efectivo ni tarjetas).
+type MedioApp = 'pedidosya' | 'rappi' | 'mercadopago' | 'mercado_pedidos' | 'uber' | 'delivery_propio' | 'varios'
+const MEDIOS_APP: MedioApp[] = [
+  'pedidosya', 'rappi', 'mercadopago', 'mercado_pedidos', 'uber', 'delivery_propio', 'varios',
+]
+type Medio = TipoTarjeta | MedioApp
+
+const MEDIO_LABEL: Record<Medio, string> = {
+  visa_credito: 'Visa crédito',
+  visa_debito: 'Visa débito',
+  mastercard: 'Mastercard',
+  maestro: 'Maestro',
+  amex: 'Amex',
   pedidosya: 'PedidosYa',
+  rappi: 'Rappi',
   mercadopago: 'Mercado Pago',
+  mercado_pedidos: 'Mercado Pedidos',
   uber: 'Uber',
   delivery_propio: 'Delivery propio',
   varios: 'Varios',
 }
 
-const TIPOS: TipoTarjeta[] = ['mastercard', 'maestro', 'visa_credito', 'visa_debito', 'amex']
-const TIPO_LABEL: Record<TipoTarjeta, string> = {
-  mastercard: 'Mastercard',
-  maestro: 'Maestro',
-  visa_credito: 'Visa crédito',
-  visa_debito: 'Visa débito',
-  amex: 'Amex',
-}
+const CARD_SET = new Set<Medio>(MEDIOS_TARJETA)
+const isCardMedio = (m: Medio): m is TipoTarjeta => CARD_SET.has(m)
+// El canal al que aporta cada medio: tarjetas → 'tarjetas'; apps → su propio canal.
+const canalDeMedio = (m: Medio): Canal => (isCardMedio(m) ? 'tarjetas' : m)
+
+// Línea de ingreso individual (una por transacción de tarjeta/app).
+type IngresoRow = { medio: Medio; monto: number; referencia: string }
+const nuevaIngresoRow = (): IngresoRow => ({ medio: 'visa_credito', monto: 0, referencia: '' })
 
 const TIPOS_GASTO: TipoGasto[] = [
   'mercaderia', 'descartable', 'limpieza', 'bazar', 'uniformes',
@@ -82,10 +94,6 @@ const FORMA_PAGO_LABEL: Record<FormaPago, string> = {
   transferencia: 'Transferencia',
   otro: 'Otro',
 }
-
-type TarjetaCell = { monto: number; lote: string }
-const emptyTarjetas = (): Record<TipoTarjeta, TarjetaCell> =>
-  Object.fromEntries(TIPOS.map((t) => [t, { monto: 0, lote: '' }])) as Record<TipoTarjeta, TarjetaCell>
 
 // Fila de gasto en el estado local (incluye estado de subida del comprobante).
 type GastoRow = {
@@ -118,28 +126,42 @@ function gastosFromInicial(gastos?: Gasto[]): GastoRow[] {
   }))
 }
 
-function ventasFromInicial(ventas?: { canal: Canal; monto: number }[]): Record<Canal, number> {
-  const base = Object.fromEntries(CANALES.map((c) => [c, 0])) as Record<Canal, number>
-  for (const v of ventas ?? []) base[v.canal] = v.monto
-  return base
+function efectivoFromInicial(ventas?: { canal: Canal; monto: number }[]): number {
+  return (ventas ?? []).find((v) => v.canal === 'efectivo')?.monto ?? 0
 }
 
-function detallesFromInicial(
-  detalles?: { canal: Canal; referencia: string; importe: number }[],
-): Record<Canal, Cupon[]> {
-  const base = Object.fromEntries(CANALES.map((c) => [c, [] as Cupon[]])) as Record<Canal, Cupon[]>
-  for (const d of detalles ?? []) {
-    base[d.canal] = [...base[d.canal], { referencia: d.referencia, importe: d.importe }]
+/**
+ * Reconstruye las líneas de ingreso individuales desde un cierre guardado.
+ * - Tarjetas: una línea por entrada de `tarjetas` (agregada por tipo; el lote unido vuelve como referencia).
+ * - Apps: una línea por `detalle` del canal; si el canal tiene venta declarada sin detalles,
+ *   se crea una línea por el total para no perder el monto.
+ */
+function ingresosFromInicial(inicial?: Partial<TurnoInput>): IngresoRow[] {
+  const rows: IngresoRow[] = []
+  // Tarjetas (cada tipo cargado → una línea).
+  for (const t of inicial?.tarjetas ?? []) {
+    if (t.monto > 0 || (t.lote ?? '').trim() !== '') {
+      rows.push({ medio: t.tipo, monto: t.monto, referencia: t.lote ?? '' })
+    }
   }
-  return base
-}
-
-function tarjetasFromInicial(
-  tarjetas?: { tipo: TipoTarjeta; monto: number; lote?: string | null }[],
-): Record<TipoTarjeta, TarjetaCell> {
-  const base = emptyTarjetas()
-  for (const t of tarjetas ?? []) base[t.tipo] = { monto: t.monto, lote: t.lote ?? '' }
-  return base
+  // Apps: agrupamos detalles por canal de app.
+  const detallesPorApp = new Map<Canal, { referencia: string; importe: number }[]>()
+  for (const d of inicial?.detalles ?? []) {
+    if (d.canal === 'tarjetas' || d.canal === 'efectivo') continue
+    if (!detallesPorApp.has(d.canal)) detallesPorApp.set(d.canal, [])
+    detallesPorApp.get(d.canal)!.push({ referencia: d.referencia, importe: d.importe })
+  }
+  for (const m of MEDIOS_APP) {
+    const dets = detallesPorApp.get(m)
+    if (dets && dets.length > 0) {
+      for (const d of dets) rows.push({ medio: m, monto: d.importe, referencia: d.referencia })
+    } else {
+      // Sin detalles: usar la venta declarada del canal como una línea única.
+      const venta = (inicial?.ventas ?? []).find((v) => v.canal === m)?.monto ?? 0
+      if (venta > 0) rows.push({ medio: m, monto: venta, referencia: '' })
+    }
+  }
+  return rows
 }
 
 export function TurnoCierre({
@@ -165,13 +187,8 @@ export function TurnoCierre({
   const [notaCredito, setNC] = useState(inicial?.notaCredito ?? 0)
   const [cantidadTickets, setTickets] = useState<number | ''>(inicial?.cantidadTickets ?? '')
 
-  const [ventas, setVentas] = useState<Record<Canal, number>>(() => ventasFromInicial(inicial?.ventas))
-  const [detalles, setDetalles] = useState<Record<Canal, Cupon[]>>(() =>
-    detallesFromInicial(inicial?.detalles),
-  )
-  const [tarjetas, setTarjetas] = useState<Record<TipoTarjeta, TarjetaCell>>(() =>
-    tarjetasFromInicial(inicial?.tarjetas),
-  )
+  const [efectivoVenta, setEfectivoVenta] = useState<number>(() => efectivoFromInicial(inicial?.ventas))
+  const [ingresos, setIngresos] = useState<IngresoRow[]>(() => ingresosFromInicial(inicial))
   const [gastos, setGastos] = useState<GastoRow[]>(() => gastosFromInicial(inicial?.gastos))
 
   const [nota, setNota] = useState(inicial?.nota ?? '')
@@ -186,38 +203,66 @@ export function TurnoCierre({
     if (!precarga || precarga === precargaRef.current) return
     precargaRef.current = precarga
     if (precarga.ventas) {
-      setVentas((p) => {
-        const next = { ...p }
-        for (const v of precarga.ventas!) next[v.canal] = v.monto
-        return next
-      })
+      // Efectivo → campo único. Resto de canales (apps): una línea por canal con monto.
+      // Tango no informa tipos de tarjeta, así que las tarjetas quedan vacías.
+      const ef = precarga.ventas.find((v) => v.canal === 'efectivo')?.monto
+      if (ef != null) setEfectivoVenta(ef)
+      const nuevasLineas: IngresoRow[] = precarga.ventas
+        .filter((v) => MEDIOS_APP.includes(v.canal as MedioApp) && v.monto > 0)
+        .map((v) => ({ medio: v.canal as Medio, monto: v.monto, referencia: '' }))
+      if (nuevasLineas.length > 0) {
+        // Reemplazamos las líneas de apps de la precarga previa, preservando tarjetas cargadas a mano.
+        setIngresos((prev) => [...prev.filter((r) => isCardMedio(r.medio)), ...nuevasLineas])
+      }
     }
     if (precarga.montoZ != null) setMontoZ(precarga.montoZ)
     if (precarga.cantidadTickets != null) setTickets(precarga.cantidadTickets)
   }, [precarga])
 
   const input: TurnoInput = useMemo(() => {
-    const tarjetasArr: TurnoInput['tarjetas'] = []
-    for (const tipo of TIPOS) {
-      const cell = tarjetas[tipo]
-      const lote = cell.lote.trim()
-      if (cell.monto > 0 || lote) {
-        tarjetasArr.push({ tipo, monto: cell.monto, lote: lote || null })
+    // 1) ventas por canal: efectivo (campo único) + suma de líneas por canal de cada medio.
+    const ventasPorCanal = Object.fromEntries(CANALES.map((c) => [c, 0])) as Record<Canal, number>
+    ventasPorCanal.efectivo = efectivoVenta
+    // 2) tarjetas agregadas por tipo (para no chocar con el unique (cierreId, tipo)):
+    //    sumamos monto por tipo y unimos los lotes (referencias) separados por coma.
+    const tarjetaPorTipo = new Map<TipoTarjeta, { monto: number; lotes: string[] }>()
+    // 3) detalles: una entrada por línea de ingreso (traza por transacción + conciliación).
+    const detallesArr: TurnoInput['detalles'] = []
+
+    for (const row of ingresos) {
+      const canal = canalDeMedio(row.medio)
+      ventasPorCanal[canal] += row.monto
+      const ref = row.referencia.trim()
+      // detalle por transacción (cualquier medio que no sea efectivo entra acá)
+      if (row.monto > 0 || ref !== '') {
+        detallesArr.push({ canal, referencia: row.referencia, importe: row.monto })
+      }
+      if (isCardMedio(row.medio)) {
+        const acc = tarjetaPorTipo.get(row.medio) ?? { monto: 0, lotes: [] }
+        acc.monto += row.monto
+        if (ref !== '') acc.lotes.push(ref)
+        tarjetaPorTipo.set(row.medio, acc)
       }
     }
+
+    const tarjetasArr: TurnoInput['tarjetas'] = []
+    for (const tipo of TIPOS) {
+      const cell = tarjetaPorTipo.get(tipo)
+      if (!cell) continue
+      if (cell.monto > 0 || cell.lotes.length > 0) {
+        tarjetasArr.push({ tipo, monto: cell.monto, lote: cell.lotes.join(', ') || null })
+      }
+    }
+
     return {
       fondoFijo,
       montoZ,
       efectivoDepositado,
       notaCredito,
       cantidadTickets: cantidadTickets === '' ? null : Number(cantidadTickets),
-      ventas: CANALES.map((c) => ({ canal: c, monto: ventas[c] })),
+      ventas: CANALES.map((c) => ({ canal: c, monto: ventasPorCanal[c] })),
       tarjetas: tarjetasArr,
-      detalles: CANALES.flatMap((c) =>
-        detalles[c]
-          .filter((d) => d.importe > 0 || d.referencia.trim() !== '')
-          .map((d) => ({ canal: c, referencia: d.referencia, importe: d.importe })),
-      ),
+      detalles: detallesArr,
       gastos: gastos
         .filter((g) => g.monto > 0 || g.descripcion.trim() !== '' || g.comprobanteId != null)
         .map((g) => ({
@@ -228,7 +273,7 @@ export function TurnoCierre({
           comprobanteId: g.comprobanteId,
         })),
     }
-  }, [fondoFijo, montoZ, efectivoDepositado, notaCredito, cantidadTickets, ventas, detalles, tarjetas, gastos])
+  }, [fondoFijo, montoZ, efectivoDepositado, notaCredito, cantidadTickets, efectivoVenta, ingresos, gastos])
 
   const t = calcularTotales(input)
 
@@ -270,6 +315,16 @@ export function TurnoCierre({
     setPending(false)
   }
 
+  // Líneas de ingreso individuales: agregamos arriba para que la última quede visible.
+  const agregarIngreso = () => setIngresos((p) => [nuevaIngresoRow(), ...p])
+  const agregarGasto = () => setGastos((p) => [...p, nuevaGastoRow()])
+  const setIngresoRow = (i: number, patch: Partial<IngresoRow>) =>
+    setIngresos((p) => p.map((r, j) => (j === i ? { ...r, ...patch } : r)))
+  const quitarIngreso = (i: number) => setIngresos((p) => p.filter((_, j) => j !== i))
+
+  // Subtotal de ingresos (efectivo + todas las líneas). Útil para verificar contra el Z.
+  const ingresoSubtotal = efectivoVenta + ingresos.reduce((acc, r) => acc + r.monto, 0)
+
   const MoneyRow = ({
     label,
     value,
@@ -294,6 +349,24 @@ export function TurnoCierre({
           Dif {formatMoney(t.diferenciaCaja)}
         </span>
       </header>
+
+      {/* Barra de carga rápida — siempre arriba del bloque */}
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <button
+          type="button"
+          onClick={agregarIngreso}
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
+        >
+          <Plus size={17} /> Agregar ingreso
+        </button>
+        <button
+          type="button"
+          onClick={agregarGasto}
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+        >
+          <Plus size={17} /> Agregar gasto
+        </button>
+      </div>
 
       {/* Resumen — tiles en vivo */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -367,60 +440,85 @@ export function TurnoCierre({
         </div>
       </div>
 
-      {/* Ventas por canal */}
+      {/* Ingresos — efectivo (campo único) + una línea por cada cobro con tarjeta/app */}
       <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
-        <div className="mb-2 flex items-center gap-2">
-          <Coins size={18} className="text-slate-500" />
-          <h3 className="font-medium text-slate-900">Ventas por canal</h3>
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Coins size={18} className="text-slate-500" />
+            <h3 className="font-medium text-slate-900">Ingresos</h3>
+          </div>
+          <button
+            type="button"
+            onClick={agregarIngreso}
+            className="flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-100"
+          >
+            <Plus size={15} /> Agregar ingreso
+          </button>
         </div>
-        <div className="divide-y divide-slate-100">
-          {CANALES.map((c) => (
-            <div key={c} className="py-1">
-              <MoneyRow
-                label={CANAL_LABEL[c]}
-                value={ventas[c]}
-                onChange={(n) => setVentas((p) => ({ ...p, [c]: n }))}
-              />
-              <CuponesDetalle
-                declarado={ventas[c]}
-                value={detalles[c]}
-                onChange={(next) => setDetalles((p) => ({ ...p, [c]: next }))}
-              />
-            </div>
-          ))}
-        </div>
-      </div>
 
-      {/* Tarjetas (desglose) */}
-      <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
-        <div className="mb-3 flex items-center gap-2">
-          <CreditCard size={18} className="text-slate-500" />
-          <h3 className="font-medium text-slate-900">Tarjetas (desglose)</h3>
+        {/* Efectivo: no se itemiza, es un único monto */}
+        <div className="mb-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+          <label className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-sm font-medium text-slate-700">Efectivo</span>
+            <MoneyInput value={efectivoVenta} onChange={setEfectivoVenta} className="w-full shrink-0 sm:w-44" />
+          </label>
         </div>
-        <div className="flex flex-col gap-2">
-          {TIPOS.map((tipo) => (
-            <div key={tipo} className="flex items-center gap-2">
-              <span className="w-24 shrink-0 text-sm text-slate-600 sm:w-28">{TIPO_LABEL[tipo]}</span>
-              <MoneyInput
-                value={tarjetas[tipo].monto}
-                onChange={(n) =>
-                  setTarjetas((p) => ({ ...p, [tipo]: { ...p[tipo], monto: n } }))
-                }
-                className="flex-1"
-              />
-              <input
-                type="text"
-                value={tarjetas[tipo].lote}
-                onChange={(e) =>
-                  setTarjetas((p) => ({ ...p, [tipo]: { ...p[tipo], lote: e.target.value } }))
-                }
-                placeholder="Lote"
-                className="w-16 shrink-0 rounded-lg border border-slate-300 px-2 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500 sm:w-20"
-              />
-            </div>
-          ))}
-        </div>
-        <div className="mt-4 flex items-center justify-end gap-4 border-t border-slate-100 pt-3 text-sm">
+
+        {/* Líneas individuales (tarjetas/apps), una por transacción */}
+        {ingresos.length === 0 ? (
+          <p className="text-sm text-slate-400">
+            Sin ingresos con tarjeta o app. Usá <span className="font-medium">Agregar ingreso</span> para cargar cada cobro.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {ingresos.map((row, i) => (
+              <div
+                key={i}
+                className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2 sm:flex-row sm:items-center"
+              >
+                <select
+                  value={row.medio}
+                  onChange={(e) => setIngresoRow(i, { medio: e.target.value as Medio })}
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500 sm:w-40"
+                >
+                  <optgroup label="Tarjetas">
+                    {MEDIOS_TARJETA.map((m) => (
+                      <option key={m} value={m}>{MEDIO_LABEL[m]}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Apps / otros">
+                    {MEDIOS_APP.map((m) => (
+                      <option key={m} value={m}>{MEDIO_LABEL[m]}</option>
+                    ))}
+                  </optgroup>
+                </select>
+                <MoneyInput
+                  value={row.monto}
+                  onChange={(n) => setIngresoRow(i, { monto: n })}
+                  className="w-full sm:w-32"
+                />
+                <input
+                  type="text"
+                  value={row.referencia}
+                  onChange={(e) => setIngresoRow(i, { referencia: e.target.value })}
+                  placeholder="Cupón / lote / ref."
+                  className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+                />
+                <button
+                  type="button"
+                  onClick={() => quitarIngreso(i)}
+                  aria-label="Quitar ingreso"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-400 hover:text-red-600 sm:ml-auto"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Mini-resumen: subtotal de ingresos + crédito/débito derivados */}
+        <div className="mt-3 flex flex-wrap items-center justify-end gap-x-4 gap-y-1 border-t border-slate-100 pt-3 text-sm">
           <span className="flex items-center gap-1.5 text-slate-500">
             <Receipt size={14} /> Crédito{' '}
             <span className="font-medium tabular-nums text-slate-800">{formatMoney(t.totalCredito)}</span>
@@ -428,6 +526,10 @@ export function TurnoCierre({
           <span className="flex items-center gap-1.5 text-slate-500">
             Débito{' '}
             <span className="font-medium tabular-nums text-slate-800">{formatMoney(t.totalDebito)}</span>
+          </span>
+          <span className="flex items-center gap-1.5 text-slate-500">
+            Subtotal ingresos{' '}
+            <span className="font-semibold tabular-nums text-slate-900">{formatMoney(ingresoSubtotal)}</span>
           </span>
         </div>
       </div>

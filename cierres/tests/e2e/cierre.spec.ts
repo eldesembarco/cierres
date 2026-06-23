@@ -19,8 +19,16 @@ test('encargado carga y cierra el turno Mañana', async ({ page }) => {
   // diferencia = depositado − (ventaEfectivo − gastosEfectivo). Con efectivo=depositado y
   // sin gastos, la diferencia es 0 → cierra sin nota.
   await manana.locator('label:has-text("Efectivo depositado") input').fill('100000')
-  // Canal "Efectivo": el <span> del label es exactamente "Efectivo".
+  // Ingresos: "Efectivo" es un único campo (el <span> del label es exactamente "Efectivo").
   await manana.locator('label', { hasText: /^Efectivo\$?$/ }).locator('input').fill('100000')
+
+  // Agregar un ingreso individual (tarjeta) — no afecta la diferencia de caja, pero
+  // ejercita el flujo nuevo de líneas por transacción.
+  await manana.getByRole('button', { name: 'Agregar ingreso' }).first().click()
+  const lineaIngreso = manana.locator('select:has(optgroup[label="Tarjetas"])').first()
+  await lineaIngreso.selectOption('visa_credito')
+  // El MoneyInput de la línea es el input de texto que sigue al select del medio.
+  await lineaIngreso.locator('xpath=following::input[@inputmode="numeric"][1]').fill('25000')
 
   await manana.getByRole('button', { name: 'Cerrar', exact: true }).click()
   await expect(manana.getByText('Cerrado correctamente.')).toBeVisible()
