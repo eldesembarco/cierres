@@ -58,31 +58,39 @@ export function parseTangoPdf(text: string): TangoPdfResult {
   if (mTicketsAny) cantidadTickets = Number(mTicketsAny[1])
 
   // --- Ventas por forma de cobro + montoZ ---
+  // El texto real que extrae unpdf del PDF de Tango viene en UNA sola línea (las
+  // celdas separadas por espacios, sin saltos). El sample de los tests viene con
+  // saltos de línea. Para soportar AMBOS, aislamos la sección "VENTAS POR FORMA
+  // DE COBRO" hasta su "TOTAL:" y parseamos pares "<descripción> <monto>".
   const ventasMap = new Map<Canal, number>()
   let montoZ = 0
 
-  const secIdx = text.search(/VENTAS\s+POR\s+FORMA\s+DE\s+COBRO/i)
-  if (secIdx !== -1) {
-    const section = text.slice(secIdx)
-    const lines = section.split(/\r?\n/)
-    for (const rawLine of lines) {
-      const line = rawLine.trim()
-      if (line === '') continue
-      // El header de la sección (la línea con "VENTAS POR FORMA DE COBRO") no es una fila.
-      if (/VENTAS\s+POR\s+FORMA\s+DE\s+COBRO/i.test(line)) continue
+  const mHeader = text.match(/VENTAS\s+POR\s+FORMA\s+DE\s+COBRO/i)
+  if (mHeader && mHeader.index !== undefined) {
+    // Desde justo después del header de la sección (sin comernos el resto del
+    // documento: el texto real de unpdf no tiene saltos de línea).
+    const afterHeader = text.slice(mHeader.index + mHeader[0].length)
+    // El "TOTAL:" de la sección cierra el bloque y define el montoZ.
+    const mTotal = afterHeader.match(/TOTAL:\s*([\d]{1,3}(?:[.,]\d{3})*(?:[.,]\d+)?|\d+(?:[.,]\d+)?)/i)
+    if (mTotal) montoZ = parseMoney(mTotal[1])
 
-      // El TOTAL: de la sección cierra el bloque y define el montoZ.
-      const mTotal = line.match(/^TOTAL:\s*([\d.,]+)\s*$/i)
-      if (mTotal) {
-        montoZ = parseMoney(mTotal[1])
-        break
-      }
+    // Cuerpo: lo que hay entre el header y el "TOTAL:" de la sección.
+    const bodyEnd = mTotal ? afterHeader.indexOf(mTotal[0]) : afterHeader.length
+    let body = afterHeader.slice(0, bodyEnd)
+    // Sacamos separadores de líneas (corridas de guiones bajos) y el encabezado
+    // de columnas ("Descripción"/"Total") que no son filas de datos.
+    body = body
+      .replace(/_+/g, ' ')
+      .replace(/Descripci[oó]n/gi, ' ')
+      .replace(/\bTotal\b/gi, ' ')
 
-      // Fila "<desc> <monto>": el monto es el último token tipo 126,200.00.
-      const mRow = line.match(/^(.+?)\s+([\d]{1,3}(?:,\d{3})*(?:\.\d+)?|\d+(?:\.\d+)?)\s*$/)
-      if (!mRow) continue
-      const desc = mRow[1]
-      const monto = parseMoney(mRow[2])
+    // Fila "<descripción> <monto>": capturamos el texto (no numérico) seguido del
+    // monto. Global: funciona tanto en línea única como con saltos de línea.
+    const rowRe = /([A-Za-zÁÉÍÓÚÜÑáéíóúüñ][A-Za-zÁÉÍÓÚÜÑáéíóúüñ .]*?)\s+([\d]{1,3}(?:,\d{3})*(?:\.\d+)?|\d+(?:\.\d+)?)(?=\s|$)/g
+    let m: RegExpExecArray | null
+    while ((m = rowRe.exec(body)) !== null) {
+      const desc = m[1]
+      const monto = parseMoney(m[2])
       if (monto === 0) continue
       const canal = mapMedio(desc)
       ventasMap.set(canal, round2((ventasMap.get(canal) ?? 0) + monto))

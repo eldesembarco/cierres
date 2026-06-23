@@ -1,6 +1,8 @@
 import { auth } from '@/lib/auth/auth'
 import { puedeSubirCsv } from '@/lib/auth/rbac'
+import { prisma } from '@/lib/db'
 import { subirCsv } from './actions'
+import { TangoPdfImport } from './TangoPdfImport'
 import { Upload, FileText, Lock } from 'lucide-react'
 
 export default async function ImportacionesPage() {
@@ -23,9 +25,17 @@ export default async function ImportacionesPage() {
   }
 
   const hoy = new Date().toISOString().slice(0, 10)
+  const localesRaw = await prisma.local.findMany({
+    where: { activo: true },
+    select: { id: true, nombre: true },
+    orderBy: { id: 'asc' },
+  })
+  // Default San Telmo (id 1) si está disponible.
+  const defaultLocalId = localesRaw.some((l) => l.id === 1) ? 1 : (localesRaw[0]?.id ?? 1)
+
   return (
-    <main className="mx-auto w-full max-w-2xl px-4 py-6">
-      <h1 className="mb-5 text-xl font-semibold text-slate-900">Importaciones</h1>
+    <main className="mx-auto flex w-full max-w-2xl flex-col gap-5 px-4 py-6">
+      <h1 className="text-xl font-semibold text-slate-900">Importaciones</h1>
 
       <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
         <div className="mb-1 flex items-center gap-2">
@@ -67,6 +77,8 @@ export default async function ImportacionesPage() {
           </button>
         </form>
       </section>
+
+      <TangoPdfImport locales={localesRaw} defaultLocalId={defaultLocalId} />
     </main>
   )
 }
