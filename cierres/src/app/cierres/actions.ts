@@ -33,6 +33,8 @@ export async function guardarCierre(fecha: string, payloadJson: string, cerrar: 
     return { ok: false as const, error: `La diferencia de caja es ${totales.diferenciaCaja}. Agregá una nota para cerrar.` }
   }
 
+  const detalles = input.detalles.filter((d) => d.importe > 0 || d.referencia.trim() !== '')
+
   await prisma.cierre.upsert({
     where: { localId_fecha: { localId, fecha: fechaDate } },
     update: {
@@ -43,6 +45,7 @@ export async function guardarCierre(fecha: string, payloadJson: string, cerrar: 
       turnos: { deleteMany: {}, create: input.turnos.map((t) => ({ turno: t.turno, montoZ: t.montoZ, efectivoDepositado: t.efectivoDepositado })) },
       ventas: { deleteMany: {}, create: input.ventas.map((v) => ({ canal: v.canal, monto: v.monto })) },
       tarjetas: { deleteMany: {}, create: input.tarjetas.map((t) => ({ turno: t.turno, tipo: t.tipo, monto: t.monto, lote: t.lote ?? null })) },
+      detalles: { deleteMany: {}, create: detalles.map((d, i) => ({ canal: d.canal, referencia: d.referencia, importe: d.importe, orden: i })) },
     },
     create: {
       localId, fecha: fechaDate, fondoFijo: input.fondoFijo, gastosTotal: input.gastosTotal,
@@ -52,6 +55,7 @@ export async function guardarCierre(fecha: string, payloadJson: string, cerrar: 
       turnos: { create: input.turnos.map((t) => ({ turno: t.turno, montoZ: t.montoZ, efectivoDepositado: t.efectivoDepositado })) },
       ventas: { create: input.ventas.map((v) => ({ canal: v.canal, monto: v.monto })) },
       tarjetas: { create: input.tarjetas.map((t) => ({ turno: t.turno, tipo: t.tipo, monto: t.monto, lote: t.lote ?? null })) },
+      detalles: { create: detalles.map((d, i) => ({ canal: d.canal, referencia: d.referencia, importe: d.importe, orden: i })) },
     },
   })
 
