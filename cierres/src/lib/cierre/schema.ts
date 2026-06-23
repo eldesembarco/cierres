@@ -16,6 +16,8 @@ export const cierreInputSchema = z.object({
     .refine((vs) => new Set(vs.map((v) => v.canal)).size === vs.length, 'Canales duplicados'),
   tarjetas: z.array(z.object({ turno, tipo: tipoTarjeta, monto, lote: z.string().nullable().optional() }))
     .default([]),
+  detalles: z.array(z.object({ canal, referencia: z.string(), importe: monto }))
+    .default([]),
 })
 
 export type CierreInputParsed = z.infer<typeof cierreInputSchema>

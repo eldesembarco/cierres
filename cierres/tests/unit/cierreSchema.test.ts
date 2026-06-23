@@ -20,4 +20,14 @@ describe('cierreInputSchema', () => {
   it('rechaza turnos duplicados', () => {
     expect(() => cierreInputSchema.parse({ ...valido, turnos: [{ turno: 'T1', montoZ: 1 }, { turno: 'T1', montoZ: 2 }] })).toThrow()
   })
+  it('acepta detalles de cupones', () => {
+    const r = cierreInputSchema.parse({ ...valido, detalles: [{ canal: 'mercadopago', referencia: 'MP6971', importe: 17500 }] })
+    expect(r.detalles[0].referencia).toBe('MP6971')
+  })
+  it('detalles por defecto es []', () => {
+    expect(cierreInputSchema.parse(valido).detalles).toEqual([])
+  })
+  it('rechaza importe de cupón negativo', () => {
+    expect(() => cierreInputSchema.parse({ ...valido, detalles: [{ canal: 'mercadopago', referencia: 'x', importe: -1 }] })).toThrow()
+  })
 })

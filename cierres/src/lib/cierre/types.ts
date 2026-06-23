@@ -5,6 +5,8 @@ export type Canal =
 export type Turno = 'T1' | 'T2'
 export type TipoTarjeta = 'mastercard' | 'maestro' | 'visa_credito' | 'visa_debito' | 'amex'
 
+export interface Cupon { referencia: string; importe: number }
+
 export interface CierreInput {
   fondoFijo: number
   gastosTotal: number
@@ -13,6 +15,7 @@ export interface CierreInput {
   turnos: { turno: Turno; montoZ: number; efectivoDepositado: number }[]
   ventas: { canal: Canal; monto: number }[]
   tarjetas: { turno: Turno; tipo: TipoTarjeta; monto: number; lote?: string | null }[]
+  detalles?: { canal: Canal; referencia: string; importe: number }[]
 }
 
 export interface CierreTotales {
