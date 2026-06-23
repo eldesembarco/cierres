@@ -101,8 +101,21 @@ model Cierre {
   tarjetas           CierreTarjeta[]
   detalles           CierreDetalle[]
   gastos             CierreGasto[]
+  auditorias         CierreAuditoria[]
   @@unique([localId, fecha, turno])
   @@map("cierres")
+}
+
+model CierreAuditoria {
+  id            Int      @id @default(autoincrement())
+  cierre        Cierre   @relation(fields: [cierreId], references: [id], onDelete: Cascade)
+  cierreId      Int      @map("cierre_id")
+  usuarioId     Int      @map("usuario_id")
+  usuarioNombre String   @map("usuario_nombre")
+  accion        String
+  observacion   String
+  creadoEn      DateTime @default(now()) @map("creado_en")
+  @@map("cierre_auditoria")
 }
 
 enum Turno {
@@ -163,20 +176,6 @@ model CierreDetalle {
   @@map("cierre_detalle")
 }
 
-enum TipoGasto {
-  mercaderia
-  descartable
-  limpieza
-  bazar
-  uniformes
-  servicios
-  sueldos
-  mantenimiento
-  marca
-  libreria
-  varios
-}
-
 enum FormaPago {
   efectivo
   tarjeta
@@ -189,7 +188,7 @@ model CierreGasto {
   id            Int        @id @default(autoincrement())
   cierre        Cierre     @relation(fields: [cierreId], references: [id], onDelete: Cascade)
   cierreId      Int        @map("cierre_id")
-  tipo          TipoGasto
+  tipo          String
   formaPago     FormaPago  @map("forma_pago")
   monto         Decimal    @default(0) @db.Decimal(14, 2)
   descripcion   String?

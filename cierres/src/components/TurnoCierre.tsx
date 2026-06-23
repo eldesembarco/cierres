@@ -13,7 +13,7 @@ import type {
   TurnoTotales,
 } from '@/lib/cierre/types'
 import { formatMoney } from '@/lib/money'
-import { guardarCierre } from '@/app/cierres/actions'
+import { guardarCierre, reabrirCierre } from '@/app/cierres/actions'
 import { MoneyInput } from '@/components/MoneyInput'
 import {
   Wallet,
@@ -27,6 +27,9 @@ import {
   Plus,
   X,
   Pencil,
+  Lock,
+  Unlock,
+  History,
 } from 'lucide-react'
 
 const CANALES: Canal[] = [
@@ -69,23 +72,27 @@ const canalDeMedio = (m: Medio): Canal => (isCardMedio(m) ? 'tarjetas' : m)
 // Línea de ingreso individual (una por transacción de tarjeta/app).
 type IngresoRow = { medio: Medio; monto: number; referencia: string }
 
-const TIPOS_GASTO: TipoGasto[] = [
-  'mercaderia', 'descartable', 'limpieza', 'bazar', 'uniformes',
-  'servicios', 'sueldos', 'mantenimiento', 'marca', 'libreria', 'varios',
+// Rubros de gasto. El valor guardado es exactamente el texto mostrado (la columna
+// `tipo` es TEXT). "Otros" se especifica en el campo "Descripción".
+const RUBROS_GASTO: string[] = [
+  'Librería',
+  'Papelera',
+  'Bazar',
+  'Uniformes',
+  'Botiquín',
+  'Destapación',
+  'Pendrive',
+  'Pilas',
+  'Decoración',
+  'Fumigación',
+  'Limpieza / Química',
+  'Limpieza Campana',
+  'Limpieza Canillas',
+  'Mantenimiento',
+  'Viajes uber/didi/cabify',
+  'Otros',
 ]
-const TIPO_GASTO_LABEL: Record<TipoGasto, string> = {
-  mercaderia: 'Mercadería',
-  descartable: 'Descartables',
-  limpieza: 'Limpieza',
-  bazar: 'Bazar',
-  uniformes: 'Uniformes',
-  servicios: 'Servicios',
-  sueldos: 'Sueldos',
-  mantenimiento: 'Mantenimiento',
-  marca: 'Marca',
-  libreria: 'Librería',
-  varios: 'Varios',
-}
+const RUBRO_DEFAULT = RUBROS_GASTO[0]
 
 // Formas de pago ofrecidas en el alta de gasto. Sólo `efectivo` sale de la caja;
 // `cuenta_corriente` y `otro` los paga administración / quedan en cuenta.
@@ -106,6 +113,15 @@ export type GastoFactura = {
   facturaNumero: string
   facturaTotal: number | null
   monto: number
+}
+
+// Entrada del historial de auditoría de un cierre (edición / reapertura por
+// administración). `creadoEn` viaja serializado (ISO) desde el server.
+export type CierreAuditoria = {
+  usuarioNombre: string
+  accion: string
+  observacion: string
+  creadoEn: string
 }
 
 // Fila de gasto en el estado local (incluye estado de subida del comprobante).
@@ -324,7 +340,7 @@ function GastoModal({
   onConfirm: (row: GastoRow) => void
 }) {
   const editando = inicial != null
-  const [tipo, setTipo] = useState<TipoGasto>(inicial?.tipo ?? 'mercaderia')
+  const [tipo, setTipo] = useState<TipoGasto>(inicial?.tipo ?? RUBRO_DEFAULT)
   const [formaPago, setFormaPago] = useState<FormaPago>(inicial?.formaPago ?? 'efectivo')
   const [monto, setMonto] = useState<number>(inicial?.monto ?? 0)
   const [descripcion, setDescripcion] = useState<string>(inicial?.descripcion ?? '')
@@ -354,12 +370,12 @@ function GastoModal({
       <div className="flex flex-col gap-3">
         <Campo label="Rubro">
           <select
-            value={tipo}
-            onChange={(e) => setTipo(e.target.value as TipoGasto)}
+            value={RUBROS_GASTO.includes(tipo) ? tipo : 'Otros'}
+            onChange={(e) => setTipo(e.target.value)}
             className={selectClass}
           >
-            {TIPOS_GASTO.map((tg) => (
-              <option key={tg} value={tg}>{TIPO_GASTO_LABEL[tg]}</option>
+            {RUBROS_GASTO.map((r) => (
+              <option key={r} value={r}>{r}</option>
             ))}
           </select>
         </Campo>
@@ -470,6 +486,61 @@ function GastoModal({
   )
 }
 
+/**
+ * Modal genérico que pide una observación (texto requerido). Lo usa administración
+ * para justificar una edición de un cierre existente o una reapertura.
+ */
+function ObservacionModal({
+  title,
+  descripcion,
+  confirmLabel,
+  pending,
+  onClose,
+  onConfirm,
+}: {
+  title: string
+  descripcion: string
+  confirmLabel: string
+  pending?: boolean
+  onClose: () => void
+  onConfirm: (observacion: string) => void
+}) {
+  const [obs, setObs] = useState('')
+  const vacio = obs.trim() === ''
+  return (
+    <Modal title={title} onClose={onClose}>
+      <div className="flex flex-col gap-3">
+        <p className="text-sm text-slate-600">{descripcion}</p>
+        <textarea
+          value={obs}
+          onChange={(e) => setObs(e.target.value)}
+          placeholder="Motivo del cambio…"
+          rows={3}
+          autoFocus
+          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+      <div className="mt-5 flex gap-2">
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex-1 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          disabled={vacio || pending}
+          onClick={() => onConfirm(obs.trim())}
+          className="flex-1 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+        >
+          {confirmLabel}
+        </button>
+      </div>
+    </Modal>
+  )
+}
+
 export function TurnoCierre({
   fecha,
   turno,
@@ -480,6 +551,9 @@ export function TurnoCierre({
   onGastos,
   precarga,
   verDiferencia = false,
+  estado = null,
+  esCentral = false,
+  auditorias = [],
 }: {
   fecha: string
   turno: Turno
@@ -490,6 +564,9 @@ export function TurnoCierre({
   onGastos?: (turno: Turno, gastos: GastoFactura[]) => void
   precarga?: Partial<TurnoInput>
   verDiferencia?: boolean
+  estado?: string | null
+  esCentral?: boolean
+  auditorias?: CierreAuditoria[]
 }) {
   const [fondoFijo, setFondoFijo] = useState(inicial?.fondoFijo ?? fondoFijoDefault)
   const [montoZ, setMontoZ] = useState(inicial?.montoZ ?? 0)
@@ -510,6 +587,15 @@ export function TurnoCierre({
   // `index` null = nuevo; número = editar esa fila.
   const [ingresoModal, setIngresoModal] = useState<{ index: number | null } | null>(null)
   const [gastoModal, setGastoModal] = useState<{ index: number | null } | null>(null)
+
+  // Estado/observación: el turno puede estar cerrado. Para el encargado, un turno
+  // cerrado queda de sólo lectura. Administración puede editar/reabrir, pero al
+  // hacerlo sobre un cierre existente debe dejar una observación.
+  const cerrado = estado === 'cerrado'
+  const bloqueado = !esCentral && cerrado
+  const existe = estado != null // ya hay un cierre guardado (mañana o tarde)
+  // Modal de observación pendiente: para guardar (con `cerrar`) o reabrir.
+  const [obsModal, setObsModal] = useState<{ tipo: 'guardar'; cerrar: boolean } | { tipo: 'reabrir' } | null>(null)
 
   // Aplicar precarga (Tango) cuando cambia: mergeamos ventas, montoZ y tickets.
   // Usamos un ref para no re-aplicar la misma referencia dos veces.
@@ -632,12 +718,35 @@ export function TurnoCierre({
         ? { tile: 'bg-amber-50 text-amber-700 border border-amber-200', dot: 'bg-amber-500', emoji: '🟡' }
         : { tile: 'bg-red-50 text-red-700 border border-red-200', dot: 'bg-red-500', emoji: '🔴' }
 
-  async function submit(cerrar: boolean) {
+  // Guarda el cierre. `observacion` sólo se usa cuando administración edita un
+  // cierre existente (lo exige el server y se registra en la auditoría).
+  async function persistir(cerrar: boolean, observacion?: string) {
     setPending(true)
-    const res = await guardarCierre(fecha, turno, JSON.stringify({ ...input, nota }), cerrar)
+    const res = await guardarCierre(fecha, turno, JSON.stringify({ ...input, nota }), cerrar, observacion)
     setOk(res.ok)
     setMsg(res.ok ? (cerrar ? 'Cerrado correctamente.' : 'Borrador guardado.') : res.error)
     setPending(false)
+    return res.ok
+  }
+
+  // Disparador de Guardar/Cerrar. Administración editando un cierre EXISTENTE pasa
+  // primero por el modal de observación; el resto (alta nueva o encargado) guarda directo.
+  async function submit(cerrar: boolean) {
+    if (esCentral && existe) {
+      setObsModal({ tipo: 'guardar', cerrar })
+      return
+    }
+    await persistir(cerrar)
+  }
+
+  // Reapertura (administración). Pasa siempre por el modal de observación.
+  async function confirmarReabrir(observacion: string) {
+    setPending(true)
+    const res = await reabrirCierre(fecha, turno, observacion)
+    setOk(res.ok)
+    setMsg(res.ok ? 'Turno reabierto. Ya podés editarlo.' : res.error)
+    setPending(false)
+    if (res.ok) setObsModal(null)
   }
 
   // Ingresos: la carga/edición ocurre en el modal. Al confirmar agregamos la línea
@@ -684,18 +793,46 @@ export function TurnoCierre({
   return (
     <section className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white/60 p-3 shadow-sm sm:p-4">
       <header className="flex items-center justify-between gap-2">
-        <h2 className="text-base font-semibold text-slate-900">{titulo}</h2>
-        {verDiferencia && (
-          <span className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium ${diffStyle.tile}`}>
-            <span>{diffStyle.emoji}</span>
-            Dif {formatMoney(t.diferenciaCaja)}
-          </span>
-        )}
+        <h2 className="flex items-center gap-2 text-base font-semibold text-slate-900">
+          {titulo}
+          {cerrado && (
+            <span className="flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
+              <Lock size={12} /> cerrado
+            </span>
+          )}
+        </h2>
+        <div className="flex items-center gap-2">
+          {verDiferencia && (
+            <span className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium ${diffStyle.tile}`}>
+              <span>{diffStyle.emoji}</span>
+              Dif {formatMoney(t.diferenciaCaja)}
+            </span>
+          )}
+          {esCentral && cerrado && (
+            <button
+              type="button"
+              onClick={() => setObsModal({ tipo: 'reabrir' })}
+              disabled={pending}
+              className="flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-100 disabled:opacity-50"
+            >
+              <Unlock size={14} /> Reabrir
+            </button>
+          )}
+        </div>
       </header>
+
+      {/* Banner de bloqueo: el encargado ve el turno cerrado en modo lectura. */}
+      {bloqueado && (
+        <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-600">
+          <Lock size={16} className="shrink-0 text-slate-400" />
+          <span>Turno cerrado. Pedí al administrador que lo reabra para editar.</span>
+        </div>
+      )}
 
       {/* Barra de carga rápida — siempre arriba del bloque.
           Cada botón abre un modal con TODOS los campos de esa entrada; al confirmar,
           la línea se agrega a la lista compacta de abajo (sin scrollear el form). */}
+      {!bloqueado && (
       <div className="flex flex-col gap-2 sm:flex-row">
         <button
           type="button"
@@ -712,6 +849,7 @@ export function TurnoCierre({
           <Plus size={17} /> Agregar gasto
         </button>
       </div>
+      )}
 
       {/* Resumen — tiles en vivo */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -763,6 +901,11 @@ export function TurnoCierre({
           </p>
         </div>
       </div>
+
+      {/* Sección editable. Cuando el turno está bloqueado (encargado + cerrado),
+          el fieldset deshabilitado pone TODO en sólo lectura: inputs, selects y los
+          botones de editar/quitar filas. Los datos y el resumen siguen visibles. */}
+      <fieldset disabled={bloqueado} className="contents">
 
       {/* Caja */}
       <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
@@ -919,7 +1062,7 @@ export function TurnoCierre({
                   aria-label="Editar gasto"
                 >
                   <span className="inline-flex shrink-0 items-center rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-700">
-                    {TIPO_GASTO_LABEL[g.tipo]}
+                    {g.tipo}
                   </span>
                   <span className="shrink-0 text-xs text-slate-500">{FORMA_PAGO_LABEL[g.formaPago]}</span>
                   <span className="shrink-0 font-medium tabular-nums text-slate-900">
@@ -982,6 +1125,32 @@ export function TurnoCierre({
         </div>
       )}
 
+      </fieldset>
+
+      {/* Historial de cambios — sólo administración. Edición / reapertura del cierre. */}
+      {esCentral && auditorias.length > 0 && (
+        <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
+          <div className="mb-2 flex items-center gap-2">
+            <History size={16} className="text-slate-500" />
+            <h3 className="text-sm font-medium text-slate-900">Historial</h3>
+          </div>
+          <ul className="flex flex-col gap-1.5 text-sm">
+            {auditorias.map((a, i) => (
+              <li key={i} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 border-b border-slate-50 pb-1.5 last:border-0 last:pb-0">
+                <span className="text-xs tabular-nums text-slate-400">
+                  {new Date(a.creadoEn).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                </span>
+                <span className="font-medium text-slate-700">{a.usuarioNombre}</span>
+                <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${a.accion === 'reapertura' ? 'bg-amber-50 text-amber-700' : 'bg-blue-50 text-blue-700'}`}>
+                  {a.accion === 'reapertura' ? 'reapertura' : 'edición'}
+                </span>
+                <span className="text-slate-500">{a.observacion}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {/* Mensaje + acciones del turno */}
       <div className="flex flex-col gap-2">
         {msg && (
@@ -994,6 +1163,7 @@ export function TurnoCierre({
             {msg}
           </p>
         )}
+        {!bloqueado && (
         <div className="flex gap-2">
           <button
             onClick={() => submit(false)}
@@ -1010,6 +1180,7 @@ export function TurnoCierre({
             Cerrar
           </button>
         </div>
+        )}
       </div>
 
       {/* Modales de carga/edición. La key fuerza un remount al cambiar de fila para
@@ -1028,6 +1199,32 @@ export function TurnoCierre({
           inicial={gastoModal.index != null ? gastos[gastoModal.index] : undefined}
           onClose={() => setGastoModal(null)}
           onConfirm={confirmarGasto}
+        />
+      )}
+
+      {/* Modal de observación: administración debe justificar editar o reabrir un
+          cierre existente. La observación queda registrada en la auditoría. */}
+      {obsModal?.tipo === 'guardar' && (
+        <ObservacionModal
+          title="Observación del cambio"
+          descripcion="Estás editando un cierre ya cargado. Indicá el motivo del cambio."
+          confirmLabel={obsModal.cerrar ? 'Guardar y cerrar' : 'Guardar'}
+          pending={pending}
+          onClose={() => setObsModal(null)}
+          onConfirm={async (observacion) => {
+            const ok = await persistir(obsModal.cerrar, observacion)
+            if (ok) setObsModal(null)
+          }}
+        />
+      )}
+      {obsModal?.tipo === 'reabrir' && (
+        <ObservacionModal
+          title="Reabrir turno"
+          descripcion="Vas a reabrir el cierre para poder editarlo. Indicá el motivo."
+          confirmLabel="Reabrir"
+          pending={pending}
+          onClose={() => setObsModal(null)}
+          onConfirm={confirmarReabrir}
         />
       )}
     </section>

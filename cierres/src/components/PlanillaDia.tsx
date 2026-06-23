@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { TurnoCierre } from '@/components/TurnoCierre'
-import type { GastoFactura } from '@/components/TurnoCierre'
+import type { GastoFactura, CierreAuditoria } from '@/components/TurnoCierre'
 import { sumarDia } from '@/lib/cierre/calculations'
 import type { DiaTotales, Turno, TurnoInput, TurnoTotales } from '@/lib/cierre/types'
 import type { TangoParseResult } from '@/lib/ingest/parseTango'
@@ -27,6 +27,11 @@ export function PlanillaDia({
   fondoFijoDefault,
   inicialManana,
   inicialTarde,
+  estadoManana = null,
+  estadoTarde = null,
+  auditoriasManana = [],
+  auditoriasTarde = [],
+  esCentral = false,
   puedeImportar = false,
   verDiferencia = false,
 }: {
@@ -34,6 +39,11 @@ export function PlanillaDia({
   fondoFijoDefault: number
   inicialManana?: Partial<TurnoInput> & { nota?: string }
   inicialTarde?: Partial<TurnoInput> & { nota?: string }
+  estadoManana?: string | null
+  estadoTarde?: string | null
+  auditoriasManana?: CierreAuditoria[]
+  auditoriasTarde?: CierreAuditoria[]
+  esCentral?: boolean
   puedeImportar?: boolean
   verDiferencia?: boolean
 }) {
@@ -239,6 +249,9 @@ export function PlanillaDia({
         onGastos={onGastos}
         precarga={precargaManana}
         verDiferencia={verDiferencia}
+        estado={estadoManana}
+        esCentral={esCentral}
+        auditorias={auditoriasManana}
       />
       <TurnoCierre
         fecha={fecha}
@@ -250,6 +263,9 @@ export function PlanillaDia({
         onGastos={onGastos}
         precarga={precargaTarde}
         verDiferencia={verDiferencia}
+        estado={estadoTarde}
+        esCentral={esCentral}
+        auditorias={auditoriasTarde}
       />
     </div>
   )

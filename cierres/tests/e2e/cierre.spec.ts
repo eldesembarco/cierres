@@ -1,4 +1,23 @@
 import { test, expect } from '@playwright/test'
+import { PrismaClient } from '@prisma/client'
+import { PrismaPg } from '@prisma/adapter-pg'
+import { config } from 'dotenv'
+
+// El runner de Playwright no carga .env automáticamente; lo necesitamos para el
+// reset de DB del beforeAll.
+config()
+
+// El nuevo bloqueo deja en sólo lectura un turno ya CERRADO para el encargado.
+// Para que este test (que crea+cierra la Mañana de hoy) sea idempotente, borramos
+// el cierre de hoy del local piloto antes de correr, así siempre arranca limpio.
+test.beforeAll(async () => {
+  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL }, { schema: 'cierres' })
+  const prisma = new PrismaClient({ adapter })
+  const now = new Date()
+  const fecha = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()))
+  await prisma.cierre.deleteMany({ where: { localId: 1, fecha, turno: 'manana' } })
+  await prisma.$disconnect()
+})
 
 test('encargado carga y cierra el turno Mañana', async ({ page }) => {
   await page.goto('/login')

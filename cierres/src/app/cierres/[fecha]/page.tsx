@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import { PlanillaDia } from '@/components/PlanillaDia'
 import { esCentral } from '@/lib/auth/rbac'
 import type { Canal, FormaPago, TipoGasto, TipoTarjeta, Turno, TurnoInput } from '@/lib/cierre/types'
+import type { CierreAuditoria } from '@/components/TurnoCierre'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 
@@ -23,6 +24,17 @@ type CierreConHijos = {
   tarjetas: { tipo: string; monto: unknown; lote: string | null }[]
   detalles: { canal: string; referencia: string; importe: unknown }[]
   gastos: { tipo: string; formaPago: string; monto: unknown; descripcion: string | null; comprobanteId: number | null; facturaNumero: string | null; facturaTotal: unknown }[]
+  auditorias: { usuarioNombre: string; accion: string; observacion: string; creadoEn: Date }[]
+}
+
+function toAuditorias(c: CierreConHijos | undefined): CierreAuditoria[] {
+  if (!c) return []
+  return c.auditorias.map((a) => ({
+    usuarioNombre: a.usuarioNombre,
+    accion: a.accion,
+    observacion: a.observacion,
+    creadoEn: a.creadoEn.toISOString(),
+  }))
 }
 
 function toInicial(c: CierreConHijos | undefined): (Partial<TurnoInput> & { nota?: string }) | undefined {
@@ -64,7 +76,13 @@ export default async function CierreDiaPage({ params }: { params: Promise<{ fech
 
   const cierres = await prisma.cierre.findMany({
     where: { localId, fecha: new Date(fecha) },
-    include: { ventas: true, tarjetas: true, detalles: true, gastos: true },
+    include: {
+      ventas: true,
+      tarjetas: true,
+      detalles: true,
+      gastos: true,
+      auditorias: { orderBy: { creadoEn: 'desc' } },
+    },
   })
 
   const byTurno = new Map<Turno, (typeof cierres)[number]>()
@@ -102,6 +120,11 @@ export default async function CierreDiaPage({ params }: { params: Promise<{ fech
         fondoFijoDefault={Number(local.fondoFijoDefault)}
         inicialManana={toInicial(manana)}
         inicialTarde={toInicial(tarde)}
+        estadoManana={manana?.estado ?? null}
+        estadoTarde={tarde?.estado ?? null}
+        auditoriasManana={toAuditorias(manana)}
+        auditoriasTarde={toAuditorias(tarde)}
+        esCentral={central}
         puedeImportar={central}
         verDiferencia={central}
       />

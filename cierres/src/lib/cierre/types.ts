@@ -5,9 +5,9 @@ export type Canal =
 export type Turno = 'manana' | 'tarde'
 export type TipoTarjeta = 'mastercard' | 'maestro' | 'visa_credito' | 'visa_debito' | 'amex'
 
-export type TipoGasto =
-  | 'mercaderia' | 'descartable' | 'limpieza' | 'bazar' | 'uniformes'
-  | 'servicios' | 'sueldos' | 'mantenimiento' | 'marca' | 'libreria' | 'varios'
+// Rubro de gasto: ahora es texto libre (lista de rubros + "Otros" en la UI),
+// ya no un enum. La columna en la base es TEXT.
+export type TipoGasto = string
 export type FormaPago = 'efectivo' | 'tarjeta' | 'transferencia' | 'otro' | 'cuenta_corriente'
 
 export interface Cupon { referencia: string; importe: number }

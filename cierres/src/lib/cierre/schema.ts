@@ -2,7 +2,8 @@ import { z } from 'zod'
 
 const canal = z.enum(['efectivo', 'tarjetas', 'rappi', 'pedidosya', 'mercado_pedidos', 'mercadopago', 'uber', 'delivery_propio', 'varios'])
 const tipoTarjeta = z.enum(['mastercard', 'maestro', 'visa_credito', 'visa_debito', 'amex'])
-const tipoGasto = z.enum(['mercaderia', 'descartable', 'limpieza', 'bazar', 'uniformes', 'servicios', 'sueldos', 'mantenimiento', 'marca', 'libreria', 'varios'])
+// Rubro de gasto: texto libre (la UI ofrece una lista + "Otros").
+const tipoGasto = z.string().min(1)
 const formaPago = z.enum(['efectivo', 'tarjeta', 'transferencia', 'otro', 'cuenta_corriente'])
 const monto = z.number().nonnegative()
 

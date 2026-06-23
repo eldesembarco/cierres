@@ -58,8 +58,12 @@ describe('turnoInputSchema', () => {
     it('rechaza un total de factura negativo', () => {
       expect(() => turnoInputSchema.parse({ ...valido, gastos: [{ tipo: 'varios', formaPago: 'efectivo', monto: 1, facturaTotal: -1 }] })).toThrow()
     })
-    it('rechaza un tipo de gasto inválido', () => {
-      expect(() => turnoInputSchema.parse({ ...valido, gastos: [{ tipo: 'cripto', formaPago: 'efectivo', monto: 1 }] })).toThrow()
+    it('acepta cualquier rubro de gasto no vacío (texto libre)', () => {
+      const r = turnoInputSchema.parse({ ...valido, gastos: [{ tipo: 'Limpieza Campana', formaPago: 'efectivo', monto: 1 }] })
+      expect(r.gastos[0].tipo).toBe('Limpieza Campana')
+    })
+    it('rechaza un rubro de gasto vacío', () => {
+      expect(() => turnoInputSchema.parse({ ...valido, gastos: [{ tipo: '', formaPago: 'efectivo', monto: 1 }] })).toThrow()
     })
     it('rechaza una forma de pago inválida', () => {
       expect(() => turnoInputSchema.parse({ ...valido, gastos: [{ tipo: 'varios', formaPago: 'crypto', monto: 1 }] })).toThrow()
