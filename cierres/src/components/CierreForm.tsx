@@ -2,10 +2,11 @@
 
 import { useMemo, useState } from 'react'
 import { calcularTotales } from '@/lib/cierre/calculations'
-import type { Canal, CierreInput, TipoTarjeta, Turno } from '@/lib/cierre/types'
+import type { Canal, CierreInput, Cupon, TipoTarjeta, Turno } from '@/lib/cierre/types'
 import { formatMoney } from '@/lib/money'
 import { guardarCierre } from '@/app/cierres/actions'
 import { MoneyInput } from '@/components/MoneyInput'
+import { CuponesDetalle } from '@/components/CuponesDetalle'
 import {
   Wallet,
   Receipt,
@@ -71,6 +72,9 @@ export function CierreForm({
   const [ventas, setVentas] = useState<Record<Canal, number>>(
     Object.fromEntries(CANALES.map((c) => [c, 0])) as Record<Canal, number>,
   )
+  const [detalles, setDetalles] = useState<Record<Canal, Cupon[]>>(
+    Object.fromEntries(CANALES.map((c) => [c, [] as Cupon[]])) as Record<Canal, Cupon[]>,
+  )
   const [tarjetas, setTarjetas] = useState(emptyTarjetas)
 
   const [nota, setNota] = useState('')
@@ -100,8 +104,13 @@ export function CierreForm({
       ],
       ventas: CANALES.map((c) => ({ canal: c, monto: ventas[c] })),
       tarjetas: tarjetasArr,
+      detalles: CANALES.flatMap((c) =>
+        detalles[c]
+          .filter((d) => d.importe > 0 || d.referencia.trim() !== '')
+          .map((d) => ({ canal: c, referencia: d.referencia, importe: d.importe })),
+      ),
     }
-  }, [fondoFijo, gastosTotal, notaCredito, cantidadTickets, z1, z2, dep1, dep2, ventas, tarjetas])
+  }, [fondoFijo, gastosTotal, notaCredito, cantidadTickets, z1, z2, dep1, dep2, ventas, detalles, tarjetas])
 
   const t = calcularTotales(input)
   const diffAbs = Math.abs(t.diferenciaCaja)
@@ -220,12 +229,18 @@ export function CierreForm({
         </div>
         <div className="divide-y divide-slate-100">
           {CANALES.map((c) => (
-            <MoneyRow
-              key={c}
-              label={CANAL_LABEL[c]}
-              value={ventas[c]}
-              onChange={(n) => setVentas((p) => ({ ...p, [c]: n }))}
-            />
+            <div key={c} className="py-1">
+              <MoneyRow
+                label={CANAL_LABEL[c]}
+                value={ventas[c]}
+                onChange={(n) => setVentas((p) => ({ ...p, [c]: n }))}
+              />
+              <CuponesDetalle
+                declarado={ventas[c]}
+                value={detalles[c]}
+                onChange={(next) => setDetalles((p) => ({ ...p, [c]: next }))}
+              />
+            </div>
           ))}
         </div>
       </section>
