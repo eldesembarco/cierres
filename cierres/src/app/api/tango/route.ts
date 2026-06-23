@@ -1,7 +1,9 @@
-// MOCK: devuelve datos de ejemplo. Reemplazar el cuerpo por la consulta real a Tango (SQL Server / API Nexo) cuando esté disponible — la forma de la respuesta (TangoParseResult) no cambia.
+// MOCK: devuelve datos de ejemplo por turno (manana/tarde). Reemplazar el cuerpo por
+// la consulta real a Tango (SQL Server / API Nexo) cuando esté disponible — la forma de la
+// respuesta (TangoParseResult: { fecha, turnos: [{ turno, ventas, montoZ, cantidadTickets }] }) no cambia.
 import { parseTango } from '@/lib/ingest/parseTango'
 
-// CSV de ejemplo (San Telmo). Se reemplaza por la consulta real a Tango.
+// CSV de ejemplo (San Telmo, ambos turnos). Se reemplaza por la consulta real a Tango.
 const SAMPLE_CSV = `Fecha,Turno,MedioPago,Importe,Comprobantes
 2026-06-23,T1,Efectivo,46200,42
 2026-06-23,T1,Tarjetas,541700,

@@ -1,33 +1,57 @@
 import { describe, it, expect } from 'vitest'
-import { cierreInputSchema } from '@/lib/cierre/schema'
+import { turnoInputSchema } from '@/lib/cierre/schema'
 
 const valido = {
-  fondoFijo: 500000, gastosTotal: 0, notaCredito: 0, cantidadTickets: 10,
-  turnos: [{ turno: 'T1', montoZ: 100 }],
+  fondoFijo: 500000, montoZ: 0, efectivoDepositado: 0, notaCredito: 0,
   ventas: [{ canal: 'efectivo', monto: 100 }],
 }
 
-describe('cierreInputSchema', () => {
-  it('acepta una carga válida', () => {
-    expect(cierreInputSchema.parse(valido).ventas[0].canal).toBe('efectivo')
+describe('turnoInputSchema', () => {
+  it('acepta una carga válida mínima', () => {
+    expect(turnoInputSchema.parse(valido).ventas[0].canal).toBe('efectivo')
   })
   it('rechaza montos negativos', () => {
-    expect(() => cierreInputSchema.parse({ ...valido, gastosTotal: -1 })).toThrow()
+    expect(() => turnoInputSchema.parse({ ...valido, montoZ: -1 })).toThrow()
   })
   it('rechaza un canal inválido', () => {
-    expect(() => cierreInputSchema.parse({ ...valido, ventas: [{ canal: 'cripto', monto: 1 }] })).toThrow()
+    expect(() => turnoInputSchema.parse({ ...valido, ventas: [{ canal: 'cripto', monto: 1 }] })).toThrow()
   })
-  it('rechaza turnos duplicados', () => {
-    expect(() => cierreInputSchema.parse({ ...valido, turnos: [{ turno: 'T1', montoZ: 1 }, { turno: 'T1', montoZ: 2 }] })).toThrow()
+  it('rechaza canales duplicados', () => {
+    expect(() => turnoInputSchema.parse({ ...valido, ventas: [{ canal: 'efectivo', monto: 1 }, { canal: 'efectivo', monto: 2 }] })).toThrow()
+  })
+  it('tarjetas y detalles por defecto son []', () => {
+    const r = turnoInputSchema.parse(valido)
+    expect(r.tarjetas).toEqual([])
+    expect(r.detalles).toEqual([])
   })
   it('acepta detalles de cupones', () => {
-    const r = cierreInputSchema.parse({ ...valido, detalles: [{ canal: 'mercadopago', referencia: 'MP6971', importe: 17500 }] })
+    const r = turnoInputSchema.parse({ ...valido, detalles: [{ canal: 'mercadopago', referencia: 'MP6971', importe: 17500 }] })
     expect(r.detalles[0].referencia).toBe('MP6971')
   })
-  it('detalles por defecto es []', () => {
-    expect(cierreInputSchema.parse(valido).detalles).toEqual([])
-  })
-  it('rechaza importe de cupón negativo', () => {
-    expect(() => cierreInputSchema.parse({ ...valido, detalles: [{ canal: 'mercadopago', referencia: 'x', importe: -1 }] })).toThrow()
+
+  describe('gastos', () => {
+    it('gastos por defecto es []', () => {
+      expect(turnoInputSchema.parse(valido).gastos).toEqual([])
+    })
+    it('acepta un gasto válido', () => {
+      const r = turnoInputSchema.parse({
+        ...valido,
+        gastos: [{ tipo: 'mercaderia', formaPago: 'efectivo', monto: 1000, descripcion: 'verdura', comprobanteId: 7 }],
+      })
+      expect(r.gastos[0]).toMatchObject({ tipo: 'mercaderia', formaPago: 'efectivo', monto: 1000, comprobanteId: 7 })
+    })
+    it('acepta un gasto sin descripcion ni comprobante', () => {
+      const r = turnoInputSchema.parse({ ...valido, gastos: [{ tipo: 'varios', formaPago: 'tarjeta', monto: 500 }] })
+      expect(r.gastos[0].monto).toBe(500)
+    })
+    it('rechaza un tipo de gasto inválido', () => {
+      expect(() => turnoInputSchema.parse({ ...valido, gastos: [{ tipo: 'cripto', formaPago: 'efectivo', monto: 1 }] })).toThrow()
+    })
+    it('rechaza una forma de pago inválida', () => {
+      expect(() => turnoInputSchema.parse({ ...valido, gastos: [{ tipo: 'varios', formaPago: 'crypto', monto: 1 }] })).toThrow()
+    })
+    it('rechaza monto de gasto negativo', () => {
+      expect(() => turnoInputSchema.parse({ ...valido, gastos: [{ tipo: 'varios', formaPago: 'efectivo', monto: -1 }] })).toThrow()
+    })
   })
 })

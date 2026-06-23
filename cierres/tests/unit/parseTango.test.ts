@@ -4,25 +4,37 @@ import { parseTango } from '@/lib/ingest/parseTango'
 const csv = `Fecha,Turno,MedioPago,Importe,Comprobantes
 2026-06-23,T1,Efectivo,46200,42
 2026-06-23,T1,Tarjetas,541700,
+2026-06-23,T1,Mercado Pago,168590,
 2026-06-23,T2,Efectivo,85500,58
-2026-06-23,T2,Mercado Pago,336970,
-2026-06-23,T2,PedidosYa,529255,`
+2026-06-23,T2,Tarjetas,483700,
+2026-06-23,T2,PedidosYa,529255,
+2026-06-23,T2,Mercado Pago,336970,`
 
-describe('parseTango', () => {
-  it('mapea medios a canales y suma', () => {
+describe('parseTango (por turno)', () => {
+  it('devuelve los dos turnos mapeados a manana/tarde', () => {
     const r = parseTango(csv)
-    expect(r.ventas.find((v) => v.canal === 'efectivo')!.monto).toBe(131700)
-    expect(r.ventas.find((v) => v.canal === 'mercadopago')!.monto).toBe(336970)
-    expect(r.ventas.find((v) => v.canal === 'pedidosya')!.monto).toBe(529255)
+    expect(r.turnos.map((t) => t.turno)).toEqual(['manana', 'tarde'])
   })
-  it('cierre Z por turno = suma del turno', () => {
+  it('agrupa ventas por canal dentro de cada turno', () => {
     const r = parseTango(csv)
-    expect(r.turnos.find((t) => t.turno === 'T1')!.montoZ).toBe(587900)
-    expect(r.turnos.find((t) => t.turno === 'T2')!.montoZ).toBe(951725)
+    const manana = r.turnos.find((t) => t.turno === 'manana')!
+    expect(manana.ventas.find((v) => v.canal === 'efectivo')!.monto).toBe(46200)
+    expect(manana.ventas.find((v) => v.canal === 'tarjetas')!.monto).toBe(541700)
+    expect(manana.ventas.find((v) => v.canal === 'mercadopago')!.monto).toBe(168590)
+    const tarde = r.turnos.find((t) => t.turno === 'tarde')!
+    expect(tarde.ventas.find((v) => v.canal === 'pedidosya')!.monto).toBe(529255)
   })
-  it('fecha y tickets', () => {
+  it('montoZ por turno = suma de importes del turno', () => {
     const r = parseTango(csv)
-    expect(r.fecha).toBe('2026-06-23')
-    expect(r.cantidadTickets).toBe(100)
+    expect(r.turnos.find((t) => t.turno === 'manana')!.montoZ).toBe(756490)
+    expect(r.turnos.find((t) => t.turno === 'tarde')!.montoZ).toBe(1435425)
+  })
+  it('cantidadTickets por turno (null si 0)', () => {
+    const r = parseTango(csv)
+    expect(r.turnos.find((t) => t.turno === 'manana')!.cantidadTickets).toBe(42)
+    expect(r.turnos.find((t) => t.turno === 'tarde')!.cantidadTickets).toBe(58)
+  })
+  it('lee la fecha', () => {
+    expect(parseTango(csv).fecha).toBe('2026-06-23')
   })
 })

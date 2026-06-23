@@ -2,31 +2,52 @@ export type Canal =
   | 'efectivo' | 'tarjetas' | 'rappi' | 'pedidosya' | 'mercado_pedidos'
   | 'mercadopago' | 'uber' | 'delivery_propio' | 'varios'
 
-export type Turno = 'T1' | 'T2'
+export type Turno = 'manana' | 'tarde'
 export type TipoTarjeta = 'mastercard' | 'maestro' | 'visa_credito' | 'visa_debito' | 'amex'
+
+export type TipoGasto =
+  | 'mercaderia' | 'descartable' | 'limpieza' | 'bazar' | 'uniformes'
+  | 'servicios' | 'sueldos' | 'mantenimiento' | 'marca' | 'libreria' | 'varios'
+export type FormaPago = 'efectivo' | 'tarjeta' | 'transferencia' | 'otro'
 
 export interface Cupon { referencia: string; importe: number }
 
-export interface CierreInput {
-  fondoFijo: number
-  gastosTotal: number
-  notaCredito: number
-  cantidadTickets?: number | null
-  turnos: { turno: Turno; montoZ: number; efectivoDepositado: number }[]
-  ventas: { canal: Canal; monto: number }[]
-  tarjetas: { turno: Turno; tipo: TipoTarjeta; monto: number; lote?: string | null }[]
-  detalles?: { canal: Canal; referencia: string; importe: number }[]
+export interface Gasto {
+  tipo: TipoGasto
+  formaPago: FormaPago
+  monto: number
+  descripcion?: string | null
+  comprobanteId?: number | null
 }
 
-export interface CierreTotales {
+export interface TurnoInput {
+  fondoFijo: number
+  montoZ: number
+  efectivoDepositado: number
+  notaCredito: number
+  cantidadTickets?: number | null
+  ventas: { canal: Canal; monto: number }[]
+  tarjetas: { tipo: TipoTarjeta; monto: number; lote?: string | null }[]
+  detalles: { canal: Canal; referencia: string; importe: number }[]
+  gastos: Gasto[]
+}
+
+export interface TurnoTotales {
   ventaTotal: number
   ventaNeta: number
   ventaEfectivo: number
-  totalZ: number
-  totalDepositado: number
+  gastosTotal: number
+  gastosEfectivo: number
   saldoEfectivo: number
   diferenciaCaja: number
   totalCredito: number
   totalDebito: number
   ticketPromedio: number | null
+}
+
+export interface DiaTotales {
+  ventaTotalDia: number
+  ventaEfectivoDia: number
+  totalDepositadoDia: number
+  diferenciaDia: number
 }
