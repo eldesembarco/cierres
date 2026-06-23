@@ -98,6 +98,7 @@ model Cierre {
   turnos          CierreTurno[]
   ventas          CierreVenta[]
   tarjetas        CierreTarjeta[]
+  detalles        CierreDetalle[]
   @@unique([localId, fecha])
   @@map("cierres")
 }
@@ -158,6 +159,18 @@ model CierreVenta {
   monto    Decimal @default(0) @db.Decimal(14, 2)
   @@unique([cierreId, canal])
   @@map("cierre_ventas")
+}
+
+model CierreDetalle {
+  id         Int     @id @default(autoincrement())
+  cierre     Cierre  @relation(fields: [cierreId], references: [id], onDelete: Cascade)
+  cierreId   Int     @map("cierre_id")
+  canal      Canal
+  referencia String  @default("")
+  importe    Decimal @default(0) @db.Decimal(14, 2)
+  orden      Int     @default(0)
+  @@index([cierreId, canal])
+  @@map("cierre_detalle")
 }
 
 model VentaApp {
