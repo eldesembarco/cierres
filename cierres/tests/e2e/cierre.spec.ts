@@ -23,12 +23,18 @@ test('encargado carga y cierra el turno Mañana', async ({ page }) => {
   await manana.locator('label', { hasText: /^Efectivo\$?$/ }).locator('input').fill('100000')
 
   // Agregar un ingreso individual (tarjeta) — no afecta la diferencia de caja, pero
-  // ejercita el flujo nuevo de líneas por transacción.
+  // ejercita el flujo nuevo: el botón abre un menú desplegable con las opciones y, al
+  // elegir "Visa crédito", se agrega la línea con ese medio ya fijado (chip).
   await manana.getByRole('button', { name: 'Agregar ingreso' }).first().click()
-  const lineaIngreso = manana.locator('select:has(optgroup[label="Tarjetas"])').first()
-  await lineaIngreso.selectOption('visa_credito')
-  // El MoneyInput de la línea es el input de texto que sigue al select del medio.
-  await lineaIngreso.locator('xpath=following::input[@inputmode="numeric"][1]').fill('25000')
+  await manana.getByRole('menuitem', { name: 'Visa crédito' }).click()
+  // La línea recién agregada muestra el medio como chip (<span>) + su MoneyInput.
+  // Desde el chip subimos al contenedor de la línea y tomamos su input numérico.
+  const chipVisa = manana.getByText('Visa crédito', { exact: true })
+  await chipVisa
+    .locator('xpath=ancestor::div[.//input[@inputmode="numeric"]][1]')
+    .locator('input[inputmode="numeric"]')
+    .first()
+    .fill('25000')
 
   await manana.getByRole('button', { name: 'Cerrar', exact: true }).click()
   await expect(manana.getByText('Cerrado correctamente.')).toBeVisible()

@@ -26,6 +26,7 @@ import {
   Paperclip,
   Plus,
   X,
+  ChevronDown,
 } from 'lucide-react'
 
 const CANALES: Canal[] = [
@@ -67,7 +68,7 @@ const canalDeMedio = (m: Medio): Canal => (isCardMedio(m) ? 'tarjetas' : m)
 
 // Línea de ingreso individual (una por transacción de tarjeta/app).
 type IngresoRow = { medio: Medio; monto: number; referencia: string }
-const nuevaIngresoRow = (): IngresoRow => ({ medio: 'visa_credito', monto: 0, referencia: '' })
+const nuevaIngresoRow = (medio: Medio): IngresoRow => ({ medio, monto: 0, referencia: '' })
 
 const TIPOS_GASTO: TipoGasto[] = [
   'mercaderia', 'descartable', 'limpieza', 'bazar', 'uniformes',
@@ -105,8 +106,8 @@ type GastoRow = {
   subiendo: boolean
 }
 
-const nuevaGastoRow = (): GastoRow => ({
-  tipo: 'mercaderia',
+const nuevaGastoRow = (tipo: TipoGasto): GastoRow => ({
+  tipo,
   formaPago: 'efectivo',
   monto: 0,
   descripcion: '',
@@ -163,6 +164,104 @@ function ingresosFromInicial(inicial?: Partial<TurnoInput>): IngresoRow[] {
   }
   return rows
 }
+
+// Grupo de opciones para el menú desplegable (con etiqueta opcional de sección).
+type MenuGrupo<T extends string> = { label?: string; items: readonly T[] }
+
+/**
+ * Botón con menú desplegable de opciones (popover). Mobile-first: usa un wrapper
+ * relativo + menú absoluto (NO position:fixed). Cierra al elegir, al click afuera y con Escape.
+ */
+function MenuAgregar<T extends string>({
+  label,
+  grupos,
+  etiquetas,
+  onSelect,
+  variant,
+}: {
+  label: string
+  grupos: readonly MenuGrupo<T>[]
+  etiquetas: Record<T, string>
+  onSelect: (value: T) => void
+  variant: 'primary' | 'secondary'
+}) {
+  const [open, setOpen] = useState(false)
+  const wrapRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  const btnClass =
+    variant === 'primary'
+      ? 'flex w-full items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700'
+      : 'flex w-full items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50'
+
+  return (
+    <div ref={wrapRef} className="relative w-full">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className={btnClass}
+      >
+        <Plus size={17} /> {label}
+        <ChevronDown size={15} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div
+          role="menu"
+          className="absolute left-0 right-0 z-20 mt-1 max-h-72 overflow-auto rounded-lg border border-slate-200 bg-white p-1 shadow-lg"
+        >
+          {grupos.map((g, gi) => (
+            <div key={gi} className={gi > 0 ? 'mt-1 border-t border-slate-100 pt-1' : undefined}>
+              {g.label && (
+                <p className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                  {g.label}
+                </p>
+              )}
+              {g.items.map((it) => (
+                <button
+                  key={it}
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    onSelect(it)
+                    setOpen(false)
+                  }}
+                  className="block w-full rounded-md px-3 py-2 text-left text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700"
+                >
+                  {etiquetas[it]}
+                </button>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Grupos para el menú de ingresos: Tarjetas + Apps / otros.
+const MEDIO_GRUPOS: readonly MenuGrupo<Medio>[] = [
+  { label: 'Tarjetas', items: MEDIOS_TARJETA },
+  { label: 'Apps / otros', items: MEDIOS_APP },
+]
+// Un solo grupo plano para los tipos de gasto.
+const GASTO_GRUPOS: readonly MenuGrupo<TipoGasto>[] = [{ items: TIPOS_GASTO }]
 
 export function TurnoCierre({
   fecha,
@@ -316,8 +415,10 @@ export function TurnoCierre({
   }
 
   // Líneas de ingreso individuales: agregamos arriba para que la última quede visible.
-  const agregarIngreso = () => setIngresos((p) => [nuevaIngresoRow(), ...p])
-  const agregarGasto = () => setGastos((p) => [...p, nuevaGastoRow()])
+  // El medio se fija al elegir la opción del menú desplegable (chip en la línea).
+  const agregarIngreso = (medio: Medio) => setIngresos((p) => [nuevaIngresoRow(medio), ...p])
+  // Gastos: agregamos al final con el tipo ya fijado desde el menú.
+  const agregarGasto = (tipo: TipoGasto) => setGastos((p) => [...p, nuevaGastoRow(tipo)])
   const setIngresoRow = (i: number, patch: Partial<IngresoRow>) =>
     setIngresos((p) => p.map((r, j) => (j === i ? { ...r, ...patch } : r)))
   const quitarIngreso = (i: number) => setIngresos((p) => p.filter((_, j) => j !== i))
@@ -350,22 +451,28 @@ export function TurnoCierre({
         </span>
       </header>
 
-      {/* Barra de carga rápida — siempre arriba del bloque */}
+      {/* Barra de carga rápida — siempre arriba del bloque.
+          Cada botón abre un menú desplegable con las opciones; al elegir, se agrega
+          la línea con el medio/tipo ya fijado. */}
       <div className="flex flex-col gap-2 sm:flex-row">
-        <button
-          type="button"
-          onClick={agregarIngreso}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
-        >
-          <Plus size={17} /> Agregar ingreso
-        </button>
-        <button
-          type="button"
-          onClick={agregarGasto}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
-        >
-          <Plus size={17} /> Agregar gasto
-        </button>
+        <div className="flex-1">
+          <MenuAgregar
+            label="Agregar ingreso"
+            variant="primary"
+            grupos={MEDIO_GRUPOS}
+            etiquetas={MEDIO_LABEL}
+            onSelect={agregarIngreso}
+          />
+        </div>
+        <div className="flex-1">
+          <MenuAgregar
+            label="Agregar gasto"
+            variant="secondary"
+            grupos={GASTO_GRUPOS}
+            etiquetas={TIPO_GASTO_LABEL}
+            onSelect={agregarGasto}
+          />
+        </div>
       </div>
 
       {/* Resumen — tiles en vivo */}
@@ -447,13 +554,15 @@ export function TurnoCierre({
             <Coins size={18} className="text-slate-500" />
             <h3 className="font-medium text-slate-900">Ingresos</h3>
           </div>
-          <button
-            type="button"
-            onClick={agregarIngreso}
-            className="flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-100"
-          >
-            <Plus size={15} /> Agregar ingreso
-          </button>
+          <div className="w-44 shrink-0">
+            <MenuAgregar
+              label="Agregar ingreso"
+              variant="primary"
+              grupos={MEDIO_GRUPOS}
+              etiquetas={MEDIO_LABEL}
+              onSelect={agregarIngreso}
+            />
+          </div>
         </div>
 
         {/* Efectivo: no se itemiza, es un único monto */}
@@ -476,22 +585,16 @@ export function TurnoCierre({
                 key={i}
                 className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2 sm:flex-row sm:items-center"
               >
-                <select
-                  value={row.medio}
-                  onChange={(e) => setIngresoRow(i, { medio: e.target.value as Medio })}
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500 sm:w-40"
+                {/* Medio fijo (se eligió al agregar la línea desde el menú) */}
+                <span
+                  className={`inline-flex w-full shrink-0 items-center justify-center rounded-lg border px-3 py-2 text-sm font-medium sm:w-40 ${
+                    isCardMedio(row.medio)
+                      ? 'border-blue-200 bg-blue-50 text-blue-700'
+                      : 'border-slate-300 bg-white text-slate-700'
+                  }`}
                 >
-                  <optgroup label="Tarjetas">
-                    {MEDIOS_TARJETA.map((m) => (
-                      <option key={m} value={m}>{MEDIO_LABEL[m]}</option>
-                    ))}
-                  </optgroup>
-                  <optgroup label="Apps / otros">
-                    {MEDIOS_APP.map((m) => (
-                      <option key={m} value={m}>{MEDIO_LABEL[m]}</option>
-                    ))}
-                  </optgroup>
-                </select>
+                  {MEDIO_LABEL[row.medio]}
+                </span>
                 <MoneyInput
                   value={row.monto}
                   onChange={(n) => setIngresoRow(i, { monto: n })}
@@ -541,13 +644,15 @@ export function TurnoCierre({
             <Receipt size={18} className="text-slate-500" />
             <h3 className="font-medium text-slate-900">Gastos</h3>
           </div>
-          <button
-            type="button"
-            onClick={() => setGastos((p) => [...p, nuevaGastoRow()])}
-            className="flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
-            <Plus size={15} /> Agregar gasto
-          </button>
+          <div className="w-44 shrink-0">
+            <MenuAgregar
+              label="Agregar gasto"
+              variant="secondary"
+              grupos={GASTO_GRUPOS}
+              etiquetas={TIPO_GASTO_LABEL}
+              onSelect={agregarGasto}
+            />
+          </div>
         </div>
 
         {gastos.length === 0 ? (
@@ -557,17 +662,10 @@ export function TurnoCierre({
             {gastos.map((g, i) => (
               <div key={i} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
                 <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-                  <select
-                    value={g.tipo}
-                    onChange={(e) =>
-                      setGastos((p) => p.map((x, j) => (j === i ? { ...x, tipo: e.target.value as TipoGasto } : x)))
-                    }
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500 sm:w-40"
-                  >
-                    {TIPOS_GASTO.map((tg) => (
-                      <option key={tg} value={tg}>{TIPO_GASTO_LABEL[tg]}</option>
-                    ))}
-                  </select>
+                  {/* Tipo de gasto fijo (se eligió al agregar la línea desde el menú) */}
+                  <span className="inline-flex w-full shrink-0 items-center justify-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 sm:w-40">
+                    {TIPO_GASTO_LABEL[g.tipo]}
+                  </span>
                   <select
                     value={g.formaPago}
                     onChange={(e) =>
