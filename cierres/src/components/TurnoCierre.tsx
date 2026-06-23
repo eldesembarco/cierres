@@ -432,6 +432,7 @@ export function TurnoCierre({
   inicial,
   onTotales,
   precarga,
+  verDiferencia = false,
 }: {
   fecha: string
   turno: Turno
@@ -440,6 +441,7 @@ export function TurnoCierre({
   inicial?: Partial<TurnoInput> & { nota?: string }
   onTotales?: (turno: Turno, t: TurnoTotales) => void
   precarga?: Partial<TurnoInput>
+  verDiferencia?: boolean
 }) {
   const [fondoFijo, setFondoFijo] = useState(inicial?.fondoFijo ?? fondoFijoDefault)
   const [montoZ, setMontoZ] = useState(inicial?.montoZ ?? 0)
@@ -611,10 +613,12 @@ export function TurnoCierre({
     <section className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white/60 p-3 shadow-sm sm:p-4">
       <header className="flex items-center justify-between gap-2">
         <h2 className="text-base font-semibold text-slate-900">{titulo}</h2>
-        <span className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium ${diffStyle.tile}`}>
-          <span>{diffStyle.emoji}</span>
-          Dif {formatMoney(t.diferenciaCaja)}
-        </span>
+        {verDiferencia && (
+          <span className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium ${diffStyle.tile}`}>
+            <span>{diffStyle.emoji}</span>
+            Dif {formatMoney(t.diferenciaCaja)}
+          </span>
+        )}
       </header>
 
       {/* Barra de carga rápida — siempre arriba del bloque.
@@ -651,17 +655,19 @@ export function TurnoCierre({
           <p className="text-[12px] text-slate-500">Gastos</p>
           <p className="mt-0.5 text-lg font-semibold tabular-nums text-slate-900">{formatMoney(t.gastosTotal)}</p>
         </div>
-        <div className={`col-span-2 rounded-lg p-3 sm:col-span-3 ${diffStyle.tile}`}>
-          <p className="text-[12px] opacity-80">Diferencia de caja</p>
-          <p className="mt-0.5 flex items-center gap-2 text-xl font-semibold tabular-nums">
-            <span className={`inline-block h-2.5 w-2.5 rounded-full ${diffStyle.dot}`} />
-            {formatMoney(t.diferenciaCaja)}
-          </p>
-        </div>
+        {verDiferencia && (
+          <div className={`col-span-2 rounded-lg p-3 sm:col-span-3 ${diffStyle.tile}`}>
+            <p className="text-[12px] opacity-80">Diferencia de caja</p>
+            <p className="mt-0.5 flex items-center gap-2 text-xl font-semibold tabular-nums">
+              <span className={`inline-block h-2.5 w-2.5 rounded-full ${diffStyle.dot}`} />
+              {formatMoney(t.diferenciaCaja)}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Stats secundarias */}
-      <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+      <div className={`grid grid-cols-2 gap-2 text-sm ${verDiferencia ? 'sm:grid-cols-4' : 'sm:grid-cols-3'}`}>
         <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
           <p className="text-xs text-slate-500">Crédito</p>
           <p className="mt-0.5 font-medium tabular-nums text-slate-800">{formatMoney(t.totalCredito)}</p>
@@ -670,10 +676,12 @@ export function TurnoCierre({
           <p className="text-xs text-slate-500">Débito</p>
           <p className="mt-0.5 font-medium tabular-nums text-slate-800">{formatMoney(t.totalDebito)}</p>
         </div>
-        <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
-          <p className="text-xs text-slate-500">Saldo efectivo</p>
-          <p className="mt-0.5 font-medium tabular-nums text-slate-800">{formatMoney(t.saldoEfectivo)}</p>
-        </div>
+        {verDiferencia && (
+          <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+            <p className="text-xs text-slate-500">Saldo efectivo</p>
+            <p className="mt-0.5 font-medium tabular-nums text-slate-800">{formatMoney(t.saldoEfectivo)}</p>
+          </div>
+        )}
         <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
           <p className="flex items-center gap-1 text-xs text-slate-500">
             <TrendingUp size={12} /> Ticket prom.
@@ -879,8 +887,8 @@ export function TurnoCierre({
         </div>
       </div>
 
-      {/* Justificación de diferencia */}
-      {requiereNota && (
+      {/* Justificación de diferencia — solo administración (señal de cuadre) */}
+      {verDiferencia && requiereNota && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 sm:p-4">
           <div className="mb-2 flex items-center gap-2 text-amber-700">
             <AlertCircle size={18} />

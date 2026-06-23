@@ -26,11 +26,15 @@ export function PlanillaDia({
   fondoFijoDefault,
   inicialManana,
   inicialTarde,
+  puedeImportar = false,
+  verDiferencia = false,
 }: {
   fecha: string
   fondoFijoDefault: number
   inicialManana?: Partial<TurnoInput> & { nota?: string }
   inicialTarde?: Partial<TurnoInput> & { nota?: string }
+  puedeImportar?: boolean
+  verDiferencia?: boolean
 }) {
   const [totales, setTotales] = useState<Record<Turno, TurnoTotales>>({
     manana: TURNO_VACIO,
@@ -90,7 +94,8 @@ export function PlanillaDia({
 
   return (
     <div className="flex flex-col gap-5 pb-16">
-      {/* Importar desde Tango */}
+      {/* Importar desde Tango — solo administración (central/admin) */}
+      {puedeImportar && (
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"
@@ -119,6 +124,7 @@ export function PlanillaDia({
           </span>
         )}
       </div>
+      )}
 
       {/* Total del día */}
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -132,13 +138,15 @@ export function PlanillaDia({
             <p className="text-[12px] text-slate-500">Venta efectivo</p>
             <p className="mt-0.5 text-xl font-semibold tabular-nums text-slate-900">{formatMoney(dia.ventaEfectivoDia)}</p>
           </div>
-          <div className={`col-span-2 rounded-lg p-3 sm:col-span-1 ${diaStyle.tile}`}>
-            <p className="text-[12px] opacity-80">Diferencia del día</p>
-            <p className="mt-0.5 flex items-center gap-2 text-xl font-semibold tabular-nums">
-              <span className={`inline-block h-2.5 w-2.5 rounded-full ${diaStyle.dot}`} />
-              {formatMoney(dia.diferenciaDia)}
-            </p>
-          </div>
+          {verDiferencia && (
+            <div className={`col-span-2 rounded-lg p-3 sm:col-span-1 ${diaStyle.tile}`}>
+              <p className="text-[12px] opacity-80">Diferencia del día</p>
+              <p className="mt-0.5 flex items-center gap-2 text-xl font-semibold tabular-nums">
+                <span className={`inline-block h-2.5 w-2.5 rounded-full ${diaStyle.dot}`} />
+                {formatMoney(dia.diferenciaDia)}
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -151,6 +159,7 @@ export function PlanillaDia({
         inicial={inicialManana}
         onTotales={onTotales}
         precarga={precargaManana}
+        verDiferencia={verDiferencia}
       />
       <TurnoCierre
         fecha={fecha}
@@ -160,6 +169,7 @@ export function PlanillaDia({
         inicial={inicialTarde}
         onTotales={onTotales}
         precarga={precargaTarde}
+        verDiferencia={verDiferencia}
       />
     </div>
   )

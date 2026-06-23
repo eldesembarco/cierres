@@ -23,14 +23,21 @@ async function resolverLocalId() {
 }
 
 export async function guardarCierre(fecha: string, turno: Turno, payloadJson: string, cerrar: boolean) {
-  const { localId, userId } = await resolverLocalId()
+  const { localId, userId, rol } = await resolverLocalId()
   const payload = JSON.parse(payloadJson)
   const input = turnoInputSchema.parse(payload)
   const nota: string | null = (payload.nota ?? '').trim() || null
   const totales = calcularTotales(input)
   const fechaDate = new Date(fecha)
 
-  if (cerrar && Math.abs(totales.diferenciaCaja) > UMBRAL_DIFERENCIA && !nota) {
+  // El gate de nota por diferencia sólo aplica a administración (central/admin).
+  // El encargado cierra a ciegas: no ve la diferencia, así que el cierre siempre procede.
+  if (
+    esCentral(rol) &&
+    cerrar &&
+    Math.abs(totales.diferenciaCaja) > UMBRAL_DIFERENCIA &&
+    !nota
+  ) {
     return { ok: false as const, error: `La diferencia de caja es ${totales.diferenciaCaja}. Agregá una nota para cerrar.` }
   }
 

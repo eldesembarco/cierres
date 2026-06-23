@@ -11,7 +11,7 @@ function initials(value: string) {
   return (chars.join('') || base.slice(0, 2)).toUpperCase()
 }
 
-export function TopBar({ session }: { session: Session }) {
+export function TopBar({ session, titulo }: { session: Session; titulo: string }) {
   const { rol } = session.user
   const email = session.user.email ?? session.user.rol
   const central = esCentral(rol)
@@ -25,7 +25,7 @@ export function TopBar({ session }: { session: Session }) {
             <ScrollText size={18} strokeWidth={2.2} />
           </span>
           <span className="min-w-0 leading-tight">
-            <span className="block truncate text-sm font-semibold text-slate-900">Cierres</span>
+            <span className="block truncate text-sm font-semibold text-slate-900">{titulo}</span>
             <span className="block truncate text-[11px] text-slate-500">Grupo Desembarco</span>
           </span>
         </Link>

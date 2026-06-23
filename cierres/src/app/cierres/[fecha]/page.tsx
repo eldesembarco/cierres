@@ -56,7 +56,8 @@ export default async function CierreDiaPage({ params }: { params: Promise<{ fech
   const { fecha } = await params
   const session = await auth()
   if (!session) return null
-  const localId = esCentral(session.user.rol) ? 1 : session.user.localId ?? 1
+  const central = esCentral(session.user.rol)
+  const localId = central ? 1 : session.user.localId ?? 1
   const local = await prisma.local.findUniqueOrThrow({ where: { id: localId } })
 
   const cierres = await prisma.cierre.findMany({
@@ -99,6 +100,8 @@ export default async function CierreDiaPage({ params }: { params: Promise<{ fech
         fondoFijoDefault={Number(local.fondoFijoDefault)}
         inicialManana={toInicial(manana)}
         inicialTarde={toInicial(tarde)}
+        puedeImportar={central}
+        verDiferencia={central}
       />
     </main>
   )
