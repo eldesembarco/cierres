@@ -29,6 +29,7 @@ model Local {
   cierres          Cierre[]
   ventasApp        VentaApp[]
   usuarios         Usuario[]
+  cierresTango     CierreTango[]
   @@map("locales")
 }
 
@@ -197,6 +198,23 @@ model CierreGasto {
   facturaTotal  Decimal?   @map("factura_total") @db.Decimal(14, 2)
   orden         Int        @default(0)
   @@map("cierre_gasto")
+}
+
+// Cierre de turno crudo recibido por correo desde Tango (lo postea n8n, una
+// casilla por local → localId). Es la fuente de datos "real" para el botón
+// "Importar desde Tango": se guarda tal cual se parsea el PDF, por (local, fecha, turno).
+model CierreTango {
+  id              Int      @id @default(autoincrement())
+  local           Local    @relation(fields: [localId], references: [id])
+  localId         Int      @map("local_id")
+  fecha           DateTime @db.Date
+  turno           Turno
+  ventas          Json
+  montoZ          Decimal  @default(0) @map("monto_z") @db.Decimal(14, 2)
+  cantidadTickets Int?     @map("cantidad_tickets")
+  recibidoEn      DateTime @default(now()) @map("recibido_en")
+  @@unique([localId, fecha, turno])
+  @@map("cierre_tango")
 }
 
 model Comprobante {

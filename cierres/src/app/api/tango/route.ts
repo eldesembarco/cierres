@@ -1,30 +1,41 @@
-// MOCK: devuelve datos de ejemplo por turno (manana/tarde). Reemplazar el cuerpo por
-// la consulta real a Tango (SQL Server / API Nexo) cuando esté disponible — la forma de la
-// respuesta (TangoParseResult: { fecha, turnos: [{ turno, ventas, montoZ, cantidadTickets }] }) no cambia.
-import { parseTango } from '@/lib/ingest/parseTango'
+// Devuelve los datos REALES de Tango para un (local, fecha): los cierres de turno
+// que n8n fue guardando vía POST /api/tango/ingest. La forma de la respuesta
+// (TangoParseResult: { fecha, turnos: [{ turno, ventas, montoZ, cantidadTickets }] })
+// es la que consume el botón "Importar desde Tango" en la planilla.
+import { prisma } from '@/lib/db'
+import type { Canal, Turno } from '@/lib/cierre/types'
 
-// CSV de ejemplo (San Telmo, ambos turnos). Se reemplaza por la consulta real a Tango.
-const SAMPLE_CSV = `Fecha,Turno,MedioPago,Importe,Comprobantes
-2026-06-23,T1,Efectivo,46200,42
-2026-06-23,T1,Tarjetas,541700,
-2026-06-23,T1,Mercado Pago,168590,
-2026-06-23,T2,Efectivo,85500,58
-2026-06-23,T2,Tarjetas,483700,
-2026-06-23,T2,PedidosYa,529255,
-2026-06-23,T2,Mercado Pago,336970,
-`
+interface TangoTurnoResponse {
+  turno: Turno
+  ventas: { canal: Canal; monto: number }[]
+  montoZ: number
+  cantidadTickets: number | null
+}
+
+const ORDEN_TURNO: Turno[] = ['manana', 'tarde']
 
 export async function GET(request: Request) {
-  // Params disponibles para la consulta real; en el mock se leen pero no se usan.
   const { searchParams } = new URL(request.url)
-  const _fecha = searchParams.get('fecha')
-  const _localId = searchParams.get('localId')
-  void _fecha
-  void _localId
+  const fecha = searchParams.get('fecha')
+  const localIdRaw = searchParams.get('localId')
 
-  // Delay artificial para que el estado "Actualizando…" sea visible.
-  await new Promise((r) => setTimeout(r, 900))
+  const localId = Number(localIdRaw)
+  if (!fecha || !localIdRaw || !Number.isInteger(localId)) {
+    return Response.json({ error: 'Faltan localId o fecha' }, { status: 400 })
+  }
 
-  const result = parseTango(SAMPLE_CSV)
-  return Response.json(result)
+  const rows = await prisma.cierreTango.findMany({
+    where: { localId, fecha: new Date(`${fecha}T00:00:00.000Z`) },
+  })
+
+  const turnos: TangoTurnoResponse[] = rows
+    .map((r) => ({
+      turno: r.turno as Turno,
+      ventas: (r.ventas as { canal: Canal; monto: number }[]) ?? [],
+      montoZ: Number(r.montoZ),
+      cantidadTickets: r.cantidadTickets,
+    }))
+    .sort((a, b) => ORDEN_TURNO.indexOf(a.turno) - ORDEN_TURNO.indexOf(b.turno))
+
+  return Response.json({ fecha, turnos })
 }

@@ -24,6 +24,7 @@ const TURNO_VACIO: TurnoTotales = {
 
 export function PlanillaDia({
   fecha,
+  localId,
   fondoFijoDefault,
   inicialManana,
   inicialTarde,
@@ -36,6 +37,7 @@ export function PlanillaDia({
   verDiferencia = false,
 }: {
   fecha: string
+  localId: number
   fondoFijoDefault: number
   inicialManana?: Partial<TurnoInput> & { nota?: string }
   inicialTarde?: Partial<TurnoInput> & { nota?: string }
@@ -109,13 +111,17 @@ export function PlanillaDia({
     setImportError('')
     const reqId = ++reqIdRef.current
     try {
-      const params = new URLSearchParams({ fecha, localId: '' })
+      const params = new URLSearchParams({ fecha, localId: String(localId) })
       const res = await fetch(`/api/tango?${params.toString()}`)
       if (!res.ok) throw new Error('bad status')
       const r: TangoParseResult = await res.json()
       // reqId no se usa más que como marca de depuración; cada slice es una
       // referencia nueva, así que el efecto de precarga en cada turno se dispara.
       void reqId
+      if (r.turnos.length === 0) {
+        setImportMsg('Sin datos de Tango para este día todavía.')
+        return
+      }
       for (const turno of r.turnos) {
         const slice: Partial<TurnoInput> = {
           ventas: turno.ventas,
@@ -151,7 +157,7 @@ export function PlanillaDia({
           )}
           {importLoading ? 'Actualizando información del local…' : 'Importar desde Tango'}
         </button>
-        <span className="text-xs text-slate-400">datos de ejemplo (preliminar)</span>
+        <span className="text-xs text-slate-400">datos recibidos por correo desde Tango</span>
         {!importLoading && importMsg && (
           <span className="flex items-center gap-1.5 text-sm font-medium text-emerald-700">
             <CheckCircle2 size={14} />

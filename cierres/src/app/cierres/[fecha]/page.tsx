@@ -117,6 +117,7 @@ export default async function CierreDiaPage({ params }: { params: Promise<{ fech
 
       <PlanillaDia
         fecha={fecha}
+        localId={localId}
         fondoFijoDefault={Number(local.fondoFijoDefault)}
         inicialManana={toInicial(manana)}
         inicialTarde={toInicial(tarde)}
