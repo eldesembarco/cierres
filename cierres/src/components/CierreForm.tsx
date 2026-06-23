@@ -1,9 +1,10 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { calcularTotales } from '@/lib/cierre/calculations'
 import type { Canal, CierreInput, Cupon, TipoTarjeta, Turno } from '@/lib/cierre/types'
 import { formatMoney } from '@/lib/money'
+import { parseTango } from '@/lib/ingest/parseTango'
 import { guardarCierre } from '@/app/cierres/actions'
 import { MoneyInput } from '@/components/MoneyInput'
 import { CuponesDetalle } from '@/components/CuponesDetalle'
@@ -15,6 +16,7 @@ import {
   TrendingUp,
   CheckCircle2,
   AlertCircle,
+  Upload,
 } from 'lucide-react'
 
 const CANALES: Canal[] = [
@@ -81,6 +83,27 @@ export function CierreForm({
   const [msg, setMsg] = useState('')
   const [ok, setOk] = useState<boolean | null>(null)
   const [pending, setPending] = useState(false)
+
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [importMsg, setImportMsg] = useState('')
+
+  async function importarTango(file: File) {
+    try {
+      const text = await file.text()
+      const r = parseTango(text)
+      for (const { canal, monto } of r.ventas) {
+        setVentas((p) => ({ ...p, [canal]: monto }))
+      }
+      for (const { turno, montoZ } of r.turnos) {
+        if (turno === 'T1') setZ1(montoZ)
+        else if (turno === 'T2') setZ2(montoZ)
+      }
+      if (r.cantidadTickets != null) setTickets(r.cantidadTickets)
+      setImportMsg('Precargado desde Tango — revisá y guardá.')
+    } catch {
+      setImportMsg('No se pudo leer el archivo. Revisá el formato.')
+    }
+  }
 
   const input: CierreInput = useMemo(() => {
     const tarjetasArr: CierreInput['tarjetas'] = []
@@ -150,6 +173,36 @@ export function CierreForm({
 
   return (
     <div className="flex flex-col gap-4 pb-32">
+      {/* Importar desde Tango (prototipo) */}
+      <div className="flex flex-wrap items-center gap-3">
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".csv"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0]
+            if (f) importarTango(f)
+            e.target.value = ''
+          }}
+        />
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+        >
+          <Upload size={16} className="text-slate-500" />
+          Importar desde Tango
+        </button>
+        <span className="text-xs text-slate-400">formato preliminar</span>
+        {importMsg && (
+          <span className="flex items-center gap-1.5 text-sm font-medium text-emerald-700">
+            <CheckCircle2 size={14} />
+            {importMsg}
+          </span>
+        )}
+      </div>
+
       {/* Resumen — tiles en vivo */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">

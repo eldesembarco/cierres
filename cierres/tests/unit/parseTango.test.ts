@@ -1,0 +1,28 @@
+import { describe, it, expect } from 'vitest'
+import { parseTango } from '@/lib/ingest/parseTango'
+
+const csv = `Fecha,Turno,MedioPago,Importe,Comprobantes
+2026-06-23,T1,Efectivo,46200,42
+2026-06-23,T1,Tarjetas,541700,
+2026-06-23,T2,Efectivo,85500,58
+2026-06-23,T2,Mercado Pago,336970,
+2026-06-23,T2,PedidosYa,529255,`
+
+describe('parseTango', () => {
+  it('mapea medios a canales y suma', () => {
+    const r = parseTango(csv)
+    expect(r.ventas.find((v) => v.canal === 'efectivo')!.monto).toBe(131700)
+    expect(r.ventas.find((v) => v.canal === 'mercadopago')!.monto).toBe(336970)
+    expect(r.ventas.find((v) => v.canal === 'pedidosya')!.monto).toBe(529255)
+  })
+  it('cierre Z por turno = suma del turno', () => {
+    const r = parseTango(csv)
+    expect(r.turnos.find((t) => t.turno === 'T1')!.montoZ).toBe(587900)
+    expect(r.turnos.find((t) => t.turno === 'T2')!.montoZ).toBe(951725)
+  })
+  it('fecha y tickets', () => {
+    const r = parseTango(csv)
+    expect(r.fecha).toBe('2026-06-23')
+    expect(r.cantidadTickets).toBe(100)
+  })
+})
