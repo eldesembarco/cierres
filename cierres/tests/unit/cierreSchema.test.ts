@@ -44,6 +44,20 @@ describe('turnoInputSchema', () => {
       const r = turnoInputSchema.parse({ ...valido, gastos: [{ tipo: 'varios', formaPago: 'tarjeta', monto: 500 }] })
       expect(r.gastos[0].monto).toBe(500)
     })
+    it('acepta forma de pago cuenta_corriente', () => {
+      const r = turnoInputSchema.parse({ ...valido, gastos: [{ tipo: 'mercaderia', formaPago: 'cuenta_corriente', monto: 500 }] })
+      expect(r.gastos[0].formaPago).toBe('cuenta_corriente')
+    })
+    it('acepta N° y total de factura (pago parcial)', () => {
+      const r = turnoInputSchema.parse({
+        ...valido,
+        gastos: [{ tipo: 'mercaderia', formaPago: 'efectivo', monto: 50, facturaNumero: 'F-123', facturaTotal: 100 }],
+      })
+      expect(r.gastos[0]).toMatchObject({ facturaNumero: 'F-123', facturaTotal: 100 })
+    })
+    it('rechaza un total de factura negativo', () => {
+      expect(() => turnoInputSchema.parse({ ...valido, gastos: [{ tipo: 'varios', formaPago: 'efectivo', monto: 1, facturaTotal: -1 }] })).toThrow()
+    })
     it('rechaza un tipo de gasto inválido', () => {
       expect(() => turnoInputSchema.parse({ ...valido, gastos: [{ tipo: 'cripto', formaPago: 'efectivo', monto: 1 }] })).toThrow()
     })

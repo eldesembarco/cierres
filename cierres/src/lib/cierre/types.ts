@@ -8,7 +8,7 @@ export type TipoTarjeta = 'mastercard' | 'maestro' | 'visa_credito' | 'visa_debi
 export type TipoGasto =
   | 'mercaderia' | 'descartable' | 'limpieza' | 'bazar' | 'uniformes'
   | 'servicios' | 'sueldos' | 'mantenimiento' | 'marca' | 'libreria' | 'varios'
-export type FormaPago = 'efectivo' | 'tarjeta' | 'transferencia' | 'otro'
+export type FormaPago = 'efectivo' | 'tarjeta' | 'transferencia' | 'otro' | 'cuenta_corriente'
 
 export interface Cupon { referencia: string; importe: number }
 
@@ -18,6 +18,8 @@ export interface Gasto {
   monto: number
   descripcion?: string | null
   comprobanteId?: number | null
+  facturaNumero?: string | null
+  facturaTotal?: number | null
 }
 
 export interface TurnoInput {

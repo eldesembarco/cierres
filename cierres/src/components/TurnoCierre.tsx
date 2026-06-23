@@ -87,12 +87,25 @@ const TIPO_GASTO_LABEL: Record<TipoGasto, string> = {
   varios: 'Varios',
 }
 
-const FORMAS_PAGO: FormaPago[] = ['efectivo', 'tarjeta', 'transferencia', 'otro']
+// Formas de pago ofrecidas en el alta de gasto. Sólo `efectivo` sale de la caja;
+// `cuenta_corriente` y `otro` los paga administración / quedan en cuenta.
+const FORMAS_PAGO: FormaPago[] = ['efectivo', 'cuenta_corriente', 'otro']
 const FORMA_PAGO_LABEL: Record<FormaPago, string> = {
   efectivo: 'Efectivo',
+  cuenta_corriente: 'Cuenta corriente',
+  otro: 'Otro',
+  // Valores heredados: ya no se ofrecen en el alta, pero pueden venir de cierres viejos.
   tarjeta: 'Tarjeta',
   transferencia: 'Transferencia',
-  otro: 'Otro',
+}
+
+// Aporte de un gasto a una factura, reportado al padre (planilla) para el
+// pendiente por factura. `facturaTotal` puede repetirse entre gastos de la misma
+// factura; la planilla toma el máximo (o el último no nulo) como total.
+export type GastoFactura = {
+  facturaNumero: string
+  facturaTotal: number | null
+  monto: number
 }
 
 // Fila de gasto en el estado local (incluye estado de subida del comprobante).
@@ -102,6 +115,8 @@ type GastoRow = {
   monto: number
   descripcion: string
   comprobanteId: number | null
+  facturaNumero: string
+  facturaTotal: number | null
   subiendo: boolean
 }
 
@@ -113,6 +128,8 @@ function gastosFromInicial(gastos?: Gasto[]): GastoRow[] {
     monto: g.monto,
     descripcion: g.descripcion ?? '',
     comprobanteId: g.comprobanteId ?? null,
+    facturaNumero: g.facturaNumero ?? '',
+    facturaTotal: g.facturaTotal ?? null,
     subiendo: false,
   }))
 }
@@ -312,6 +329,8 @@ function GastoModal({
   const [monto, setMonto] = useState<number>(inicial?.monto ?? 0)
   const [descripcion, setDescripcion] = useState<string>(inicial?.descripcion ?? '')
   const [comprobanteId, setComprobanteId] = useState<number | null>(inicial?.comprobanteId ?? null)
+  const [facturaNumero, setFacturaNumero] = useState<string>(inicial?.facturaNumero ?? '')
+  const [facturaTotal, setFacturaTotal] = useState<number | null>(inicial?.facturaTotal ?? null)
   const [subiendo, setSubiendo] = useState(false)
 
   async function subir(file: File) {
@@ -367,6 +386,24 @@ function GastoModal({
             className={selectClass}
           />
         </Campo>
+        <Campo label="N° de factura (opcional)">
+          <input
+            type="text"
+            value={facturaNumero}
+            onChange={(e) => setFacturaNumero(e.target.value)}
+            placeholder="Ej.: F-0001-00001234"
+            className={selectClass}
+          />
+        </Campo>
+        <Campo label="Total de la factura (opcional)">
+          <MoneyInput
+            value={facturaTotal ?? 0}
+            onChange={(n) => setFacturaTotal(n)}
+          />
+          <span className="mt-1 block text-xs text-slate-400">
+            Para pago parcial: cargá el total de la factura y este gasto cuenta como un pago contra ella.
+          </span>
+        </Campo>
         <div>
           <span className="mb-1 block text-sm font-medium text-slate-700">Comprobante</span>
           <div className="flex flex-wrap items-center gap-2">
@@ -413,7 +450,16 @@ function GastoModal({
         <button
           type="button"
           onClick={() =>
-            onConfirm({ tipo, formaPago, monto, descripcion, comprobanteId, subiendo: false })
+            onConfirm({
+              tipo,
+              formaPago,
+              monto,
+              descripcion,
+              comprobanteId,
+              facturaNumero: facturaNumero.trim(),
+              facturaTotal: facturaTotal && facturaTotal > 0 ? facturaTotal : null,
+              subiendo: false,
+            })
           }
           className="flex-1 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
         >
@@ -431,6 +477,7 @@ export function TurnoCierre({
   fondoFijoDefault,
   inicial,
   onTotales,
+  onGastos,
   precarga,
   verDiferencia = false,
 }: {
@@ -440,6 +487,7 @@ export function TurnoCierre({
   fondoFijoDefault: number
   inicial?: Partial<TurnoInput> & { nota?: string }
   onTotales?: (turno: Turno, t: TurnoTotales) => void
+  onGastos?: (turno: Turno, gastos: GastoFactura[]) => void
   precarga?: Partial<TurnoInput>
   verDiferencia?: boolean
 }) {
@@ -531,13 +579,15 @@ export function TurnoCierre({
       tarjetas: tarjetasArr,
       detalles: detallesArr,
       gastos: gastos
-        .filter((g) => g.monto > 0 || g.descripcion.trim() !== '' || g.comprobanteId != null)
+        .filter((g) => g.monto > 0 || g.descripcion.trim() !== '' || g.comprobanteId != null || g.facturaNumero.trim() !== '')
         .map((g) => ({
           tipo: g.tipo,
           formaPago: g.formaPago,
           monto: g.monto,
           descripcion: g.descripcion.trim() || null,
           comprobanteId: g.comprobanteId,
+          facturaNumero: g.facturaNumero.trim() || null,
+          facturaTotal: g.facturaTotal,
         })),
     }
   }, [fondoFijo, montoZ, efectivoDepositado, notaCredito, cantidadTickets, efectivoVenta, ingresos, gastos])
@@ -549,6 +599,28 @@ export function TurnoCierre({
     onTotales?.(turno, t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [t.ventaTotal, t.ventaEfectivo, t.gastosTotal, t.gastosEfectivo, t.saldoEfectivo, t.diferenciaCaja, t.totalCredito, t.totalDebito])
+
+  // Gastos con N° de factura → para el pendiente por factura (agregado en la planilla
+  // a través de ambos turnos). Sólo reportamos los que tienen N° cargado.
+  const gastosFactura = useMemo<GastoFactura[]>(
+    () =>
+      gastos
+        .filter((g) => g.facturaNumero.trim() !== '')
+        .map((g) => ({
+          facturaNumero: g.facturaNumero.trim(),
+          facturaTotal: g.facturaTotal,
+          monto: g.monto,
+        })),
+    [gastos],
+  )
+
+  // Reportar los gastos con factura al padre. La firma serializada evita re-emitir
+  // cuando el contenido no cambió.
+  const gastosFacturaKey = JSON.stringify(gastosFactura)
+  useEffect(() => {
+    onGastos?.(turno, gastosFactura)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gastosFacturaKey])
 
   const diffAbs = Math.abs(t.diferenciaCaja)
   const requiereNota = diffAbs > 1000
@@ -855,6 +927,9 @@ export function TurnoCierre({
                   </span>
                   {g.descripcion.trim() !== '' && (
                     <span className="truncate text-xs text-slate-400">{g.descripcion}</span>
+                  )}
+                  {g.facturaNumero.trim() !== '' && (
+                    <span className="shrink-0 text-xs text-slate-400">Fact. {g.facturaNumero}</span>
                   )}
                   {g.comprobanteId != null && (
                     <CheckCircle2 size={14} className="shrink-0 text-emerald-600" aria-label="Con comprobante" />

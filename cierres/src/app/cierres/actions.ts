@@ -48,6 +48,8 @@ export async function guardarCierre(fecha: string, turno: Turno, payloadJson: st
     monto: g.monto,
     descripcion: g.descripcion ?? null,
     comprobanteId: g.comprobanteId ?? null,
+    facturaNumero: g.facturaNumero ?? null,
+    facturaTotal: g.facturaTotal ?? null,
     orden: i,
   }))
 

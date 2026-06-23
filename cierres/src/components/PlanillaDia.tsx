@@ -1,12 +1,13 @@
 'use client'
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { TurnoCierre } from '@/components/TurnoCierre'
+import type { GastoFactura } from '@/components/TurnoCierre'
 import { sumarDia } from '@/lib/cierre/calculations'
 import type { DiaTotales, Turno, TurnoInput, TurnoTotales } from '@/lib/cierre/types'
 import type { TangoParseResult } from '@/lib/ingest/parseTango'
 import { formatMoney } from '@/lib/money'
-import { CheckCircle2, AlertCircle, Loader2, RefreshCw } from 'lucide-react'
+import { CheckCircle2, AlertCircle, Loader2, RefreshCw, Receipt } from 'lucide-react'
 
 const TURNO_VACIO: TurnoTotales = {
   ventaTotal: 0,
@@ -44,6 +45,36 @@ export function PlanillaDia({
   const onTotales = useCallback((turno: Turno, t: TurnoTotales) => {
     setTotales((p) => (p[turno] === t ? p : { ...p, [turno]: t }))
   }, [])
+
+  // Gastos con N° de factura por turno → para el pendiente por factura del día.
+  const [gastosFactura, setGastosFactura] = useState<Record<Turno, GastoFactura[]>>({
+    manana: [],
+    tarde: [],
+  })
+
+  const onGastos = useCallback((turno: Turno, gastos: GastoFactura[]) => {
+    setGastosFactura((p) => ({ ...p, [turno]: gastos }))
+  }, [])
+
+  // Agregado por N° de factura a través de AMBOS turnos. Para cada factura:
+  // total = max de los `facturaTotal` informados (o null si ninguno lo cargó),
+  // pagado = suma de los montos de los gastos de esa factura.
+  const facturas = useMemo(() => {
+    const acc = new Map<string, { numero: string; total: number | null; pagado: number }>()
+    for (const turno of ['manana', 'tarde'] as const) {
+      for (const g of gastosFactura[turno]) {
+        const numero = g.facturaNumero.trim()
+        if (numero === '') continue
+        const cur = acc.get(numero) ?? { numero, total: null, pagado: 0 }
+        cur.pagado += g.monto
+        if (g.facturaTotal != null) {
+          cur.total = cur.total == null ? g.facturaTotal : Math.max(cur.total, g.facturaTotal)
+        }
+        acc.set(numero, cur)
+      }
+    }
+    return Array.from(acc.values())
+  }, [gastosFactura])
 
   const dia: DiaTotales = sumarDia([totales.manana, totales.tarde])
   const diffAbs = Math.abs(dia.diferenciaDia)
@@ -150,6 +181,53 @@ export function PlanillaDia({
         </div>
       </div>
 
+      {/* Facturas — pendiente por N° de factura, agregado entre mañana y tarde.
+          Visible para todos los roles: es seguimiento de facturas, no señal de cuadre. */}
+      {facturas.length > 0 && (
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="mb-3 flex items-center gap-2">
+            <Receipt size={16} className="text-slate-500" />
+            <p className="text-sm font-semibold text-slate-900">Facturas</p>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            {facturas.map((f) => {
+              const pendiente = f.total == null ? null : Math.round((f.total - f.pagado) * 100) / 100
+              const saldada = pendiente != null && pendiente <= 0
+              return (
+                <div
+                  key={f.numero}
+                  className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+                >
+                  <span className="font-medium text-slate-800">Factura {f.numero}</span>
+                  {f.total == null ? (
+                    <span className="text-slate-500">
+                      pagado <span className="font-medium tabular-nums text-slate-800">{formatMoney(f.pagado)}</span>
+                      <span className="ml-2 text-xs text-slate-400">(sin total cargado)</span>
+                    </span>
+                  ) : (
+                    <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-slate-500">
+                      <span>
+                        pagado <span className="font-medium tabular-nums text-slate-800">{formatMoney(f.pagado)}</span> de{' '}
+                        <span className="font-medium tabular-nums text-slate-800">{formatMoney(f.total)}</span>
+                      </span>
+                      {saldada ? (
+                        <span className="flex items-center gap-1 font-medium text-emerald-700">
+                          <CheckCircle2 size={14} /> saldada
+                        </span>
+                      ) : (
+                        <span className="font-medium text-amber-700">
+                          pendiente <span className="tabular-nums">{formatMoney(pendiente!)}</span>
+                        </span>
+                      )}
+                    </span>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Bloques por turno */}
       <TurnoCierre
         fecha={fecha}
@@ -158,6 +236,7 @@ export function PlanillaDia({
         fondoFijoDefault={fondoFijoDefault}
         inicial={inicialManana}
         onTotales={onTotales}
+        onGastos={onGastos}
         precarga={precargaManana}
         verDiferencia={verDiferencia}
       />
@@ -168,6 +247,7 @@ export function PlanillaDia({
         fondoFijoDefault={fondoFijoDefault}
         inicial={inicialTarde}
         onTotales={onTotales}
+        onGastos={onGastos}
         precarga={precargaTarde}
         verDiferencia={verDiferencia}
       />

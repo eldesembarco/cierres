@@ -22,7 +22,7 @@ type CierreConHijos = {
   ventas: { canal: string; monto: unknown }[]
   tarjetas: { tipo: string; monto: unknown; lote: string | null }[]
   detalles: { canal: string; referencia: string; importe: unknown }[]
-  gastos: { tipo: string; formaPago: string; monto: unknown; descripcion: string | null; comprobanteId: number | null }[]
+  gastos: { tipo: string; formaPago: string; monto: unknown; descripcion: string | null; comprobanteId: number | null; facturaNumero: string | null; facturaTotal: unknown }[]
 }
 
 function toInicial(c: CierreConHijos | undefined): (Partial<TurnoInput> & { nota?: string }) | undefined {
@@ -42,6 +42,8 @@ function toInicial(c: CierreConHijos | undefined): (Partial<TurnoInput> & { nota
       monto: Number(g.monto),
       descripcion: g.descripcion,
       comprobanteId: g.comprobanteId,
+      facturaNumero: g.facturaNumero,
+      facturaTotal: g.facturaTotal == null ? null : Number(g.facturaTotal),
     })),
     nota: c.nota ?? '',
   }
