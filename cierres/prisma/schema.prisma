@@ -80,43 +80,34 @@ enum EstadoCierre {
 }
 
 model Cierre {
-  id              Int           @id @default(autoincrement())
-  local           Local         @relation(fields: [localId], references: [id])
-  localId         Int           @map("local_id")
-  fecha           DateTime      @db.Date
-  fondoFijo       Decimal       @default(0) @map("fondo_fijo") @db.Decimal(14, 2)
-  gastosTotal     Decimal       @default(0) @map("gastos_total") @db.Decimal(14, 2)
-  notaCredito     Decimal       @default(0) @map("nota_credito") @db.Decimal(14, 2)
-  cantidadTickets Int?          @map("cantidad_tickets")
-  estado          EstadoCierre  @default(borrador)
-  nota            String?
-  creadoPor       Int           @map("creado_por")
-  creadoEn        DateTime      @default(now()) @map("creado_en")
-  actualizadoEn   DateTime      @updatedAt @map("actualizado_en")
-  cerradoPor      Int?          @map("cerrado_por")
-  cerradoEn       DateTime?     @map("cerrado_en")
-  turnos          CierreTurno[]
-  ventas          CierreVenta[]
-  tarjetas        CierreTarjeta[]
-  detalles        CierreDetalle[]
-  @@unique([localId, fecha])
+  id                 Int           @id @default(autoincrement())
+  local              Local         @relation(fields: [localId], references: [id])
+  localId            Int           @map("local_id")
+  fecha              DateTime      @db.Date
+  turno              Turno
+  fondoFijo          Decimal       @default(0) @map("fondo_fijo") @db.Decimal(14, 2)
+  montoZ             Decimal       @default(0) @map("monto_z") @db.Decimal(14, 2)
+  efectivoDepositado Decimal       @default(0) @map("efectivo_depositado") @db.Decimal(14, 2)
+  notaCredito        Decimal       @default(0) @map("nota_credito") @db.Decimal(14, 2)
+  cantidadTickets    Int?          @map("cantidad_tickets")
+  estado             EstadoCierre  @default(borrador)
+  nota               String?
+  creadoPor          Int           @map("creado_por")
+  creadoEn           DateTime      @default(now()) @map("creado_en")
+  actualizadoEn      DateTime      @updatedAt @map("actualizado_en")
+  cerradoPor         Int?          @map("cerrado_por")
+  cerradoEn          DateTime?     @map("cerrado_en")
+  ventas             CierreVenta[]
+  tarjetas           CierreTarjeta[]
+  detalles           CierreDetalle[]
+  gastos             CierreGasto[]
+  @@unique([localId, fecha, turno])
   @@map("cierres")
 }
 
 enum Turno {
-  T1
-  T2
-}
-
-model CierreTurno {
-  id                 Int     @id @default(autoincrement())
-  cierre             Cierre  @relation(fields: [cierreId], references: [id], onDelete: Cascade)
-  cierreId           Int     @map("cierre_id")
-  turno              Turno
-  montoZ             Decimal @default(0) @map("monto_z") @db.Decimal(14, 2)
-  efectivoDepositado Decimal @default(0) @map("efectivo_depositado") @db.Decimal(14, 2)
-  @@unique([cierreId, turno])
-  @@map("cierre_turnos")
+  manana
+  tarde
 }
 
 enum Canal {
@@ -143,11 +134,10 @@ model CierreTarjeta {
   id       Int          @id @default(autoincrement())
   cierre   Cierre       @relation(fields: [cierreId], references: [id], onDelete: Cascade)
   cierreId Int          @map("cierre_id")
-  turno    Turno
   tipo     TipoTarjeta
   monto    Decimal      @default(0) @db.Decimal(14, 2)
   lote     String?
-  @@unique([cierreId, turno, tipo])
+  @@unique([cierreId, tipo])
   @@map("cierre_tarjetas")
 }
 
@@ -171,6 +161,49 @@ model CierreDetalle {
   orden      Int     @default(0)
   @@index([cierreId, canal])
   @@map("cierre_detalle")
+}
+
+enum TipoGasto {
+  mercaderia
+  descartable
+  limpieza
+  bazar
+  uniformes
+  servicios
+  sueldos
+  mantenimiento
+  marca
+  libreria
+  varios
+}
+
+enum FormaPago {
+  efectivo
+  tarjeta
+  transferencia
+  otro
+}
+
+model CierreGasto {
+  id            Int        @id @default(autoincrement())
+  cierre        Cierre     @relation(fields: [cierreId], references: [id], onDelete: Cascade)
+  cierreId      Int        @map("cierre_id")
+  tipo          TipoGasto
+  formaPago     FormaPago  @map("forma_pago")
+  monto         Decimal    @default(0) @db.Decimal(14, 2)
+  descripcion   String?
+  comprobanteId Int?       @map("comprobante_id")
+  orden         Int        @default(0)
+  @@map("cierre_gasto")
+}
+
+model Comprobante {
+  id       Int      @id @default(autoincrement())
+  nombre   String
+  mime     String
+  data     Bytes
+  creadoEn DateTime @default(now()) @map("creado_en")
+  @@map("comprobantes")
 }
 
 model VentaApp {

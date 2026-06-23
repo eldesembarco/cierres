@@ -34,6 +34,7 @@ async function main() {
     where: { id: 1 },
     update: {},
     create: {
+      id: 1,
       nombre: 'Desembarco San Telmo',
       marcaId: desembarco.id,
       ciudad: 'CABA',
