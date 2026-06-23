@@ -16,3 +16,14 @@ export function round2(n: number): number {
 export function sumMoney(values: number[]): number {
   return round2(values.reduce((acc, v) => acc + v, 0))
 }
+
+const ARS = new Intl.NumberFormat('es-AR', {
+  style: 'currency',
+  currency: 'ARS',
+  maximumFractionDigits: 0,
+})
+
+/** Formatea un monto como moneda es-AR, p. ej. 1103740 → "$1.103.740". */
+export function formatMoney(n: number): string {
+  return ARS.format(n ?? 0)
+}

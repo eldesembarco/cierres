@@ -1,7 +1,8 @@
 import type { ControlRow } from '@/lib/control/buildControlRows'
+import { formatMoney } from '@/lib/money'
 import { Scale } from 'lucide-react'
 
-const money = (n: number) => `$${n.toLocaleString('es-AR')}`
+const money = formatMoney
 
 function DiffPill({ diferencia }: { diferencia: number }) {
   const abs = Math.abs(diferencia)
