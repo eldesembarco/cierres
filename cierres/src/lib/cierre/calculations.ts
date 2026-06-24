@@ -10,10 +10,17 @@ export function calcularTotales(t: TurnoInput): TurnoTotales {
   const ventaEfectivo = sumMoney(
     t.ventas.filter((v) => v.canal === 'efectivo').map((v) => v.monto),
   )
-  // Solo los gastos pagados en efectivo reducen el saldo de caja.
+  // Solo los gastos pagados en efectivo reducen el saldo de caja del día.
   const gastosEfectivo = sumMoney(
     t.gastos.filter((g) => g.formaPago === 'efectivo').map((g) => g.monto),
   )
+  // Gastos pagados con el fondo fijo del local: NO salen de la caja del día
+  // (salen de la plata del fondo fijo), por eso no tocan la diferencia. Lo que
+  // hacen es "bajar" el fondo fijo: el restante es lo que queda para reponer.
+  const gastosFondoFijo = sumMoney(
+    t.gastos.filter((g) => g.formaPago === 'fondo_fijo').map((g) => g.monto),
+  )
+  const fondoFijoRestante = round2(t.fondoFijo - gastosFondoFijo)
   const gastosTotal = sumMoney(t.gastos.map((g) => g.monto))
   const saldoEfectivo = round2(ventaEfectivo - gastosEfectivo)
   // Fórmula validada contra el Excel: diferencia = lo depositado − el saldo de efectivo esperado.
@@ -35,6 +42,8 @@ export function calcularTotales(t: TurnoInput): TurnoTotales {
     ventaEfectivo,
     gastosTotal,
     gastosEfectivo,
+    gastosFondoFijo,
+    fondoFijoRestante,
     saldoEfectivo,
     diferenciaCaja,
     totalCredito,

@@ -48,6 +48,10 @@ describe('turnoInputSchema', () => {
       const r = turnoInputSchema.parse({ ...valido, gastos: [{ tipo: 'mercaderia', formaPago: 'cuenta_corriente', monto: 500 }] })
       expect(r.gastos[0].formaPago).toBe('cuenta_corriente')
     })
+    it('acepta forma de pago fondo_fijo', () => {
+      const r = turnoInputSchema.parse({ ...valido, gastos: [{ tipo: 'mantenimiento', formaPago: 'fondo_fijo', monto: 500 }] })
+      expect(r.gastos[0].formaPago).toBe('fondo_fijo')
+    })
     it('acepta N° y total de factura (pago parcial)', () => {
       const r = turnoInputSchema.parse({
         ...valido,

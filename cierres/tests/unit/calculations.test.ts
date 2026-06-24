@@ -66,6 +66,36 @@ describe('calcularTotales (por turno)', () => {
       expect(calcularTotales({ ...conGastos, efectivoDepositado: 36200 }).diferenciaCaja).toBe(0)
     })
   })
+
+  describe('gasto pagado con fondo fijo', () => {
+    const conFondoFijo: TurnoInput = {
+      ...base, // fondoFijo 500000, ventaEfectivo 46200, efectivoDepositado 46200 → dif 0
+      gastos: [{ tipo: 'mantenimiento', formaPago: 'fondo_fijo', monto: 8000 }],
+    }
+    it('baja del fondo fijo: restante = fondoFijo - gastosFondoFijo', () => {
+      const t = calcularTotales(conFondoFijo)
+      expect(t.gastosFondoFijo).toBe(8000)
+      expect(t.fondoFijoRestante).toBe(492000)
+    })
+    it('NO sale de la caja del día: no toca gastosEfectivo, saldo ni diferencia', () => {
+      const t = calcularTotales(conFondoFijo)
+      expect(t.gastosEfectivo).toBe(0)
+      expect(t.saldoEfectivo).toBe(46200)
+      expect(t.diferenciaCaja).toBe(0)
+    })
+    it('sí cuenta en el total de gastos', () => {
+      expect(calcularTotales(conFondoFijo).gastosTotal).toBe(8000)
+    })
+    it('restante negativo si se gasta más que el fondo fijo', () => {
+      const t = calcularTotales({
+        ...base,
+        fondoFijo: 5000,
+        gastos: [{ tipo: 'mantenimiento', formaPago: 'fondo_fijo', monto: 8000 }],
+      })
+      expect(t.fondoFijoRestante).toBe(-3000)
+      expect(t.diferenciaCaja).toBe(0) // sigue sin afectar la caja del día
+    })
+  })
 })
 
 describe('sumarDia', () => {

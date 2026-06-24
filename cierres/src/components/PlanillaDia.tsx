@@ -17,6 +17,8 @@ const TURNO_VACIO: TurnoTotales = {
   ventaEfectivo: 0,
   gastosTotal: 0,
   gastosEfectivo: 0,
+  gastosFondoFijo: 0,
+  fondoFijoRestante: 0,
   saldoEfectivo: 0,
   diferenciaCaja: 0,
   totalCredito: 0,

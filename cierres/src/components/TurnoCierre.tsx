@@ -94,11 +94,13 @@ const RUBROS_GASTO: string[] = [
 ]
 const RUBRO_DEFAULT = RUBROS_GASTO[0]
 
-// Formas de pago ofrecidas en el alta de gasto. Sólo `efectivo` sale de la caja;
+// Formas de pago ofrecidas en el alta de gasto. Sólo `efectivo` sale de la caja
+// del día; `fondo_fijo` sale del fondo fijo del local (lo baja, no toca la caja);
 // `cuenta_corriente` y `otro` los paga administración / quedan en cuenta.
-const FORMAS_PAGO: FormaPago[] = ['efectivo', 'cuenta_corriente', 'otro']
+const FORMAS_PAGO: FormaPago[] = ['efectivo', 'fondo_fijo', 'cuenta_corriente', 'otro']
 const FORMA_PAGO_LABEL: Record<FormaPago, string> = {
   efectivo: 'Efectivo',
+  fondo_fijo: 'Fondo fijo',
   cuenta_corriente: 'Cuenta corriente',
   otro: 'Otro',
   // Valores heredados: ya no se ofrecen en el alta, pero pueden venir de cierres viejos.
@@ -914,7 +916,21 @@ export function TurnoCierre({
           <h3 className="font-medium text-slate-900">Caja</h3>
         </div>
         <div className="divide-y divide-slate-100">
-          <MoneyRow label="Fondo fijo" value={fondoFijo} onChange={setFondoFijo} />
+          <div>
+            <MoneyRow label="Fondo fijo" value={fondoFijo} onChange={setFondoFijo} />
+            {t.gastosFondoFijo > 0 && (
+              <p className="pb-1.5 text-xs text-slate-500">
+                Pagado con fondo fijo: <span className="tabular-nums">{formatMoney(t.gastosFondoFijo)}</span>
+                {' · '}Restante:{' '}
+                <span
+                  className={`font-medium tabular-nums ${t.fondoFijoRestante < 0 ? 'text-red-600' : 'text-slate-700'}`}
+                >
+                  {formatMoney(t.fondoFijoRestante)}
+                </span>
+                {' · '}a reponer <span className="tabular-nums">{formatMoney(t.gastosFondoFijo)}</span>
+              </p>
+            )}
+          </div>
           <MoneyRow label="Cierre Z" value={montoZ} onChange={setMontoZ} />
           <MoneyRow label="Efectivo depositado" value={efectivoDepositado} onChange={setEfectivoDepositado} />
           <MoneyRow label="Nota de crédito" value={notaCredito} onChange={setNC} />

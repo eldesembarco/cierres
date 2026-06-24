@@ -183,6 +183,7 @@ enum FormaPago {
   transferencia
   otro
   cuenta_corriente
+  fondo_fijo
 }
 
 model CierreGasto {

@@ -4,7 +4,7 @@ const canal = z.enum(['efectivo', 'tarjetas', 'rappi', 'pedidosya', 'mercado_ped
 const tipoTarjeta = z.enum(['mastercard', 'maestro', 'visa_credito', 'visa_debito', 'amex'])
 // Rubro de gasto: texto libre (la UI ofrece una lista + "Otros").
 const tipoGasto = z.string().min(1)
-const formaPago = z.enum(['efectivo', 'tarjeta', 'transferencia', 'otro', 'cuenta_corriente'])
+const formaPago = z.enum(['efectivo', 'tarjeta', 'transferencia', 'otro', 'cuenta_corriente', 'fondo_fijo'])
 const monto = z.number().nonnegative()
 
 export const turnoInputSchema = z.object({
