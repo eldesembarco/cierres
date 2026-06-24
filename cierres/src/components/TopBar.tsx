@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import type { Session } from 'next-auth'
-import { ScrollText, Upload, Scale, LogOut } from 'lucide-react'
+import { ScrollText, Upload, Scale, BarChart3, LogOut } from 'lucide-react'
 import { esCentral } from '@/lib/auth/rbac'
 import { logout } from '@/app/actions/auth'
 
@@ -43,6 +43,9 @@ export function TopBar({ session, titulo }: { session: Session; titulo: string }
               <NavLink href="/control" icon={<Scale size={15} />}>
                 Control
               </NavLink>
+              <NavLink href="/informes" icon={<BarChart3 size={15} />}>
+                Informes
+              </NavLink>
             </>
           )}
         </nav>
@@ -79,6 +82,9 @@ export function TopBar({ session, titulo }: { session: Session; titulo: string }
           </NavLink>
           <NavLink href="/control" icon={<Scale size={15} />} compact>
             Control
+          </NavLink>
+          <NavLink href="/informes" icon={<BarChart3 size={15} />} compact>
+            Informes
           </NavLink>
         </div>
       )}
