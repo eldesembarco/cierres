@@ -17,54 +17,85 @@ export interface TangoPdfResult {
 // Patrón de monto en formato del PDF de Tango (en-US: coma = miles, punto = decimal).
 const MONEY = '([\\d]{1,3}(?:,\\d{3})*(?:\\.\\d+)?|\\d+(?:\\.\\d+)?)'
 
-// Aísla el cuerpo de una sección "-- NOMBRE --" hasta el siguiente separador "--"
-// (o el fin del texto). El texto real de unpdf viene en una sola línea con las
-// secciones marcadas por "-- … --", así que scopeamos por esos marcadores para no
-// confundir "TOTAL GENERAL:"/"TOTAL IMPORTE:" de otras secciones.
+// Normaliza el texto extraído del PDF antes de parsear. `unpdf` extrae distintos
+// PDFs de cierre Tango con DISTINTO espaciado: a veces limpio
+// ("21/06/2026", "126,200.00"), a veces con espacios espurios dentro de palabras
+// y números ("23/ 06/ 2026", "137, 445. 00", "Ef ec t i v o"). Esta función:
+//   1. Colapsa toda corrida de whitespace a un solo espacio.
+//   2. Une dígitos partidos alrededor de un separador (/ . ,), p. ej.
+//      "23/ 06/ 2026" → "23/06/2026" y "137, 445. 00" → "137,445.00".
+//      OJO: NO unimos dígito-espacio-dígito sin separador (eso fusionaría un
+//      conteo con un monto, p. ej. "10 151,945" en "TOTAL TURNO: 10 151,945.00").
+function normalizeTango(text: string): string {
+  let s = text.replace(/\s+/g, ' ')
+  // Repetimos hasta estabilizar: un solo pase no alcanza para corridas como
+  // "1 2 3 , 4 5 6 . 0 0" (cada reemplazo consume el match y deja huecos).
+  for (let i = 0; i < 6; i++) {
+    const next = s.replace(/(\d)\s*([/.,])\s*(\d)/g, '$1$2$3')
+    if (next === s) break
+    s = next
+  }
+  return s
+}
+
+// Aísla el cuerpo de una sección cuyo TÍTULO es `nombre`. En el texto real de
+// `unpdf` las secciones vienen marcadas por "-- TÍTULO --", pero el "--" varía:
+// a veces "--ANULACIONES--", a veces "- - ANULACIONES- -" (espacios espurios).
+// Tras `normalizeTango` el whitespace ya está colapsado, así que anclamos sobre
+// el TÍTULO (que viene limpio) y toleramos guiones/espacios alrededor. Devuelve
+// desde después del título hasta el próximo marcador de sección (o fin de texto).
 function sectionBody(text: string, nombre: string): string | null {
-  const re = new RegExp(`--\\s*${nombre}\\s*--`, 'i')
+  // "-" o "- " repetido antes/después del título (tolerante a "- -").
+  const dash = '(?:-\\s*)+'
+  const re = new RegExp(`${dash}${nombre}\\s*${dash}`, 'i')
   const m = text.match(re)
   if (!m || m.index === undefined) return null
   const after = text.slice(m.index + m[0].length)
-  const next = after.search(/--[^-]/)
+  // Próximo marcador de sección: un guion seguido (eventualmente) de otro guion
+  // y una mayúscula. Tras la normalización los marcadores son "- -" o "--".
+  const next = after.search(/-\s*-\s*[A-ZÁÉÍÓÚÜÑ]/)
   return next === -1 ? after : after.slice(0, next)
 }
 
-// Mapea la descripción de la forma de cobro del PDF de Tango (en MAYÚSCULAS, sin
-// espacios sobrantes) al canal interno de la app. Default → 'varios'.
-const MEDIO_TANGO_A_CANAL: Record<string, Canal> = {
-  EFECTIVO: 'efectivo',
-  VISA: 'tarjetas',
-  MASTERCARD: 'tarjetas',
-  'VISA DEBITO': 'tarjetas',
-  'MASTERCARD DEBITO': 'tarjetas',
-  'AMERICAN EXPRESS': 'tarjetas',
-  CABAL: 'tarjetas',
-  NARANJA: 'tarjetas',
-  'MERCADO PAGO': 'mercadopago',
-  'QR NAVE': 'mercadopago',
-  'MERCADO PAGO DELIVERY': 'mercado_pedidos',
-  'PEYA TARJETA': 'pedidosya',
-  'PEDIDOS YA EFECTIVO': 'pedidosya',
-  RAPPI: 'rappi',
-  MORFY: 'varios',
+// Mapea el token de la forma de cobro (DESESPACIADO: sin espacios ni puntos, en
+// MAYÚSCULAS) al canal interno de la app. Default → 'varios'.
+// OJO con el orden: MERCADOPAGODELIVERY debe chequearse ANTES que MERCADOPAGO.
+function mapMedioToken(token: string): Canal {
+  const t = token
+  if (t === 'EFECTIVO') return 'efectivo'
+  if (
+    t === 'VISA' ||
+    t === 'MASTERCARD' ||
+    t === 'VISADEBITO' ||
+    t === 'MASTERCARDDEBITO' ||
+    t === 'AMERICANEXPRESS' ||
+    t === 'AMEX' ||
+    t === 'CABAL' ||
+    t === 'NARANJA'
+  ) {
+    return 'tarjetas'
+  }
+  if (t === 'MERCADOPAGODELIVERY') return 'mercado_pedidos'
+  if (t === 'MERCADOPAGO' || t === 'QRNAVE') return 'mercadopago'
+  if (t === 'PEYATARJETA' || t === 'PEDIDOSYAEFECTIVO' || t === 'PEYA') return 'pedidosya'
+  if (t === 'RAPPI') return 'rappi'
+  if (t === 'MORFY') return 'varios'
+  return 'varios'
 }
 
-function mapMedio(desc: string): Canal {
-  const key = desc.trim().toUpperCase().replace(/\s+/g, ' ')
-  return MEDIO_TANGO_A_CANAL[key] ?? 'varios'
-}
+export function parseTangoPdf(raw: string): TangoPdfResult {
+  // Normalizamos PRIMERO: colapsa whitespace y une dígitos partidos.
+  const text = normalizeTango(raw)
+  // Copia totalmente desespaciada (para detectar el turno aun cuando venga como
+  // "TURNO TARDE" con letras separadas, o pegado).
+  const despaced = text.replace(/\s+/g, '').toUpperCase()
 
-export function parseTangoPdf(text: string): TangoPdfResult {
   // --- Turno ---
   let turno: Turno | null = null
-  const mTurno = text.match(/TURNO\s+(TARDE|NOCHE|MA[ÑN]ANA)/i)
-  if (mTurno) {
-    const t = mTurno[1].toUpperCase()
-    turno = t === 'MAÑANA' || t === 'MANANA' ? 'manana' : 'tarde'
-  }
+  if (/TURNOMA[ÑN]ANA/.test(despaced)) turno = 'manana'
+  else if (/TURNOTARDE|TURNONOCHE/.test(despaced)) turno = 'tarde'
 
-  // --- Fecha: primer DD/MM/YYYY → YYYY-MM-DD ---
+  // --- Fecha: primer DD/MM/YYYY → YYYY-MM-DD (tras unir las barras) ---
   let fecha: string | null = null
   const mFecha = text.match(/(\d{2})\/(\d{2})\/(\d{4})/)
   if (mFecha) {
@@ -79,52 +110,43 @@ export function parseTangoPdf(text: string): TangoPdfResult {
   if (mTicketsAny) cantidadTickets = Number(mTicketsAny[1])
 
   // --- Ventas por forma de cobro + montoZ ---
-  // El texto real que extrae unpdf del PDF de Tango viene en UNA sola línea (las
-  // celdas separadas por espacios, sin saltos). El sample de los tests viene con
-  // saltos de línea. Para soportar AMBOS, aislamos la sección "VENTAS POR FORMA
-  // DE COBRO" hasta su "TOTAL:" y parseamos pares "<descripción> <monto>".
+  // Aislamos la sección desde el título "VENTAS POR FORMA DE COBRO" hasta su
+  // primer "TOTAL:". El "TOTAL:" cierra el bloque y define el montoZ. Dentro,
+  // matcheamos pares "<etiqueta> <monto.NN>"; las filas de cabecera
+  // ("Descripción Total") y las corridas de "____" no traen monto ".NN" y se
+  // descartan solas.
   const ventasMap = new Map<Canal, number>()
   let montoZ = 0
 
   const mHeader = text.match(/VENTAS\s+POR\s+FORMA\s+DE\s+COBRO/i)
   if (mHeader && mHeader.index !== undefined) {
-    // Desde justo después del header de la sección (sin comernos el resto del
-    // documento: el texto real de unpdf no tiene saltos de línea).
     const afterHeader = text.slice(mHeader.index + mHeader[0].length)
-    // El "TOTAL:" de la sección cierra el bloque y define el montoZ.
-    const mTotal = afterHeader.match(/TOTAL:\s*([\d]{1,3}(?:[.,]\d{3})*(?:[.,]\d+)?|\d+(?:[.,]\d+)?)/i)
+    const mTotal = afterHeader.match(new RegExp(`TOTAL:\\s*${MONEY}`, 'i'))
     if (mTotal) montoZ = parseMoney(mTotal[1])
 
-    // Cuerpo: lo que hay entre el header y el "TOTAL:" de la sección.
     const bodyEnd = mTotal ? afterHeader.indexOf(mTotal[0]) : afterHeader.length
-    let body = afterHeader.slice(0, bodyEnd)
-    // Sacamos separadores de líneas (corridas de guiones bajos) y el encabezado
-    // de columnas ("Descripción"/"Total") que no son filas de datos.
-    body = body
-      .replace(/_+/g, ' ')
-      .replace(/Descripci[oó]n/gi, ' ')
-      .replace(/\bTotal\b/gi, ' ')
+    const body = afterHeader.slice(0, bodyEnd)
 
-    // Fila "<descripción> <monto>": capturamos el texto (no numérico) seguido del
-    // monto. Global: funciona tanto en línea única como con saltos de línea.
-    const rowRe = /([A-Za-zÁÉÍÓÚÜÑáéíóúüñ][A-Za-zÁÉÍÓÚÜÑáéíóúüñ .]*?)\s+([\d]{1,3}(?:,\d{3})*(?:\.\d+)?|\d+(?:\.\d+)?)(?=\s|$)/g
+    // Fila "<etiqueta> <monto>": la etiqueta es texto (letras, espacios, puntos)
+    // y el monto SIEMPRE termina en ".NN" (dos decimales) — eso lo distingue de
+    // conteos sueltos y nos ancla en filas de forma de cobro reales.
+    const rowRe = /([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ .]*?)\s+(\d[\d.,]*\.\d{2})/g
     let m: RegExpExecArray | null
     while ((m = rowRe.exec(body)) !== null) {
-      const desc = m[1]
+      const token = m[1].replace(/[\s.]/g, '').toUpperCase()
       const monto = parseMoney(m[2])
       if (monto === 0) continue
-      const canal = mapMedio(desc)
+      const canal = mapMedioToken(token)
       ventasMap.set(canal, round2((ventasMap.get(canal) ?? 0) + monto))
     }
   }
 
   const ventas = [...ventasMap.entries()].map(([canal, monto]) => ({ canal, monto }))
 
-  // --- Anulaciones (sección "-- ANULACIONES --") ---
-  // "AFECTARON CAJA TOTAL: <a>" es el que afecta caja, distinto del
-  // "NO AFECTARON CAJA TOTAL: <b>". Matcheamos el AFECTARON que NO viene
-  // precedido por "NO " (lookbehind negativo). El total de la sección es su
-  // "TOTAL GENERAL:" (scopeado, porque hay varios en el PDF).
+  // --- Anulaciones (sección "ANULACIONES") ---
+  // "AFECTARON CAJA TOTAL: <a>" afecta caja; distinto del "NO AFECTARON CAJA
+  // TOTAL: <b>". Matcheamos el AFECTARON que NO viene precedido por "NO ". El
+  // total de la sección es su "TOTAL GENERAL:" (scopeado a la sección).
   let anulacionesAfectanCaja = 0
   let anulacionesTotal = 0
   const anulBody = sectionBody(text, 'ANULACIONES')
@@ -135,7 +157,7 @@ export function parseTangoPdf(text: string): TangoPdfResult {
     if (mGeneral) anulacionesTotal = parseMoney(mGeneral[1])
   }
 
-  // --- Devoluciones (sección "-- DEVOLUCIONES --") ---
+  // --- Devoluciones (sección "DEVOLUCIONES") ---
   // El importe es su "TOTAL IMPORTE:" (scopeado a la sección).
   let devolucionesTotal = 0
   const devBody = sectionBody(text, 'DEVOLUCIONES')

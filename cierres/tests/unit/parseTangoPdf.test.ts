@@ -120,4 +120,50 @@ describe('parseTangoPdf', () => {
     expect(r.cantidadTickets).toBe(4)
     expect(r.ventas[0]).toEqual({ canal: 'efectivo', monto: 10000 })
   })
+
+  // Distintos PDFs de cierre Tango se extraen con DISTINTO espaciado vía `unpdf`.
+  // Esta muestra reproduce el formato "sucio" REAL del 23/06: barras y números
+  // partidos ("23/ 06/ 2026", "137, 445. 00"), letras separadas dentro de las
+  // palabras ("Ef ec t i v o", "PEYA TARJ ETA"), y los marcadores "--" como
+  // "- - …- -". El parser debe normalizar primero y extraer igual que el limpio.
+  const spaced =
+    '23/ 06/ 2026- TURNO TARDE Caj a: CAJ A1 Aper t ur a: 23/ 06/ 2026 16: 57 ' +
+    '- - RESUMEN DE VENTAS- - Vent as del i v er y : 137, 445. 00 Cant . Vent as : 8 Pr omedi o: 17, 180. 63 ' +
+    '________________________________________ TOTAL VENTAS: 137, 445. 00 CANT. VENTAS: 8 PROMEDI O: 17, 180. 63 ' +
+    '- - DEVOLUCI ONES- - Comanda Ar t í c ul o Cant i dad I mpor t e __________ TOTAL: 0. 00 TOTAL I MPORTE: 0. 00 ' +
+    '- - COMANDAS POR ESTADO- - Es t ado Cant i dad Tot al Cubi er t os ___________ ' +
+    'Cobr ada 8 137, 445. 00 0 En Ct a. Ct e. 2 14, 500. 00 0 TOTAL TURNO: 10 151, 945. 00 0 TOTAL ANUL. / CANC 0 0. 00 0 ' +
+    '- - VENTAS POR FORMA DE COBRO- - Des c r i pc i ón Tot al ____________________________________ ' +
+    'Ef ec t i v o 18, 000. 00 MERCADOPAGO 51, 100. 00 PEYA TARJ ETA 68, 345. 00 ____________________________________ ' +
+    'TOTAL: 137, 445. 00 ' +
+    '- - RESUMEN DE VENTAS POR RUBROS- - Rubr o Cant i dad Tot al __________ TOTAL GENERAL: 14. 00 137, 445. 00'
+
+  it('normaliza el texto con espacios espurios (formato real "sucio" del 23/06)', () => {
+    const r = parseTangoPdf(spaced)
+    expect(r.fecha).toBe('2026-06-23')
+    expect(r.turno).toBe('tarde')
+    expect(r.cantidadTickets).toBe(8)
+    expect(r.montoZ).toBe(137445)
+    const byCanal = Object.fromEntries(r.ventas.map((v) => [v.canal, v.monto]))
+    expect(byCanal.efectivo).toBe(18000)
+    expect(byCanal.mercadopago).toBe(51100)
+    expect(byCanal.pedidosya).toBe(68345)
+    expect(r.ventas).toHaveLength(3)
+  })
+
+  it('en el formato "sucio" no confunde el conteo+monto de COMANDAS con una venta', () => {
+    // "TOTAL TURNO: 10 151,945.00" NO debe colarse como venta (distinta sección)
+    // ni fusionarse a "10151945.00": el conteo "10" y el monto "151,945.00"
+    // quedan separados porque no hay separador entre esos dígitos.
+    const r = parseTangoPdf(spaced)
+    const total = r.ventas.reduce((acc, v) => acc + v.monto, 0)
+    expect(total).toBe(137445)
+  })
+
+  it('anulaciones/devoluciones = 0 cuando el "sucio" no trae sección ANULACIONES', () => {
+    const r = parseTangoPdf(spaced)
+    expect(r.anulacionesAfectanCaja).toBe(0)
+    expect(r.anulacionesTotal).toBe(0)
+    expect(r.devolucionesTotal).toBe(0)
+  })
 })
