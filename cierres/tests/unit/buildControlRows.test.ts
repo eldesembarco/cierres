@@ -12,6 +12,15 @@ describe('buildControlRows', () => {
     expect(py.app).toBe(350000)
     expect(py.diferencia).toBe(-2750)
   })
+  it('PedidosYa en efectivo suma al declarado de PedidosYa', () => {
+    const rows = buildControlRows(
+      [{ canal: 'pedidosya', monto: 300000 }, { canal: 'pedidosya_efectivo', monto: 50000 }],
+      [{ plataformaNombre: 'PedidosYa', ventaTotal: 350000 }],
+    )
+    const py = rows.find((r) => r.plataforma === 'PedidosYa')!
+    expect(py.declarado).toBe(350000) // 300000 + 50000
+    expect(py.diferencia).toBe(0)
+  })
   it('marca pct null cuando la app reporta 0', () => {
     const rows = buildControlRows([{ canal: 'rappi', monto: 1000 }], [{ plataformaNombre: 'Rappi', ventaTotal: 0 }])
     expect(rows.find((r) => r.plataforma === 'Rappi')!.pct).toBeNull()

@@ -1,5 +1,5 @@
 export type Canal =
-  | 'efectivo' | 'tarjetas' | 'rappi' | 'pedidosya' | 'mercado_pedidos'
+  | 'efectivo' | 'tarjetas' | 'rappi' | 'pedidosya' | 'pedidosya_efectivo' | 'mercado_pedidos'
   | 'mercadopago' | 'uber' | 'delivery_propio' | 'varios'
 
 export type Turno = 'manana' | 'tarde'

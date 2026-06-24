@@ -67,6 +67,31 @@ describe('calcularTotales (por turno)', () => {
     })
   })
 
+  describe('PedidosYa cobrado en efectivo', () => {
+    const ventasPya = (canalPya: 'pedidosya' | 'pedidosya_efectivo'): TurnoInput => ({
+      ...base,
+      efectivoDepositado: 56200, // en la caja entran 46200 de mostrador + 10000 de PedidosYa cash
+      ventas: [
+        { canal: 'efectivo', monto: 46200 },
+        { canal: 'tarjetas', monto: 541700 },
+        { canal: canalPya, monto: 10000 },
+      ],
+    })
+    it('pedidosya_efectivo entra a la caja: depositando el cash real, diferencia 0', () => {
+      const t = calcularTotales(ventasPya('pedidosya_efectivo'))
+      expect(t.ventaEfectivo).toBe(56200)
+      expect(t.diferenciaCaja).toBe(0)
+    })
+    it('si se cargara como PedidosYa (online) daría un sobrante falso de 10000', () => {
+      const t = calcularTotales(ventasPya('pedidosya'))
+      expect(t.ventaEfectivo).toBe(46200)
+      expect(t.diferenciaCaja).toBe(10000)
+    })
+    it('no duplica la venta total', () => {
+      expect(calcularTotales(ventasPya('pedidosya_efectivo')).ventaTotal).toBe(597900)
+    })
+  })
+
   describe('gasto pagado con fondo fijo', () => {
     const conFondoFijo: TurnoInput = {
       ...base, // fondoFijo 500000, ventaEfectivo 46200, efectivoDepositado 46200 → dif 0

@@ -3,6 +3,9 @@ import type { Canal } from '@/lib/cierre/types'
 
 const CANAL_A_PLATAFORMA: Partial<Record<Canal, string>> = {
   pedidosya: 'PedidosYa',
+  // PedidosYa cobrado en efectivo es igual venta de PedidosYa para la conciliación:
+  // suma al declarado de la plataforma (entra a la caja, pero la app lo reporta igual).
+  pedidosya_efectivo: 'PedidosYa',
   rappi: 'Rappi',
   mercadopago: 'Mercado Pago',
   uber: 'Uber',

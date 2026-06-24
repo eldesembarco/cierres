@@ -129,6 +129,7 @@ enum Canal {
   tarjetas
   rappi
   pedidosya
+  pedidosya_efectivo
   mercado_pedidos
   mercadopago
   uber

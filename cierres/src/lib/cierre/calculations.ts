@@ -3,12 +3,15 @@ import type { TurnoInput, TurnoTotales, DiaTotales } from '@/lib/cierre/types'
 
 const TIPOS_CREDITO = new Set(['mastercard', 'visa_credito', 'amex'])
 const TIPOS_DEBITO = new Set(['maestro', 'visa_debito'])
+// Canales que entran a la caja en efectivo: el efectivo de mostrador y las ventas
+// de PedidosYa cobradas en efectivo (el cliente paga cash al cadete → entra a la caja).
+const CANALES_EFECTIVO = new Set(['efectivo', 'pedidosya_efectivo'])
 
 export function calcularTotales(t: TurnoInput): TurnoTotales {
   const ventaTotal = sumMoney(t.ventas.map((v) => v.monto))
   const ventaNeta = round2(ventaTotal - t.notaCredito)
   const ventaEfectivo = sumMoney(
-    t.ventas.filter((v) => v.canal === 'efectivo').map((v) => v.monto),
+    t.ventas.filter((v) => CANALES_EFECTIVO.has(v.canal)).map((v) => v.monto),
   )
   // Solo los gastos pagados en efectivo reducen el saldo de caja del día.
   const gastosEfectivo = sumMoney(

@@ -27,15 +27,16 @@ export const CANAL_LABEL: Record<Canal, string> = {
   tarjetas: 'Tarjetas',
   rappi: 'Rappi',
   pedidosya: 'PedidosYa',
-  mercado_pedidos: 'Mercado Pedidos',
-  mercadopago: 'Mercado Pago',
+  pedidosya_efectivo: 'PedidosYa (efectivo)',
+  mercado_pedidos: 'Mercado Delivery',
+  mercadopago: 'Mercado Pago / QR',
   uber: 'Uber',
   delivery_propio: 'Delivery propio',
   varios: 'Varios',
 }
 
 const ORDEN_CANAL: Canal[] = [
-  'efectivo', 'tarjetas', 'rappi', 'pedidosya', 'mercado_pedidos',
+  'efectivo', 'tarjetas', 'rappi', 'pedidosya', 'pedidosya_efectivo', 'mercado_pedidos',
   'mercadopago', 'uber', 'delivery_propio', 'varios',
 ]
 
