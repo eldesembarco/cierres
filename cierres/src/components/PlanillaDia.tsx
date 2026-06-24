@@ -7,7 +7,7 @@ import { sumarDia } from '@/lib/cierre/calculations'
 import type { DiaTotales, Turno, TurnoInput, TurnoTotales } from '@/lib/cierre/types'
 import type { TangoParseResult, TangoTurno } from '@/lib/ingest/parseTango'
 import { formatMoney } from '@/lib/money'
-import { CheckCircle2, AlertCircle, Loader2, RefreshCw, Receipt, ShieldAlert } from 'lucide-react'
+import { CheckCircle2, AlertCircle, Loader2, RefreshCw, Receipt, ShieldAlert, Upload } from 'lucide-react'
 
 const TURNO_LABEL: Record<Turno, string> = { manana: 'Mañana', tarde: 'Tarde' }
 
@@ -107,11 +107,33 @@ export function PlanillaDia({
   const [importError, setImportError] = useState('')
   const reqIdRef = useRef(0)
 
+  // Subida directa del PDF de Tango desde la planilla (solo admin/central).
+  // `pdfMsg` (verde = precargó este día), `pdfWarn` (ámbar = el PDF es de otro día),
+  // `pdfError` (rojo = no se pudo leer el PDF).
+  const [pdfLoading, setPdfLoading] = useState(false)
+  const [pdfMsg, setPdfMsg] = useState('')
+  const [pdfWarn, setPdfWarn] = useState('')
+  const [pdfError, setPdfError] = useState('')
+
   // Control Tango (solo admin/central): turnos reales de Tango del día, para
   // mostrar ventas/anulaciones/devoluciones como señal de auditoría. El encargado
   // NO ve esto (gated por `puedeImportar`, que es central/admin). Se carga al
   // montar para que el panel aparezca sin tener que tocar "Importar desde Tango".
   const [tangoTurnos, setTangoTurnos] = useState<TangoTurno[]>([])
+
+  // Refresca el panel "Control Tango" con los datos reales del día (GET /api/tango).
+  // Lo usa el efecto de montaje y la subida de PDF (que actualiza cierre_tango).
+  const refrescarControlTango = useCallback(async () => {
+    const params = new URLSearchParams({ fecha, localId: String(localId) })
+    try {
+      const res = await fetch(`/api/tango?${params.toString()}`)
+      if (!res.ok) throw new Error('bad status')
+      const r: TangoParseResult = await res.json()
+      setTangoTurnos(r.turnos)
+    } catch {
+      setTangoTurnos([])
+    }
+  }, [fecha, localId])
 
   useEffect(() => {
     if (!puedeImportar) return
@@ -165,36 +187,129 @@ export function PlanillaDia({
     }
   }
 
+  // Sube un PDF de cierre de Tango y lo precarga al instante. El endpoint extrae
+  // fecha/turno del PDF y hace upsert en cierre_tango; si la fecha del PDF coincide
+  // con la planilla, precargamos el turno correspondiente. Si es de otro día, no
+  // tocamos la planilla (quedó guardado para ese día).
+  async function subirPdfTango(file: File) {
+    setPdfLoading(true)
+    setPdfMsg('')
+    setPdfWarn('')
+    setPdfError('')
+    try {
+      const fd = new FormData()
+      fd.append('archivo', file)
+      fd.append('localId', String(localId))
+      const res = await fetch('/api/tango/import-pdf', { method: 'POST', body: fd })
+      const data = (await res.json()) as
+        | { ok: true; fecha: string; turno: Turno; ventas: { canal: TurnoInput['ventas'][number]['canal']; monto: number }[]; montoZ: number; cantidadTickets: number | null }
+        | { ok: false; error: string }
+      if (!data.ok) {
+        setPdfError(`No pude leer el PDF: ${data.error}`)
+        return
+      }
+      if (data.fecha === fecha) {
+        const slice: Partial<TurnoInput> = {
+          ventas: data.ventas,
+          montoZ: data.montoZ,
+          cantidadTickets: data.cantidadTickets,
+        }
+        if (data.turno === 'manana') setPrecargaManana(slice)
+        else if (data.turno === 'tarde') setPrecargaTarde(slice)
+        // Refrescamos el panel de Control Tango (el upsert ya guardó los datos reales).
+        await refrescarControlTango()
+        setPdfMsg('Cargado desde el PDF de Tango ✓ — revisá y guardá.')
+      } else {
+        setPdfWarn(
+          `El PDF es del ${data.fecha} (turno ${TURNO_LABEL[data.turno]}). Quedó guardado; abrí ese día para precargarlo.`,
+        )
+      }
+    } catch (e) {
+      setPdfError(`No pude leer el PDF: ${e instanceof Error ? e.message : 'error de red'}`)
+    } finally {
+      setPdfLoading(false)
+    }
+  }
+
   return (
     <div className="flex flex-col gap-5 pb-16">
       {/* Importar desde Tango — solo administración (central/admin) */}
       {puedeImportar && (
-      <div className="flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          onClick={importarTango}
-          disabled={importLoading}
-          className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {importLoading ? (
-            <Loader2 size={16} className="animate-spin text-blue-600" />
-          ) : (
-            <RefreshCw size={16} className="text-slate-500" />
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={importarTango}
+            disabled={importLoading}
+            className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {importLoading ? (
+              <Loader2 size={16} className="animate-spin text-blue-600" />
+            ) : (
+              <RefreshCw size={16} className="text-slate-500" />
+            )}
+            {importLoading ? 'Actualizando información del local…' : 'Importar desde Tango'}
+          </button>
+
+          {/* Subir PDF de Tango — precarga directa en la planilla. Label envuelve un
+              input file oculto; mientras procesa, se deshabilita y muestra spinner. */}
+          <label
+            className={`flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 ${
+              pdfLoading ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
+            }`}
+          >
+            {pdfLoading ? (
+              <Loader2 size={16} className="animate-spin text-blue-600" />
+            ) : (
+              <Upload size={16} className="text-slate-500" />
+            )}
+            {pdfLoading ? 'Procesando PDF…' : 'Subir PDF de Tango'}
+            <input
+              type="file"
+              accept="application/pdf"
+              disabled={pdfLoading}
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) subirPdfTango(file)
+                e.target.value = ''
+              }}
+            />
+          </label>
+
+          <span className="text-xs text-slate-400">datos recibidos por correo desde Tango</span>
+          {!importLoading && importMsg && (
+            <span className="flex items-center gap-1.5 text-sm font-medium text-emerald-700">
+              <CheckCircle2 size={14} />
+              {importMsg}
+            </span>
           )}
-          {importLoading ? 'Actualizando información del local…' : 'Importar desde Tango'}
-        </button>
-        <span className="text-xs text-slate-400">datos recibidos por correo desde Tango</span>
-        {!importLoading && importMsg && (
-          <span className="flex items-center gap-1.5 text-sm font-medium text-emerald-700">
-            <CheckCircle2 size={14} />
-            {importMsg}
-          </span>
+          {!importLoading && importError && (
+            <span className="flex items-center gap-1.5 text-sm text-slate-400">
+              <AlertCircle size={14} />
+              {importError}
+            </span>
+          )}
+        </div>
+
+        {/* Resultado de la subida de PDF (verde precargó · ámbar otro día · rojo error) */}
+        {!pdfLoading && pdfMsg && (
+          <p className="flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700">
+            <CheckCircle2 size={16} className="shrink-0" />
+            {pdfMsg}
+          </p>
         )}
-        {!importLoading && importError && (
-          <span className="flex items-center gap-1.5 text-sm text-slate-400">
-            <AlertCircle size={14} />
-            {importError}
-          </span>
+        {!pdfLoading && pdfWarn && (
+          <p className="flex items-center gap-1.5 rounded-lg bg-amber-50 px-3 py-2 text-sm font-medium text-amber-700">
+            <AlertCircle size={16} className="shrink-0" />
+            {pdfWarn}
+          </p>
+        )}
+        {!pdfLoading && pdfError && (
+          <p className="flex items-center gap-1.5 rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+            <AlertCircle size={16} className="shrink-0" />
+            {pdfError}
+          </p>
         )}
       </div>
       )}
