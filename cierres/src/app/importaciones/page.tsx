@@ -1,5 +1,6 @@
 import { auth } from '@/lib/auth/auth'
 import { puedeSubirCsv } from '@/lib/auth/rbac'
+import { getLocalActivoId } from '@/lib/auth/localActivo'
 import { prisma } from '@/lib/db'
 import { subirCsv } from './actions'
 import { TangoPdfImport } from './TangoPdfImport'
@@ -25,13 +26,18 @@ export default async function ImportacionesPage() {
   }
 
   const hoy = new Date().toISOString().slice(0, 10)
-  const localesRaw = await prisma.local.findMany({
-    where: { activo: true },
-    select: { id: true, nombre: true },
-    orderBy: { id: 'asc' },
-  })
-  // Default San Telmo (id 1) si está disponible.
-  const defaultLocalId = localesRaw.some((l) => l.id === 1) ? 1 : (localesRaw[0]?.id ?? 1)
+  const [localesRaw, localActivoId] = await Promise.all([
+    prisma.local.findMany({
+      where: { activo: true },
+      select: { id: true, nombre: true },
+      orderBy: { id: 'asc' },
+    }),
+    getLocalActivoId(session),
+  ])
+  // Default: el "local activo" de la TopBar si sigue activo; si no, el primero.
+  const defaultLocalId = localesRaw.some((l) => l.id === localActivoId)
+    ? localActivoId
+    : (localesRaw[0]?.id ?? 1)
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-col gap-5 px-4 py-6">

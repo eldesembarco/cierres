@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db'
 import { turnoInputSchema } from '@/lib/cierre/schema'
 import { calcularTotales } from '@/lib/cierre/calculations'
 import { esCentral } from '@/lib/auth/rbac'
+import { getLocalActivoId } from '@/lib/auth/localActivo'
 import type { Turno } from '@/lib/cierre/types'
 import { revalidatePath } from 'next/cache'
 
@@ -18,8 +19,9 @@ async function resolverLocalId() {
     if (!localId) throw new Error('Encargado sin local asignado')
     return { localId, userId: Number(session.user.id), rol }
   }
-  // central/admin: por ahora opera sobre San Telmo (local 1) en el piloto
-  return { localId: 1, userId: Number(session.user.id), rol }
+  // central/admin: opera sobre el "local activo" elegido en la TopBar (cookie).
+  const localActivo = await getLocalActivoId(session)
+  return { localId: localActivo, userId: Number(session.user.id), rol }
 }
 
 export async function guardarCierre(

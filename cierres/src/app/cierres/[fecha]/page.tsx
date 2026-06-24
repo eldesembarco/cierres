@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth/auth'
 import { prisma } from '@/lib/db'
 import { PlanillaDia } from '@/components/PlanillaDia'
 import { esCentral } from '@/lib/auth/rbac'
+import { getLocalActivoId } from '@/lib/auth/localActivo'
 import type { Canal, FormaPago, TipoGasto, TipoTarjeta, Turno, TurnoInput } from '@/lib/cierre/types'
 import type { CierreAuditoria } from '@/components/TurnoCierre'
 import Link from 'next/link'
@@ -71,7 +72,7 @@ export default async function CierreDiaPage({ params }: { params: Promise<{ fech
   const session = await auth()
   if (!session) return null
   const central = esCentral(session.user.rol)
-  const localId = central ? 1 : session.user.localId ?? 1
+  const localId = await getLocalActivoId(session)
   const local = await prisma.local.findUniqueOrThrow({ where: { id: localId } })
 
   const cierres = await prisma.cierre.findMany({

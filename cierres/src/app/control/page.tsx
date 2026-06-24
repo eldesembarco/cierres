@@ -1,5 +1,7 @@
 import { auth } from '@/lib/auth/auth'
 import { puedeVerControl } from '@/lib/auth/rbac'
+import { getLocalActivoId } from '@/lib/auth/localActivo'
+import { prisma } from '@/lib/db'
 import { getControl } from '@/lib/control/getControl'
 import { ControlTable } from '@/components/ControlTable'
 import { Scale, AlertTriangle, Lock } from 'lucide-react'
@@ -18,14 +20,22 @@ export default async function ControlPage({ searchParams }: { searchParams: Prom
   }
   const { fecha } = await searchParams
   const dia = fecha ?? new Date().toISOString().slice(0, 10)
-  const control = await getControl(1, new Date(dia)) // piloto: San Telmo (local 1)
+  // Opera sobre el "local activo" elegido en la TopBar (cookie).
+  const localId = await getLocalActivoId(session)
+  const [local, control] = await Promise.all([
+    prisma.local.findUnique({ where: { id: localId }, select: { nombre: true } }),
+    getControl(localId, new Date(dia)),
+  ])
 
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-6">
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <Scale size={20} className="text-slate-500" />
-          <h1 className="text-xl font-semibold text-slate-900">Control declarado vs app</h1>
+          <div>
+            <h1 className="text-xl font-semibold text-slate-900">Control declarado vs app</h1>
+            {local && <p className="text-sm text-slate-500">{local.nombre}</p>}
+          </div>
         </div>
         <form>
           <input

@@ -1,7 +1,7 @@
 import { auth } from '@/lib/auth/auth'
 import { prisma } from '@/lib/db'
 import Link from 'next/link'
-import { esCentral } from '@/lib/auth/rbac'
+import { getLocalActivoId } from '@/lib/auth/localActivo'
 import type { Turno } from '@/lib/cierre/types'
 import { ScrollText, Plus, ChevronRight } from 'lucide-react'
 
@@ -32,11 +32,19 @@ function TurnoChip({ label, estado }: { label: string; estado: string | undefine
 export default async function CierresPage() {
   const session = await auth()
   if (!session) return null
-  const { rol, localId } = session.user
+  const { rol } = session.user
 
-  const where = esCentral(rol) ? {} : { localId: localId ?? -1 }
+  // Tanto el encargado como administración filtran por su local "activo":
+  //  - encargado: su local asignado,
+  //  - central/admin: el local elegido en la TopBar (cookie).
+  const localId = await getLocalActivoId(session)
+  const localActivo = await prisma.local.findUnique({
+    where: { id: localId },
+    select: { nombre: true },
+  })
+
   const cierres = await prisma.cierre.findMany({
-    where,
+    where: { localId },
     orderBy: { fecha: 'desc' },
     take: 120,
     include: { local: true },
@@ -68,7 +76,12 @@ export default async function CierresPage() {
   return (
     <main className="mx-auto w-full max-w-2xl px-4 py-6">
       <div className="mb-5 flex items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold text-slate-900">Cierres</h1>
+        <div className="min-w-0">
+          <h1 className="text-xl font-semibold text-slate-900">Cierres</h1>
+          {localActivo && (
+            <p className="truncate text-sm text-slate-500">{localActivo.nombre}</p>
+          )}
+        </div>
         <Link
           href={`/cierres/${hoy}`}
           className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700"

@@ -3,6 +3,9 @@ import type { Session } from 'next-auth'
 import { ScrollText, Upload, Scale, BarChart3, LogOut } from 'lucide-react'
 import { esCentral } from '@/lib/auth/rbac'
 import { logout } from '@/app/actions/auth'
+import { LocalActivoSelect } from '@/components/LocalActivoSelect'
+
+type LocalOpt = { id: number; nombre: string }
 
 function initials(value: string) {
   const base = value.split('@')[0] ?? value
@@ -11,10 +14,22 @@ function initials(value: string) {
   return (chars.join('') || base.slice(0, 2)).toUpperCase()
 }
 
-export function TopBar({ session, titulo }: { session: Session; titulo: string }) {
+export function TopBar({
+  session,
+  titulo,
+  locales,
+  localActivoId,
+}: {
+  session: Session
+  titulo: string
+  locales?: LocalOpt[]
+  localActivoId?: number
+}) {
   const { rol } = session.user
   const email = session.user.email ?? session.user.rol
   const central = esCentral(rol)
+  const mostrarSelector =
+    central && locales != null && locales.length > 0 && localActivoId != null
 
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
@@ -52,6 +67,9 @@ export function TopBar({ session, titulo }: { session: Session; titulo: string }
 
         {/* User + logout */}
         <div className="flex items-center gap-2">
+          {mostrarSelector && (
+            <LocalActivoSelect locales={locales!} localActivoId={localActivoId!} />
+          )}
           <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 py-1 pl-1 pr-2.5">
             <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-900 text-[10px] font-semibold text-white">
               {initials(email)}

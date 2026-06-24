@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { auth } from '@/lib/auth/auth'
 import { esCentral } from '@/lib/auth/rbac'
+import { getLocalActivoId } from '@/lib/auth/localActivo'
 import { prisma } from '@/lib/db'
 import { formatMoney } from '@/lib/money'
 import {
@@ -43,7 +44,12 @@ export default async function InformesPage({ searchParams }: { searchParams: Sea
   const sp = await searchParams
   const desde = normalizarFecha(sp.desde, primerDiaDelMes())
   const hasta = normalizarFecha(sp.hasta, hoyYmd())
-  const localIdRaw = sp.localId ?? ''
+  // El filtro de local arranca por defecto en el "local activo" (el de la TopBar).
+  // Si el usuario eligió explícitamente "Todos los locales" el query param viene
+  // presente y vacío (""), y lo respetamos. Sólo cuando el param NO viene (primera
+  // carga) caemos al local activo.
+  const localActivoId = await getLocalActivoId(session)
+  const localIdRaw = sp.localId === undefined ? String(localActivoId) : sp.localId
   const localId = localIdRaw && /^\d+$/.test(localIdRaw) ? Number(localIdRaw) : null
 
   const [locales, cierres] = await Promise.all([
