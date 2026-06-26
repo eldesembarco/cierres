@@ -16,7 +16,7 @@ export default auth((req) => {
 })
 
 export const config = {
-  // api/tango/ingest queda fuera del chequeo de sesión: lo llama n8n sin sesión y
-  // se autentica por su propio header x-ingest-secret (ver el route handler).
-  matcher: ['/((?!api/auth|api/tango/ingest|_next/static|_next/image|favicon.ico).*)'],
+  // api/tango/ingest y api/mp/ingest quedan fuera del chequeo de sesión: los llama
+  // n8n sin sesión y se autentican por su propio header x-ingest-secret (ver routes).
+  matcher: ['/((?!api/auth|api/tango/ingest|api/mp/ingest|_next/static|_next/image|favicon.ico).*)'],
 }
