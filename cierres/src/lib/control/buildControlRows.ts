@@ -7,6 +7,9 @@ const CANAL_A_PLATAFORMA: Partial<Record<Canal, string>> = {
   // suma al declarado de la plataforma (entra a la caja, pero la app lo reporta igual).
   pedidosya_efectivo: 'PedidosYa',
   rappi: 'Rappi',
+  // Mercado Delivery (canal mercado_pedidos): se concilia contra la plata real de
+  // Mercado Pago (reporte "collection", importado a ventas_app como 'Mercado Delivery').
+  mercado_pedidos: 'Mercado Delivery',
   mercadopago: 'Mercado Pago',
   uber: 'Uber',
 }

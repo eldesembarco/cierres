@@ -4,6 +4,7 @@ import { getLocalActivoId } from '@/lib/auth/localActivo'
 import { prisma } from '@/lib/db'
 import { subirCsv } from './actions'
 import { TangoPdfImport } from './TangoPdfImport'
+import { MercadoPagoImport } from './MercadoPagoImport'
 import { Upload, FileText, Lock } from 'lucide-react'
 
 export default async function ImportacionesPage() {
@@ -83,6 +84,8 @@ export default async function ImportacionesPage() {
           </button>
         </form>
       </section>
+
+      <MercadoPagoImport />
 
       <TangoPdfImport locales={localesRaw} defaultLocalId={defaultLocalId} />
     </main>

@@ -25,6 +25,16 @@ describe('buildControlRows', () => {
     const rows = buildControlRows([{ canal: 'rappi', monto: 1000 }], [{ plataformaNombre: 'Rappi', ventaTotal: 0 }])
     expect(rows.find((r) => r.plataforma === 'Rappi')!.pct).toBeNull()
   })
+  it('Mercado Delivery: declarado (canal mercado_pedidos) vs plata real de MP', () => {
+    const rows = buildControlRows(
+      [{ canal: 'mercado_pedidos', monto: 120000 }],
+      [{ plataformaNombre: 'Mercado Delivery', ventaTotal: 117000 }],
+    )
+    const md = rows.find((r) => r.plataforma === 'Mercado Delivery')!
+    expect(md.declarado).toBe(120000)
+    expect(md.app).toBe(117000)
+    expect(md.diferencia).toBe(3000) // faltante: 3 pedidos no cobrados / devueltos
+  })
   it('ignora canales que no son de delivery', () => {
     const rows = buildControlRows([{ canal: 'efectivo', monto: 100 }], [])
     expect(rows).toHaveLength(0)

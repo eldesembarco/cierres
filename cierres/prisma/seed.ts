@@ -22,12 +22,14 @@ async function main() {
     { nombre: 'PedidosYa', codigo: 'PY' },
     { nombre: 'Rappi', codigo: 'RA' },
     { nombre: 'Mercado Pago', codigo: 'MP' },
+    { nombre: 'Mercado Delivery', codigo: 'MD' },
     { nombre: 'Uber', codigo: 'UE' },
   ]
   for (const p of plataformas) {
-    await prisma.plataforma.upsert({ where: { codigo: p.codigo }, update: {}, create: p })
+    await prisma.plataforma.upsert({ where: { codigo: p.codigo }, update: { nombre: p.nombre }, create: p })
   }
   const py = await prisma.plataforma.findUniqueOrThrow({ where: { codigo: 'PY' } })
+  const md = await prisma.plataforma.findUniqueOrThrow({ where: { codigo: 'MD' } })
 
   // Local piloto: Desembarco San Telmo
   const sanTelmo = await prisma.local.upsert({
@@ -53,6 +55,27 @@ async function main() {
       nombreExterno: 'El Desembarco San Telmo',
     },
   })
+
+  // Local Desembarco Microcentro (aparece en el reporte de Mercado Pago).
+  const microcentro = await prisma.local.upsert({
+    where: { id: 5 },
+    update: {},
+    create: { id: 5, nombre: 'Desembarco Microcentro', marcaId: desembarco.id, ciudad: 'CABA', fondoFijoDefault: 500000 },
+  })
+
+  // Mapeo Mercado Delivery (Mercado Pago store_id → local). El reporte "collection"
+  // identifica el local por store_id; lo mapeamos a mano (no es derivable del nombre).
+  const mapeosMd = [
+    { localId: sanTelmo.id, storeId: '72488709', nombre: 'El Desembarco San Telmo' },
+    { localId: microcentro.id, storeId: '77378254', nombre: 'El Desembarco Microcentro' },
+  ]
+  for (const m of mapeosMd) {
+    await prisma.localPlataforma.upsert({
+      where: { plataformaId_restaurantIdExterno: { plataformaId: md.id, restaurantIdExterno: m.storeId } },
+      update: { localId: m.localId, nombreExterno: m.nombre },
+      create: { localId: m.localId, plataformaId: md.id, restaurantIdExterno: m.storeId, nombreExterno: m.nombre },
+    })
+  }
 
   // Usuarios
   const adminHash = await bcrypt.hash('admin1234', 10)
