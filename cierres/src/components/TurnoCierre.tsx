@@ -864,56 +864,62 @@ export function TurnoCierre({
       </div>
       )}
 
-      {/* Resumen — tiles en vivo */}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-          <p className="text-[12px] text-slate-500">Venta total</p>
-          <p className="mt-0.5 text-lg font-semibold tabular-nums text-slate-900">{formatMoney(t.ventaTotal)}</p>
-        </div>
-        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-          <p className="text-[12px] text-slate-500">Total depositado</p>
-          <p className="mt-0.5 text-lg font-semibold tabular-nums text-slate-900">{formatMoney(efectivoDepositado)}</p>
-        </div>
-        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-          <p className="text-[12px] text-slate-500">Gastos</p>
-          <p className="mt-0.5 text-lg font-semibold tabular-nums text-slate-900">{formatMoney(t.gastosTotal)}</p>
-        </div>
-        {verDiferencia && (
-          <div className={`col-span-2 rounded-lg p-3 sm:col-span-3 ${diffStyle.tile}`}>
-            <p className="text-[12px] opacity-80">Diferencia de caja</p>
-            <p className="mt-0.5 flex items-center gap-2 text-xl font-semibold tabular-nums">
-              <span className={`inline-block h-2.5 w-2.5 rounded-full ${diffStyle.dot}`} />
-              {formatMoney(t.diferenciaCaja)}
-            </p>
+      {/* Resumen. Administración ve el tablero completo (tiles + diferencia + stats).
+          El LOCAL ve sólo la "Venta del turno" para chequearla contra el Z — el resto
+          es ruido para la carga. */}
+      {verDiferencia ? (
+        <>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <p className="text-[12px] text-slate-500">Venta total</p>
+              <p className="mt-0.5 text-lg font-semibold tabular-nums text-slate-900">{formatMoney(t.ventaTotal)}</p>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <p className="text-[12px] text-slate-500">Total depositado</p>
+              <p className="mt-0.5 text-lg font-semibold tabular-nums text-slate-900">{formatMoney(efectivoDepositado)}</p>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <p className="text-[12px] text-slate-500">Gastos</p>
+              <p className="mt-0.5 text-lg font-semibold tabular-nums text-slate-900">{formatMoney(t.gastosTotal)}</p>
+            </div>
+            <div className={`col-span-2 rounded-lg p-3 sm:col-span-3 ${diffStyle.tile}`}>
+              <p className="text-[12px] opacity-80">Diferencia de caja</p>
+              <p className="mt-0.5 flex items-center gap-2 text-xl font-semibold tabular-nums">
+                <span className={`inline-block h-2.5 w-2.5 rounded-full ${diffStyle.dot}`} />
+                {formatMoney(t.diferenciaCaja)}
+              </p>
+            </div>
           </div>
-        )}
-      </div>
 
-      {/* Stats secundarias */}
-      <div className={`grid grid-cols-2 gap-2 text-sm ${verDiferencia ? 'sm:grid-cols-4' : 'sm:grid-cols-3'}`}>
-        <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
-          <p className="text-xs text-slate-500">Crédito</p>
-          <p className="mt-0.5 font-medium tabular-nums text-slate-800">{formatMoney(t.totalCredito)}</p>
-        </div>
-        <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
-          <p className="text-xs text-slate-500">Débito</p>
-          <p className="mt-0.5 font-medium tabular-nums text-slate-800">{formatMoney(t.totalDebito)}</p>
-        </div>
-        {verDiferencia && (
-          <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
-            <p className="text-xs text-slate-500">Saldo efectivo</p>
-            <p className="mt-0.5 font-medium tabular-nums text-slate-800">{formatMoney(t.saldoEfectivo)}</p>
+          <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+            <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+              <p className="text-xs text-slate-500">Crédito</p>
+              <p className="mt-0.5 font-medium tabular-nums text-slate-800">{formatMoney(t.totalCredito)}</p>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+              <p className="text-xs text-slate-500">Débito</p>
+              <p className="mt-0.5 font-medium tabular-nums text-slate-800">{formatMoney(t.totalDebito)}</p>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+              <p className="text-xs text-slate-500">Saldo efectivo</p>
+              <p className="mt-0.5 font-medium tabular-nums text-slate-800">{formatMoney(t.saldoEfectivo)}</p>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+              <p className="flex items-center gap-1 text-xs text-slate-500">
+                <TrendingUp size={12} /> Ticket prom.
+              </p>
+              <p className="mt-0.5 font-medium tabular-nums text-slate-800">
+                {t.ticketPromedio != null ? formatMoney(t.ticketPromedio) : '—'}
+              </p>
+            </div>
           </div>
-        )}
-        <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
-          <p className="flex items-center gap-1 text-xs text-slate-500">
-            <TrendingUp size={12} /> Ticket prom.
-          </p>
-          <p className="mt-0.5 font-medium tabular-nums text-slate-800">
-            {t.ticketPromedio != null ? formatMoney(t.ticketPromedio) : '—'}
-          </p>
+        </>
+      ) : (
+        <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+          <span className="text-sm font-medium text-slate-600">Venta del turno</span>
+          <span className="text-xl font-semibold tabular-nums text-slate-900">{formatMoney(t.ventaTotal)}</span>
         </div>
-      </div>
+      )}
 
       {/* Sección editable. Cuando el turno está bloqueado (encargado + cerrado),
           el fieldset deshabilitado pone TODO en sólo lectura: inputs, selects y los
@@ -927,24 +933,8 @@ export function TurnoCierre({
           <h3 className="font-medium text-slate-900">Caja</h3>
         </div>
         <div className="divide-y divide-slate-100">
-          <div>
-            <MoneyRow label="Fondo fijo" value={fondoFijo} onChange={setFondoFijo} />
-            {t.gastosFondoFijo > 0 && (
-              <p className="pb-1.5 text-xs text-slate-500">
-                Pagado con fondo fijo: <span className="tabular-nums">{formatMoney(t.gastosFondoFijo)}</span>
-                {' · '}Restante:{' '}
-                <span
-                  className={`font-medium tabular-nums ${t.fondoFijoRestante < 0 ? 'text-red-600' : 'text-slate-700'}`}
-                >
-                  {formatMoney(t.fondoFijoRestante)}
-                </span>
-                {' · '}a reponer <span className="tabular-nums">{formatMoney(t.gastosFondoFijo)}</span>
-              </p>
-            )}
-          </div>
           <MoneyRow label="Cierre Z" value={montoZ} onChange={setMontoZ} />
           <MoneyRow label="Efectivo depositado" value={efectivoDepositado} onChange={setEfectivoDepositado} />
-          <MoneyRow label="Nota de crédito" value={notaCredito} onChange={setNC} />
           <label className="flex flex-wrap items-center justify-between gap-2 py-1.5">
             <span className="text-sm text-slate-600">Cantidad de tickets</span>
             <input
@@ -956,6 +946,42 @@ export function TurnoCierre({
               className="w-full shrink-0 rounded-lg border border-slate-300 px-3 py-2 text-right tabular-nums text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500 sm:w-40"
             />
           </label>
+          {/* Fondo fijo (con su restante) + Nota de crédito. Para administración van
+              inline; para el LOCAL quedan bajo "Otros datos" para no recargar la carga. */}
+          {(() => {
+            const fondoFijoBloque = (
+              <div>
+                <MoneyRow label="Fondo fijo" value={fondoFijo} onChange={setFondoFijo} />
+                {t.gastosFondoFijo > 0 && (
+                  <p className="pb-1.5 text-xs text-slate-500">
+                    Pagado con fondo fijo: <span className="tabular-nums">{formatMoney(t.gastosFondoFijo)}</span>
+                    {' · '}Restante:{' '}
+                    <span className={`font-medium tabular-nums ${t.fondoFijoRestante < 0 ? 'text-red-600' : 'text-slate-700'}`}>
+                      {formatMoney(t.fondoFijoRestante)}
+                    </span>
+                    {' · '}a reponer <span className="tabular-nums">{formatMoney(t.gastosFondoFijo)}</span>
+                  </p>
+                )}
+              </div>
+            )
+            const notaCreditoRow = <MoneyRow label="Nota de crédito" value={notaCredito} onChange={setNC} />
+            return verDiferencia ? (
+              <>
+                {fondoFijoBloque}
+                {notaCreditoRow}
+              </>
+            ) : (
+              <details className="py-1.5">
+                <summary className="cursor-pointer text-sm text-slate-500 marker:text-slate-400">
+                  Otros datos (fondo fijo, nota de crédito)
+                </summary>
+                <div className="mt-1 divide-y divide-slate-100">
+                  {fondoFijoBloque}
+                  {notaCreditoRow}
+                </div>
+              </details>
+            )
+          })()}
         </div>
       </div>
 
