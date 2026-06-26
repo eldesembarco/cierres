@@ -14,7 +14,7 @@ async function main() {
   const desembarco = await prisma.marca.upsert({
     where: { nombre: 'Desembarco' }, update: {}, create: { nombre: 'Desembarco' },
   })
-  const mila = await prisma.marca.upsert({ where: { nombre: 'Mila & Go' }, update: {}, create: { nombre: 'Mila & Go' } })
+  await prisma.marca.upsert({ where: { nombre: 'Mila & Go' }, update: {}, create: { nombre: 'Mila & Go' } })
   await prisma.marca.upsert({ where: { nombre: 'Mr Tasty' }, update: {}, create: { nombre: 'Mr Tasty' } })
 
   // Plataformas
@@ -61,14 +61,6 @@ async function main() {
     where: { id: 5 },
     update: {},
     create: { id: 5, nombre: 'Desembarco Microcentro', marcaId: desembarco.id, ciudad: 'CABA', fondoFijoDefault: 500000 },
-  })
-
-  // Local Mila & Go San Telmo (aparece en el reporte de MP). Queda SIN mapear a
-  // propósito para demostrar el mapeo en vivo desde la app.
-  await prisma.local.upsert({
-    where: { id: 6 },
-    update: {},
-    create: { id: 6, nombre: 'Mila & Go San Telmo', marcaId: mila.id, ciudad: 'CABA', fondoFijoDefault: 300000 },
   })
 
   // Mapeo Mercado Delivery (Mercado Pago store_id → local). El reporte "collection"
