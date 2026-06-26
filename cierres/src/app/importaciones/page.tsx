@@ -85,7 +85,7 @@ export default async function ImportacionesPage() {
         </form>
       </section>
 
-      <MercadoPagoImport />
+      <MercadoPagoImport locales={localesRaw} />
 
       <TangoPdfImport locales={localesRaw} defaultLocalId={defaultLocalId} />
     </main>

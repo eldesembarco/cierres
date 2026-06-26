@@ -27,7 +27,11 @@ export async function getControl(localId: number, fecha: Date): Promise<ControlR
     }
   }
   const declared = [...declaredByCanal.entries()].map(([canal, monto]) => ({ canal, monto }))
-  const app = ventasApp.map((v) => ({ plataformaNombre: v.plataforma.nombre, ventaTotal: Number(v.ventaEfectivo) + Number(v.ventaOnline) }))
+  const app = ventasApp.map((v) => ({
+    plataformaNombre: v.plataforma.nombre,
+    ventaTotal: Number(v.ventaEfectivo) + Number(v.ventaOnline),
+    comision: Number(v.comision),
+  }))
 
   return {
     localId,

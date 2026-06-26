@@ -14,7 +14,10 @@ test.beforeAll(async () => {
   const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL }, { schema: 'cierres' })
   const prisma = new PrismaClient({ adapter })
   const now = new Date()
-  const fecha = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()))
+  // La planilla usa la fecha en UTC (toISOString) para "+ Cierre de hoy"; el reset
+  // debe usar la MISMA fecha UTC o no limpia el cierre correcto cuando el día local
+  // y el UTC difieren (ej. de noche en AR, UTC-3).
+  const fecha = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
   await prisma.cierre.deleteMany({ where: { localId: 1, fecha, turno: 'manana' } })
   await prisma.$disconnect()
 })

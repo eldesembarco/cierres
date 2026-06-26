@@ -35,6 +35,16 @@ describe('buildControlRows', () => {
     expect(md.app).toBe(117000)
     expect(md.diferencia).toBe(3000) // faltante: 3 pedidos no cobrados / devueltos
   })
+  it('comisión y neto: neto = cobrado − comisión', () => {
+    const rows = buildControlRows(
+      [{ canal: 'mercado_pedidos', monto: 100000 }],
+      [{ plataformaNombre: 'Mercado Delivery', ventaTotal: 100000, comision: 2800 }],
+    )
+    const md = rows.find((r) => r.plataforma === 'Mercado Delivery')!
+    expect(md.comision).toBe(2800)
+    expect(md.neto).toBe(97200) // 100000 - 2800
+    expect(md.diferencia).toBe(0) // el cruce es contra el bruto, la comisión no descuadra
+  })
   it('ignora canales que no son de delivery', () => {
     const rows = buildControlRows([{ canal: 'efectivo', monto: 100 }], [])
     expect(rows).toHaveLength(0)

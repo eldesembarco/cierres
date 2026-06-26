@@ -15,18 +15,21 @@ const CANAL_A_PLATAFORMA: Partial<Record<Canal, string>> = {
 }
 
 export interface DeclaredVenta { canal: Canal; monto: number }
-export interface AppVenta { plataformaNombre: string; ventaTotal: number }
+export interface AppVenta { plataformaNombre: string; ventaTotal: number; comision?: number }
 
 export interface ControlRow {
   plataforma: string
   declarado: number
-  app: number
-  diferencia: number
+  app: number // bruto cobrado por la plataforma (lo que se vendió)
+  comision: number // comisión retenida (MP); 0 para otras
+  neto: number // app − comisión = lo que entra a la cuenta de verdad
+  diferencia: number // declarado − app (faltante / pedido no cobrado)
   pct: number | null
 }
 
 export function buildControlRows(declared: DeclaredVenta[], app: AppVenta[]): ControlRow[] {
   const appByPlataforma = new Map(app.map((a) => [a.plataformaNombre, a.ventaTotal]))
+  const comisionByPlataforma = new Map(app.map((a) => [a.plataformaNombre, a.comision ?? 0]))
   const declaredByPlataforma = new Map<string, number>()
   for (const d of declared) {
     const plataforma = CANAL_A_PLATAFORMA[d.canal]
@@ -38,9 +41,10 @@ export function buildControlRows(declared: DeclaredVenta[], app: AppVenta[]): Co
   for (const plataforma of plataformas) {
     const declaradoMonto = round2(declaredByPlataforma.get(plataforma) ?? 0)
     const appMonto = round2(appByPlataforma.get(plataforma) ?? 0)
+    const comision = round2(comisionByPlataforma.get(plataforma) ?? 0)
     const diferencia = round2(declaradoMonto - appMonto)
     const pct = appMonto !== 0 ? round2((diferencia / appMonto) * 100) : null
-    result.push({ plataforma, declarado: declaradoMonto, app: appMonto, diferencia, pct })
+    result.push({ plataforma, declarado: declaradoMonto, app: appMonto, comision, neto: round2(appMonto - comision), diferencia, pct })
   }
   return result.sort((a, b) => a.plataforma.localeCompare(b.plataforma))
 }

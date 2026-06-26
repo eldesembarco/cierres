@@ -244,6 +244,8 @@ model VentaApp {
   pedidosOnline   Int         @default(0) @map("pedidos_online")
   ventaEfectivo   Decimal     @default(0) @map("venta_efectivo") @db.Decimal(14, 2)
   ventaOnline     Decimal     @default(0) @map("venta_online") @db.Decimal(14, 2)
+  // Comisión retenida por la plataforma (ej. Mercado Pago). 0 para PedidosYa/otras.
+  comision        Decimal     @default(0) @db.Decimal(14, 2)
   importacion     Importacion @relation(fields: [importacionId], references: [id])
   importacionId   Int         @map("importacion_id")
   creadoEn        DateTime    @default(now()) @map("creado_en")

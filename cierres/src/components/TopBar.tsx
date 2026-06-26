@@ -56,7 +56,7 @@ export function TopBar({
                 Importar
               </NavLink>
               <NavLink href="/control" icon={<Scale size={15} />}>
-                Control
+                Tablero
               </NavLink>
               <NavLink href="/informes" icon={<BarChart3 size={15} />}>
                 Informes
@@ -99,7 +99,7 @@ export function TopBar({
             Importar
           </NavLink>
           <NavLink href="/control" icon={<Scale size={15} />} compact>
-            Control
+            Tablero
           </NavLink>
           <NavLink href="/informes" icon={<BarChart3 size={15} />} compact>
             Informes

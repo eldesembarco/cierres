@@ -1,7 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { FileSpreadsheet, CheckCircle2, AlertCircle, Loader2, TrendingUp } from 'lucide-react'
+import { FileSpreadsheet, CheckCircle2, AlertCircle, Loader2, TrendingUp, Link2 } from 'lucide-react'
+import { mapearLocalPlataforma } from './actions'
+
+interface LocalOption {
+  id: number
+  nombre: string
+}
 
 interface ResumenLocal {
   localId: number | null
@@ -35,9 +41,19 @@ type Result = ResultOk | ResultErr
 const fmt = (n: number) =>
   n.toLocaleString('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 2 })
 
-export function MercadoPagoImport() {
+export function MercadoPagoImport({ locales }: { locales: LocalOption[] }) {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<Result | null>(null)
+  const [mapTarget, setMapTarget] = useState<Record<string, number>>({})
+  const [mapStatus, setMapStatus] = useState<Record<string, 'idle' | 'saving' | 'done' | 'error'>>({})
+
+  async function onMapear(storeId: string, storeName: string) {
+    const localId = mapTarget[storeId] ?? locales[0]?.id
+    if (!localId) return
+    setMapStatus((s) => ({ ...s, [storeId]: 'saving' }))
+    const res = await mapearLocalPlataforma({ plataformaCodigo: 'MD', restaurantId: storeId, nombre: storeName, localId })
+    setMapStatus((s) => ({ ...s, [storeId]: res.ok ? 'done' : 'error' }))
+  }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -155,17 +171,49 @@ export function MercadoPagoImport() {
 
           {sinMapear.length > 0 && (
             <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-              <p className="mb-1 font-medium">Locales sin mapear (no se cargaron):</p>
-              <ul className="list-inside list-disc">
-                {sinMapear.map((r) => (
-                  <li key={r.storeId} className="tabular-nums">
-                    {r.storeName || '(sin nombre)'} — store_id {r.storeId} · {fmt(r.brutoCobrado)}
-                  </li>
-                ))}
+              <p className="mb-2 font-medium">Locales sin mapear — asignalos a un local y reimportá:</p>
+              <ul className="flex flex-col gap-2">
+                {sinMapear.map((r) => {
+                  const st = mapStatus[r.storeId] ?? 'idle'
+                  return (
+                    <li key={r.storeId} className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-white p-2">
+                      <span className="min-w-0 flex-1">
+                        <span className="font-medium text-slate-800">{r.storeName || '(sin nombre)'}</span>
+                        <span className="text-xs text-slate-500"> · store_id {r.storeId} · </span>
+                        <span className="tabular-nums text-slate-700">{fmt(r.brutoCobrado)}</span>
+                      </span>
+                      {st === 'done' ? (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700">
+                          <CheckCircle2 size={14} /> Mapeado — reimportá el Excel
+                        </span>
+                      ) : (
+                        <>
+                          <select
+                            value={mapTarget[r.storeId] ?? ''}
+                            onChange={(e) => setMapTarget((m) => ({ ...m, [r.storeId]: Number(e.target.value) }))}
+                            className="rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-700 outline-none focus:border-blue-500"
+                          >
+                            <option value="" disabled>Elegí local…</option>
+                            {locales.map((l) => (
+                              <option key={l.id} value={l.id}>{l.nombre}</option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => onMapear(r.storeId, r.storeName)}
+                            disabled={st === 'saving' || (mapTarget[r.storeId] ?? locales[0]?.id) == null}
+                            className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                          >
+                            {st === 'saving' ? <Loader2 size={13} className="animate-spin" /> : <Link2 size={13} />}
+                            Mapear
+                          </button>
+                          {st === 'error' && <span className="text-xs text-rose-600">error</span>}
+                        </>
+                      )}
+                    </li>
+                  )
+                })}
               </ul>
-              <p className="mt-1 text-xs text-amber-700">
-                Agregá el store_id de estos locales en el mapeo (Mercado Delivery) para que se concilien.
-              </p>
             </div>
           )}
 
