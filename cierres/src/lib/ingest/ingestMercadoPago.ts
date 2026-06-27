@@ -6,7 +6,7 @@
 // contra lo declarado en el cierre; el neto y la comisión van en el resultado.
 import { prisma } from '@/lib/db'
 import { round2 } from '@/lib/money'
-import { readMpSheet, aggregateMp } from '@/lib/ingest/parseMercadoPago'
+import { parseMpFile, aggregateMp } from '@/lib/ingest/parseMercadoPago'
 
 export interface MpIngestArgs {
   fileBuffer: ArrayBuffer | Buffer
@@ -46,7 +46,7 @@ export interface MpIngestResult {
 export async function ingestMercadoPago(args: MpIngestArgs): Promise<MpIngestResult> {
   const plataforma = await prisma.plataforma.findUniqueOrThrow({ where: { codigo: 'MD' } })
 
-  const raw = await readMpSheet(args.fileBuffer)
+  const raw = await parseMpFile(args.fileBuffer)
   const grupos = aggregateMp(raw)
   if (grupos.length === 0) {
     throw new Error('No encontré operaciones en el Excel de Mercado Pago.')
@@ -99,8 +99,8 @@ export async function ingestMercadoPago(args: MpIngestArgs): Promise<MpIngestRes
       const fecha = new Date(`${g.fecha}T00:00:00.000Z`)
       await tx.ventaApp.upsert({
         where: { localId_plataformaId_fecha: { localId, plataformaId: plataforma.id, fecha } },
-        update: { pedidosOnline: g.pedidos, ventaOnline: g.brutoCobrado, pedidosEfectivo: 0, ventaEfectivo: 0, importacionId: imp.id },
-        create: { localId, plataformaId: plataforma.id, fecha, pedidosOnline: g.pedidos, ventaOnline: g.brutoCobrado, importacionId: imp.id },
+        update: { pedidosOnline: g.pedidos, ventaOnline: g.brutoCobrado, comision: g.comision, pedidosEfectivo: 0, ventaEfectivo: 0, importacionId: imp.id },
+        create: { localId, plataformaId: plataforma.id, fecha, pedidosOnline: g.pedidos, ventaOnline: g.brutoCobrado, comision: g.comision, importacionId: imp.id },
       })
     }
 

@@ -87,13 +87,13 @@ export function MercadoPagoImport({ locales }: { locales: LocalOption[] }) {
 
       <form onSubmit={onSubmit} className="flex flex-col gap-4">
         <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-slate-700">Archivo Excel (.xlsx)</span>
+          <span className="text-sm font-medium text-slate-700">Archivo (.csv o .xlsx)</span>
           <div className="flex items-center gap-2 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-3">
             <FileSpreadsheet size={18} className="shrink-0 text-slate-400" />
             <input
               name="archivo"
               type="file"
-              accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
               required
               className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-600 file:px-3 file:py-2 file:font-medium file:text-white hover:file:bg-blue-700"
             />

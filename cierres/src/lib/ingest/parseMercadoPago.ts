@@ -1,13 +1,16 @@
-// Lector del reporte "collection" de Mercado Pago (.xlsx) — la liquidación de
-// Mercado Delivery (lado plata/app). El export trae una fila por operación con el
-// local identificado (store_id + nombre), bruto, neto, comisión implícita, estado
-// (approved/refunded) y fecha. Acá lo agregamos a (store_id, fecha de venta).
+// Lector del reporte "collection" de Mercado Pago — la liquidación de Mercado
+// Delivery (lado plata/app). MP lo entrega en .xlsx O en .csv (mismo contenido):
+// `parseMpFile` detecta el formato por los bytes y usa el lector que corresponde.
+// Cada fila es una operación con el local identificado (store_id + nombre), bruto,
+// neto, comisión implícita, estado (approved/refunded) y fecha. Lo agregamos a
+// (store_id, fecha de venta).
 //
-// Diseño: `readMpSheet` (exceljs, I/O) separado de `aggregateMp` (puro, testeable).
-// Se matchean las columnas por la CLAVE de API entre paréntesis del encabezado
-// (date_created, status, transaction_amount, net_received_amount, store_id…), que
-// es estable aunque MP reordene o cambie el texto en español.
+// Diseño: lectores de I/O (`readMpSheet` exceljs / `readMpCsv` papaparse) separados
+// de `aggregateMp` (puro, testeable). Se matchean las columnas por la CLAVE de API
+// entre paréntesis del encabezado (date_created, status, transaction_amount,
+// net_received_amount, store_id…), estable aunque MP reordene o cambie el texto.
 import ExcelJS from 'exceljs'
+import Papa from 'papaparse'
 import { round2 } from '@/lib/money'
 
 export interface MpRawRow {
@@ -49,10 +52,34 @@ function cellText(v: ExcelJS.CellValue): string {
 
 function num(v: ExcelJS.CellValue): number {
   if (typeof v === 'number') return v
-  const s = cellText(v).replace(/[^\d.,-]/g, '')
-  // formato es-AR o en-US: el reporte viene "15000.00" (punto decimal).
-  const n = Number(s.includes(',') && !s.includes('.') ? s.replace(',', '.') : s.replace(/,/g, ''))
+  let s = cellText(v).replace(/[^\d.,-]/g, '').trim()
+  if (!s) return 0
+  // Soporta en-US ("1,519,950.00") y es-AR ("1.519.950,00"): el separador decimal
+  // es el ÚLTIMO . o , ; el otro símbolo son miles y se descarta.
+  const lastComma = s.lastIndexOf(',')
+  const lastDot = s.lastIndexOf('.')
+  const dec = lastComma > lastDot ? ',' : lastDot > lastComma ? '.' : ''
+  if (dec) {
+    const mil = dec === ',' ? '.' : ','
+    s = s.split(mil).join('').replace(dec, '.')
+  } else {
+    s = s.replace(/[.,]/g, '')
+  }
+  const n = Number(s)
   return Number.isFinite(n) ? n : 0
+}
+
+// Resuelve a qué campo corresponde un encabezado: por la CLAVE de API entre
+// paréntesis (estable) con respaldo en el texto en español. Sirve para .xlsx y .csv.
+function matchField(headerLower: string): keyof MpRawRow | null {
+  if (headerLower.includes('date_created') || headerLower.includes('fecha de compra')) return 'fecha'
+  if (headerLower.includes('(status)')) return 'estado'
+  if (headerLower.includes('transaction_amount') || headerLower.includes('valor del producto')) return 'bruto'
+  if (headerLower.includes('net_received_amount') || headerLower.includes('monto recibido')) return 'neto'
+  if (headerLower.includes('amount_refunded') || headerLower.includes('monto devuelto')) return 'devuelto'
+  if (headerLower.includes('(store_id)') || headerLower.includes('mero de local')) return 'storeId'
+  if (headerLower.includes('nombre del local')) return 'storeName'
+  return null
 }
 
 function parseFecha(v: ExcelJS.CellValue): string {
@@ -76,14 +103,8 @@ export async function readMpSheet(buffer: ArrayBuffer | Buffer): Promise<MpRawRo
 
   const idx: Record<string, number> = {}
   ws.getRow(1).eachCell((cell, col) => {
-    const h = cellText(cell.value).toLowerCase()
-    if (h.includes('date_created')) idx.fecha = col
-    else if (h.includes('(status)')) idx.estado = col
-    else if (h.includes('transaction_amount')) idx.bruto = col
-    else if (h.includes('net_received_amount')) idx.neto = col
-    else if (h.includes('amount_refunded')) idx.devuelto = col
-    else if (h.includes('(store_id)')) idx.storeId = col
-    else if (h.includes('nombre del local')) idx.storeName = col
+    const field = matchField(cellText(cell.value).toLowerCase())
+    if (field) idx[field] = col
   })
   for (const req of ['fecha', 'estado', 'bruto', 'neto', 'storeId'] as const) {
     if (!idx[req]) {
@@ -109,6 +130,55 @@ export async function readMpSheet(buffer: ArrayBuffer | Buffer): Promise<MpRawRo
     })
   }
   return rows
+}
+
+// Lee el reporte de MP en formato CSV (mismo contenido que el .xlsx). papaparse
+// auto-detecta el delimitador (coma o punto y coma).
+export function readMpCsv(text: string): MpRawRow[] {
+  const parsed = Papa.parse<Record<string, string>>(text, {
+    header: true,
+    skipEmptyLines: true,
+    transformHeader: (h) => h.trim(),
+  })
+  const headers = parsed.meta.fields ?? []
+  const keyOf: Partial<Record<keyof MpRawRow, string>> = {}
+  for (const h of headers) {
+    const field = matchField(h.toLowerCase())
+    if (field && !keyOf[field]) keyOf[field] = h
+  }
+  for (const req of ['fecha', 'estado', 'bruto', 'neto', 'storeId'] as const) {
+    if (!keyOf[req]) {
+      throw new Error(
+        'El CSV no parece un reporte "collection" de Mercado Pago (falta alguna columna esperada: Fecha de compra, Estado, Valor del producto, Monto recibido o Número de local).',
+      )
+    }
+  }
+  const rows: MpRawRow[] = []
+  for (const r of parsed.data) {
+    const storeId = (r[keyOf.storeId!] ?? '').trim()
+    if (!storeId) continue
+    rows.push({
+      fecha: parseFecha(r[keyOf.fecha!] ?? ''),
+      estado: (r[keyOf.estado!] ?? '').trim().toLowerCase(),
+      storeId,
+      storeName: keyOf.storeName ? (r[keyOf.storeName] ?? '').trim() : '',
+      bruto: num(r[keyOf.bruto!] ?? '0'),
+      neto: num(r[keyOf.neto!] ?? '0'),
+      devuelto: keyOf.devuelto ? num(r[keyOf.devuelto] ?? '0') : 0,
+    })
+  }
+  return rows
+}
+
+// Detecta el formato por los bytes: el .xlsx es un zip (empieza con "PK"); cualquier
+// otra cosa la tratamos como CSV (texto). Así el importador acepta los dos.
+export async function parseMpFile(buffer: ArrayBuffer | Buffer): Promise<MpRawRow[]> {
+  const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer)
+  if (bytes[0] === 0x50 && bytes[1] === 0x4b) {
+    return readMpSheet(buffer) // PK → .xlsx (zip)
+  }
+  // CSV (texto). TextDecoder descarta el BOM si lo trae.
+  return readMpCsv(new TextDecoder('utf-8').decode(bytes))
 }
 
 // Agrega por (store_id, fecha). Solo las operaciones APROBADAS cuentan como plata
