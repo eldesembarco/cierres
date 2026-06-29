@@ -80,3 +80,37 @@ describe('readMpCsv', () => {
     expect(() => readMpCsv('col1,col2\na,b')).toThrow()
   })
 })
+
+describe('reporte Liberaciones (settlement)', () => {
+  const HEAD = 'NOMBRE DE LOCAL,FECHA DE ORIGEN,FECHA DE LIQUIDACIÓN,TIPO DE OPERACIÓN,ID DEL PAQUETE,VALOR DE LA COMPRA,CANAL DE VENTA,COMISIONES + IVA,MONTO NETO DE LA OPERACIÓN'
+  const csv = [
+    HEAD,
+    'El Desembarco San Telmo,2026-06-28T10:00:00.000-03:00,2026-07-01,Pago aprobado,1,12480.00,Delivery,-4427.14,7977.98',
+    'El Desembarco San Telmo,2026-06-28T11:00:00.000-03:00,2026-07-01,Pago aprobado,2,10000.00,Delivery,-2000.00,8000.00',
+    'El Desembarco San Telmo,2026-06-28T12:00:00.000-03:00,2026-06-28,Devolución de dinero,3,-5000.00,Delivery,0,-4900.00',
+    'El Desembarco San Telmo,2026-06-28T13:00:00.000-03:00,2026-06-28,Reclamo,4,-3000.00,Delivery,0,-2950.00',
+    'El Desembarco San Telmo,2026-06-28T14:00:00.000-03:00,2026-06-30,PAYOUTS,5,-100000.00,,0,-100000.00',
+    'El Desembarco San Telmo,2026-06-28T15:00:00.000-03:00,2026-06-30,Pago de envío,6,500.00,Delivery,0,500.00',
+  ].join('\n')
+
+  it('detecta el formato Liberaciones y mapea por nombre de local', () => {
+    const rows = readMpCsv(csv)
+    // 2 aprobadas + 2 devoluciones (PAYOUTS y Pago de envío se descartan)
+    expect(rows).toHaveLength(4)
+    expect(rows[0].storeName).toBe('El Desembarco San Telmo')
+    expect(rows[0].storeId).toBe('')
+    expect(rows[0].fecha).toBe('2026-06-28')
+  })
+
+  it('agrega: aprobadas suman, devoluciones aparte, retiros/logística excluidos', () => {
+    const g = aggregateMp(readMpCsv(csv))
+    expect(g).toHaveLength(1)
+    const t = g[0]
+    expect(t.brutoCobrado).toBe(22480) // 12480 + 10000
+    expect(t.netoLiquidado).toBe(15977.98) // 7977.98 + 8000
+    expect(t.comision).toBe(6502.02) // 22480 - 15977.98
+    expect(t.pedidos).toBe(2)
+    expect(t.devoluciones).toBe(2) // Devolución + Reclamo
+    expect(t.devueltoMonto).toBe(8000) // |−5000| + |−3000|
+  })
+})

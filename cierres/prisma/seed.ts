@@ -77,6 +77,44 @@ async function main() {
     })
   }
 
+  // Locales propios que aparecen en los reportes de Liberaciones de Mercado Pago.
+  // (El reporte de settlement identifica el local por NOMBRE, no por store_id.)
+  const propios = [
+    { id: 6, nombre: 'Desembarco Boedo' },
+    { id: 7, nombre: 'Desembarco Olivos' },
+    { id: 8, nombre: 'Desembarco Morón' },
+    { id: 9, nombre: 'Desembarco Ramos Mejía' },
+    { id: 10, nombre: 'Desembarco Pacífico' },
+    { id: 11, nombre: 'Desembarco Villa Devoto' },
+    { id: 4, nombre: 'Desembarco Villa Urquiza' }, // ya existe; se deja consistente
+  ]
+  for (const p of propios) {
+    await prisma.local.upsert({
+      where: { id: p.id },
+      update: {},
+      create: { id: p.id, nombre: p.nombre, marcaId: desembarco.id, ciudad: 'CABA', fondoFijoDefault: 300000 },
+    })
+  }
+
+  // Mapeo Mercado Delivery por NOMBRE (como viene en el reporte de Liberaciones).
+  const mapeosNombre = [
+    { localId: 1, name: 'El Desembarco San Telmo' },
+    { localId: 4, name: 'El Desembarco Villa Urquiza' },
+    { localId: 6, name: 'El Desembarco Boedo' },
+    { localId: 7, name: 'El Desembarco Olivos' },
+    { localId: 8, name: 'El Desembarco Moron' },
+    { localId: 9, name: 'El Desembarco Ramos Mejia' },
+    { localId: 10, name: 'El Desembarco Pacifico' },
+    { localId: 11, name: 'El Desembarco Villa Devoto' },
+  ]
+  for (const m of mapeosNombre) {
+    await prisma.localPlataforma.upsert({
+      where: { plataformaId_restaurantIdExterno: { plataformaId: md.id, restaurantIdExterno: m.name } },
+      update: { localId: m.localId, nombreExterno: m.name },
+      create: { localId: m.localId, plataformaId: md.id, restaurantIdExterno: m.name, nombreExterno: m.name },
+    })
+  }
+
   // Usuarios
   const adminHash = await bcrypt.hash('admin1234', 10)
   const encHash = await bcrypt.hash('santelmo1234', 10)

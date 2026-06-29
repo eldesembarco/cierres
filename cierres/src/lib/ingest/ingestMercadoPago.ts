@@ -1,9 +1,10 @@
-// Ingesta del reporte "collection" de Mercado Pago → ventas_app (plataforma
-// "Mercado Delivery"). Reusa el mismo modelo que PedidosYa: mapea store_id →
-// local vía local_plataforma, hace upsert de ventas_app por (local, plataforma,
-// fecha de venta) y registra los store_id sin mapear. La "venta" guardada es el
-// BRUTO cobrado de operaciones aprobadas (lo que se cobró), para que cuadre 1:1
-// contra lo declarado en el cierre; el neto y la comisión van en el resultado.
+// Ingesta de los reportes de Mercado Pago (collection o Liberaciones) → ventas_app
+// (plataforma "Mercado Delivery"). Reusa el modelo de PedidosYa: mapea el local vía
+// local_plataforma — por store_id (collection) O por NOMBRE (Liberaciones) — y hace
+// upsert de ventas_app por (local, plataforma, fecha de venta). La "venta" guardada
+// es el BRUTO cobrado de operaciones aprobadas, para que cuadre 1:1 contra lo
+// declarado en el cierre; el neto y la comisión van en el resultado. Los identificadores
+// sin mapear quedan registrados para asignarlos a un local desde la UI.
 import { prisma } from '@/lib/db'
 import { round2 } from '@/lib/money'
 import { parseMpFile, aggregateMp } from '@/lib/ingest/parseMercadoPago'
@@ -17,6 +18,7 @@ export interface MpIngestArgs {
 export interface MpResumenLocal {
   localId: number | null
   localNombre: string | null
+  externalId: string // identificador externo usado para mapear (store_id o nombre)
   storeId: string
   storeName: string
   fecha: string
@@ -56,14 +58,25 @@ export async function ingestMercadoPago(args: MpIngestArgs): Promise<MpIngestRes
     prisma.localPlataforma.findMany({ where: { plataformaId: plataforma.id, activo: true } }),
     prisma.local.findMany({ select: { id: true, nombre: true } }),
   ])
-  const localByStore = new Map(mapeos.map((m) => [m.restaurantIdExterno, m.localId]))
+  const localByExterno = new Map(mapeos.map((m) => [m.restaurantIdExterno, m.localId]))
   const nombreById = new Map(locales.map((l) => [l.id, l.nombre]))
+  // Normaliza nombres (minúsculas, sin acentos, espacios colapsados) para que el
+  // mapeo por nombre del reporte de Liberaciones no falle por un acento o mayúscula.
+  const norm = (s: string) =>
+    s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim()
+  const localByExternoNorm = new Map(mapeos.map((m) => [norm(m.restaurantIdExterno), m.localId]))
+  // El local se busca por store_id (collection) O por nombre (Liberaciones), exacto o normalizado.
+  const findLocal = (g: { storeId: string; storeName: string }): number | undefined =>
+    localByExterno.get(g.storeId) ??
+    localByExterno.get(g.storeName) ??
+    (g.storeName ? localByExternoNorm.get(norm(g.storeName)) : undefined)
 
   const resumen: MpResumenLocal[] = grupos.map((g) => {
-    const localId = localByStore.get(g.storeId) ?? null
+    const localId = findLocal(g) ?? null
     return {
       localId,
       localNombre: localId != null ? nombreById.get(localId) ?? null : null,
+      externalId: g.storeId || g.storeName,
       storeId: g.storeId,
       storeName: g.storeName,
       fecha: g.fecha,
@@ -94,7 +107,7 @@ export async function ingestMercadoPago(args: MpIngestArgs): Promise<MpIngestRes
     })
 
     for (const g of grupos) {
-      const localId = localByStore.get(g.storeId)
+      const localId = findLocal(g)
       if (localId === undefined) continue
       const fecha = new Date(`${g.fecha}T00:00:00.000Z`)
       await tx.ventaApp.upsert({
@@ -105,19 +118,19 @@ export async function ingestMercadoPago(args: MpIngestArgs): Promise<MpIngestRes
     }
 
     if (sinMapear.length > 0) {
-      // Agregamos por store_id (puede repetirse en varias fechas).
+      // Agregamos por identificador externo (store_id o nombre; puede repetirse en varias fechas).
       const agg = new Map<string, { nombre: string; bruto: number }>()
       for (const s of sinMapear) {
-        const a = agg.get(s.storeId) ?? { nombre: s.storeName, bruto: 0 }
+        const a = agg.get(s.externalId) ?? { nombre: s.storeName, bruto: 0 }
         a.bruto += s.brutoCobrado
         if (!a.nombre && s.storeName) a.nombre = s.storeName
-        agg.set(s.storeId, a)
+        agg.set(s.externalId, a)
       }
       await tx.importacionSinMapear.createMany({
-        data: [...agg.entries()].map(([storeId, a]) => ({
+        data: [...agg.entries()].map(([externalId, a]) => ({
           importacionId: imp.id,
           plataformaId: plataforma.id,
-          restaurantIdExterno: storeId,
+          restaurantIdExterno: externalId,
           nombreExterno: a.nombre,
           ventaEfectivo: 0,
           ventaOnline: round2(a.bruto),

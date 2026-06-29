@@ -12,6 +12,7 @@ interface LocalOption {
 interface ResumenLocal {
   localId: number | null
   localNombre: string | null
+  externalId: string
   storeId: string
   storeName: string
   fecha: string
@@ -47,12 +48,12 @@ export function MercadoPagoImport({ locales }: { locales: LocalOption[] }) {
   const [mapTarget, setMapTarget] = useState<Record<string, number>>({})
   const [mapStatus, setMapStatus] = useState<Record<string, 'idle' | 'saving' | 'done' | 'error'>>({})
 
-  async function onMapear(storeId: string, storeName: string) {
-    const localId = mapTarget[storeId] ?? locales[0]?.id
+  async function onMapear(externalId: string, storeName: string) {
+    const localId = mapTarget[externalId] ?? locales[0]?.id
     if (!localId) return
-    setMapStatus((s) => ({ ...s, [storeId]: 'saving' }))
-    const res = await mapearLocalPlataforma({ plataformaCodigo: 'MD', restaurantId: storeId, nombre: storeName, localId })
-    setMapStatus((s) => ({ ...s, [storeId]: res.ok ? 'done' : 'error' }))
+    setMapStatus((s) => ({ ...s, [externalId]: 'saving' }))
+    const res = await mapearLocalPlataforma({ plataformaCodigo: 'MD', restaurantId: externalId, nombre: storeName || externalId, localId })
+    setMapStatus((s) => ({ ...s, [externalId]: res.ok ? 'done' : 'error' }))
   }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -152,7 +153,7 @@ export function MercadoPagoImport({ locales }: { locales: LocalOption[] }) {
                 </thead>
                 <tbody>
                   {mapeados.map((r) => (
-                    <tr key={`${r.storeId}-${r.fecha}`} className="border-b border-emerald-100 last:border-0">
+                    <tr key={`${r.externalId}-${r.fecha}`} className="border-b border-emerald-100 last:border-0">
                       <td className="py-2 pr-3 font-medium text-slate-900">{r.localNombre}</td>
                       <td className="py-2 px-3 tabular-nums text-slate-600">{r.fecha}</td>
                       <td className="py-2 px-3 text-right tabular-nums text-slate-700">{fmt(r.brutoCobrado)}</td>
@@ -174,12 +175,13 @@ export function MercadoPagoImport({ locales }: { locales: LocalOption[] }) {
               <p className="mb-2 font-medium">Locales sin mapear — asignalos a un local y reimportá:</p>
               <ul className="flex flex-col gap-2">
                 {sinMapear.map((r) => {
-                  const st = mapStatus[r.storeId] ?? 'idle'
+                  const st = mapStatus[r.externalId] ?? 'idle'
                   return (
-                    <li key={r.storeId} className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-white p-2">
+                    <li key={r.externalId} className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-white p-2">
                       <span className="min-w-0 flex-1">
-                        <span className="font-medium text-slate-800">{r.storeName || '(sin nombre)'}</span>
-                        <span className="text-xs text-slate-500"> · store_id {r.storeId} · </span>
+                        <span className="font-medium text-slate-800">{r.storeName || r.externalId || '(sin nombre)'}</span>
+                        {r.storeId && <span className="text-xs text-slate-500"> · store_id {r.storeId}</span>}
+                        <span className="text-xs text-slate-500"> · </span>
                         <span className="tabular-nums text-slate-700">{fmt(r.brutoCobrado)}</span>
                       </span>
                       {st === 'done' ? (
@@ -189,8 +191,8 @@ export function MercadoPagoImport({ locales }: { locales: LocalOption[] }) {
                       ) : (
                         <>
                           <select
-                            value={mapTarget[r.storeId] ?? ''}
-                            onChange={(e) => setMapTarget((m) => ({ ...m, [r.storeId]: Number(e.target.value) }))}
+                            value={mapTarget[r.externalId] ?? ''}
+                            onChange={(e) => setMapTarget((m) => ({ ...m, [r.externalId]: Number(e.target.value) }))}
                             className="rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-700 outline-none focus:border-blue-500"
                           >
                             <option value="" disabled>Elegí local…</option>
@@ -200,8 +202,8 @@ export function MercadoPagoImport({ locales }: { locales: LocalOption[] }) {
                           </select>
                           <button
                             type="button"
-                            onClick={() => onMapear(r.storeId, r.storeName)}
-                            disabled={st === 'saving' || (mapTarget[r.storeId] ?? locales[0]?.id) == null}
+                            onClick={() => onMapear(r.externalId, r.storeName)}
+                            disabled={st === 'saving' || (mapTarget[r.externalId] ?? locales[0]?.id) == null}
                             className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
                           >
                             {st === 'saving' ? <Loader2 size={13} className="animate-spin" /> : <Link2 size={13} />}
