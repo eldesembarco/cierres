@@ -1,0 +1,179 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-jetbrains-mono);
+  --font-heading: var(--font-inter);
+
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+
+  /* Brand El Desembarco — siempre disponibles */
+  --color-brand-amber: var(--brand-amber);
+  --color-brand-amber-deep: var(--brand-amber-deep);
+  --color-brand-amber-soft: var(--brand-amber-soft);
+  --color-brand-bottle: var(--brand-bottle);
+  --color-brand-bottle-soft: var(--brand-bottle-soft);
+  --color-brand-rojo: var(--brand-rojo);
+  --color-brand-rojo-soft: var(--brand-rojo-soft);
+  --color-brand-amarillo: var(--brand-amarillo);
+
+  /* Apps externas (no cambian con el tema) */
+  --color-app-pedidosya: #fa0050;
+  --color-app-rappi: #ff1744;
+  --color-app-mp: #00b1ea;
+  --color-app-propio: #2e5d3f;
+}
+
+:root {
+  /* Brand El Desembarco */
+  --brand-amber: #f5a623;
+  --brand-amber-deep: #d08813;
+  --brand-amber-soft: #fce6ba;
+  --brand-bottle: #2e7d4b;
+  --brand-bottle-soft: #d6eadc;
+  --brand-rojo: #d62828;
+  --brand-rojo-soft: #f8d7d7;
+  --brand-amarillo: #f5a623;
+
+  /* Surfaces — warm beige light */
+  --background: #f5f3ee;
+  --foreground: #1a1714;
+  --card: #ffffff;
+  --card-foreground: #1a1714;
+  --popover: #ffffff;
+  --popover-foreground: #1a1714;
+  --primary: #1a1714;
+  --primary-foreground: #f5f3ee;
+  --secondary: #eae7df;
+  --secondary-foreground: #1a1714;
+  --muted: #eae7df;
+  --muted-foreground: #7a7065;
+  --accent: #fce6ba;
+  --accent-foreground: #1a1714;
+  --destructive: #d62828;
+  --border: #e2ded4;
+  --input: #e2ded4;
+  --ring: #f5a623;
+  --chart-1: #f5a623;
+  --chart-2: #2e7d4b;
+  --chart-3: #d62828;
+  --chart-4: #00b1ea;
+  --chart-5: #4a413a;
+  --radius: 0.625rem;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #1a1714;
+  --sidebar-primary: #f5a623;
+  --sidebar-primary-foreground: #1a1714;
+  --sidebar-accent: #fce6ba;
+  --sidebar-accent-foreground: #1a1714;
+  --sidebar-border: #e2ded4;
+  --sidebar-ring: #f5a623;
+}
+
+.dark {
+  --brand-amber: #f5a623;
+  --brand-amber-deep: #d08813;
+  --brand-amber-soft: #4a2e14;
+  --brand-bottle: #2e7d4b;
+  --brand-bottle-soft: #1b3825;
+  --brand-rojo: #d62828;
+  --brand-rojo-soft: #4a1818;
+  --brand-amarillo: #f5a623;
+
+  --background: #14110e;
+  --foreground: #f4efe6;
+  --card: #25201a;
+  --card-foreground: #f4efe6;
+  --popover: #25201a;
+  --popover-foreground: #f4efe6;
+  --primary: #f5a623;
+  --primary-foreground: #14110e;
+  --secondary: #2c2620;
+  --secondary-foreground: #f4efe6;
+  --muted: #2c2620;
+  --muted-foreground: #9a8f7e;
+  --accent: #4a2e14;
+  --accent-foreground: #f4efe6;
+  --destructive: #f87171;
+  --border: #3a332b;
+  --input: #3a332b;
+  --ring: #f5a623;
+  --chart-1: #f5a623;
+  --chart-2: #4ade80;
+  --chart-3: #f87171;
+  --chart-4: #38bdf8;
+  --chart-5: #d4ccbc;
+  --sidebar: #1f1b16;
+  --sidebar-foreground: #f4efe6;
+  --sidebar-primary: #f5a623;
+  --sidebar-primary-foreground: #14110e;
+  --sidebar-accent: #4a2e14;
+  --sidebar-accent-foreground: #f4efe6;
+  --sidebar-border: #3a332b;
+  --sidebar-ring: #f5a623;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "cv11", "ss01";
+  }
+  html {
+    @apply font-sans;
+  }
+  /* tabular numerics para precios y horarios */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+    font-family: var(--font-jetbrains-mono), "Courier New", monospace;
+  }
+}
+
+@layer utilities {
+  .scroll-y { overflow-y: auto; min-height: 0; }
+  .scroll-y::-webkit-scrollbar { width: 8px; height: 8px; }
+  .scroll-y::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  .scroll-y::-webkit-scrollbar-thumb:hover { background: var(--muted-foreground); }
+}

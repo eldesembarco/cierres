@@ -1,0 +1,41 @@
+{
+  "manifest_version": 3,
+  "name": "Desembarco LucIA · Reply Helper",
+  "short_name": "LucIA",
+  "version": "0.2.0",
+  "description": "Pega borradores generados por el panel LucIA en Google Maps con 1 click. Auto-pega + auto-publica 5★ aprobadas.",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "LucIA · Borradores pendientes"
+  },
+  "permissions": ["clipboardWrite", "activeTab", "scripting", "storage", "tabs"],
+  "host_permissions": [
+    "https://desembarco-lucia.vercel.app/*",
+    "https://lucia.eldesembarco.com/*",
+    "https://www.google.com/maps/*",
+    "https://business.google.com/*",
+    "https://search.google.com/local/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.google.com/maps/*",
+        "https://business.google.com/*",
+        "https://search.google.com/local/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://business.google.com/*",
+        "https://search.google.com/local/*"
+      ],
+      "js": ["business-auto.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  }
+}

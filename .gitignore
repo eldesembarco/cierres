@@ -17,3 +17,18 @@ prisma/dev.db-journal
 # Misc
 .DS_Store
 *.log
+
+# Reforzado: secretos, cachés, pesados
+.env*
+__pycache__/
+*.pyc
+.claude/
+*.zip
+
+# Otros proyectos con su PROPIO repo git (se mantienen aparte, no embebidos)
+/desembarco-dashboard/
+/auditorias-app/
+/reporte-por-local/
+/reporte-por-local-app/
+
+/inventario-cmv/inventario/

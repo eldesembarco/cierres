@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<title>POS · El Desembarco</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="styles-screens.css" />
+
+<style>
+  body { margin: 0; background: #f0eee9; font-family: "Inter", system-ui, sans-serif; }
+  /* Inset shadow inside artboards so they look like screens */
+  .dc-card { background: var(--bg) !important; }
+</style>
+</head>
+<body>
+
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script src="data.js"></script>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="components/icons.jsx"></script>
+<script type="text/babel" src="components/topbar.jsx"></script>
+<script type="text/babel" src="components/screen-pos.jsx"></script>
+<script type="text/babel" src="components/screen-salon.jsx"></script>
+<script type="text/babel" src="components/screen-mozo.jsx"></script>
+<script type="text/babel" src="components/screen-kds.jsx"></script>
+<script type="text/babel" src="components/screen-apps.jsx"></script>
+<script type="text/babel" src="components/screen-ticket.jsx"></script>
+<script type="text/babel" src="components/screen-reportes.jsx"></script>
+
+<script type="text/babel" data-presets="react">
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "theme": "dark",
+  "density": "regular",
+  "simIncoming": false,
+  "estadoMesa5": "ocupada"
+}/*EDITMODE-END*/;
+
+function App() {
+  const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+
+  // Aplicar tweaks al :root via data-attrs
+  React.useEffect(() => {
+    document.documentElement.dataset.theme = t.theme;
+    document.documentElement.dataset.density = t.density;
+    document.body.style.background = t.theme === "dark" ? "#0a0807" : "#f0eee9";
+    // Sincronizar con las páginas fullscreen (que leen de localStorage)
+    localStorage.setItem("fs-theme", t.theme);
+    localStorage.setItem("fs-density", t.density);
+    localStorage.setItem("fs-sim-incoming", String(t.simIncoming));
+    localStorage.setItem("fs-estado-mesa5", t.estadoMesa5);
+  }, [t.theme, t.density, t.simIncoming, t.estadoMesa5]);
+
+  // Wrapper para cada artboard que aplica el tema/densidad y aísla via data-attrs
+  // (los componentes leen las CSS vars del :root)
+  return (
+    <>
+      <DesignCanvas>
+        <DCSection id="overview" title="POS · El Desembarco"
+          subtitle="Sistema POS para hamburguesería · Salón + apps de delivery (PedidosYa, Rappi, MP) · Mockups hi-fi clickeables">
+        </DCSection>
+
+        <DCSection id="caja" title="01 · POS principal (caja)"
+          subtitle="Monitor táctil 1920×1080 · Buscador prominente, categorías como chips, ticket lateral · Tocá productos para sumarlos">
+          <DCArtboard id="pos-main" label="POS principal" width={1920} height={1080} fullscreenHref="pos.html">
+            <ScreenPOS simIncoming={t.simIncoming} />
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="salon" title="02 · Salón con mapa de mesas"
+          subtitle="Disposición espacial real · Color por estado · Panel de detalle a la derecha">
+          <DCArtboard id="salon-map" label="Mapa de salón" width={1920} height={1080} fullscreenHref="salon.html">
+            <ScreenSalon estadoMesa={t.estadoMesa5} />
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="mozo" title="03 · Tablet del mozo"
+          subtitle="1280×800 horizontal · Carga rápida desde la mesa · Sheet de modificadores con tamaños y agregados">
+          <DCArtboard id="mozo-tablet" label="Carga de pedido (Mesa 5)" width={1280} height={800} fullscreenHref="mozo.html">
+            <ScreenMozo />
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="kds" title="04 · KDS de cocina"
+          subtitle="Modo oscuro permanente para cocina · Kanban Nuevo→Prep→Listo · Cronómetro grande, color por origen">
+          <DCArtboard id="kds-main" label="Kitchen Display" width={1920} height={1080} fullscreenHref="kds.html">
+            <ScreenKDS simIncoming={t.simIncoming} />
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="apps" title="05 · Pedidos de apps externas"
+          subtitle="Tabs separados PedidosYa / Rappi / MP Envíos · Lista a la izquierda, detalle completo a la derecha">
+          <DCArtboard id="apps-inbox" label="Bandeja de pedidos" width={1920} height={1080} fullscreenHref="apps.html">
+            <ScreenApps />
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="ticket" title="06 · Cierre de mesa / cobro"
+          subtitle="Preview del ticket impreso · Propina · Métodos de pago táctiles">
+          <DCArtboard id="ticket-main" label="Cobrar mesa 12" width={1920} height={1080} fullscreenHref="ticket.html">
+            <ScreenTicket />
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="reportes" title="07 · Reportes de fin de turno"
+          subtitle="Cierre Z · Ventas por hora, canal, mozo · Métodos de pago · Movimientos de caja">
+          <DCArtboard id="rep-main" label="Cierre del turno" width={1920} height={1080} fullscreenHref="reportes.html">
+            <ScreenReportes />
+          </DCArtboard>
+        </DCSection>
+
+        <DCPostIt top={20} left={1240} rotate={2} width={260}>
+          <b>Pasá el mouse</b> sobre cualquier pantalla y tocá <b>"Abrir"</b> para verla a tamaño real en su propia URL — ideal para abrir en un monitor o tablet de verdad ✦
+        </DCPostIt>
+      </DesignCanvas>
+
+      <TweaksPanel title="Tweaks">
+        <TweakSection label="Apariencia" />
+        <TweakRadio label="Tema" value={t.theme}
+          options={[{ value: "light", label: "Claro" }, { value: "dark", label: "Oscuro" }]}
+          onChange={(v) => setTweak("theme", v)} />
+        <TweakRadio label="Densidad" value={t.density}
+          options={[
+            { value: "compact", label: "Compacto" },
+            { value: "regular", label: "Normal" },
+            { value: "comfy", label: "Amplio" },
+          ]}
+          onChange={(v) => setTweak("density", v)} />
+        <TweakSection label="Simulación" />
+        <TweakToggle label="Pedido entrante de app" value={t.simIncoming}
+          onChange={(v) => setTweak("simIncoming", v)} />
+        <TweakSelect label="Estado mesa 5" value={t.estadoMesa5}
+          options={[
+            { value: "libre", label: "Libre" },
+            { value: "esperando", label: "Esperando pedido" },
+            { value: "ocupada", label: "Ocupada (con pedido)" },
+            { value: "porPagar", label: "Por cobrar" },
+          ]}
+          onChange={(v) => setTweak("estadoMesa5", v)} />
+      </TweaksPanel>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+
+</body>
+</html>

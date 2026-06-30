@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>LucIA · Borradores</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --color-ink: #1a0f0a;
+      --color-paper: #f4ead5;
+      --color-paper-dark: #e8dcc0;
+      --color-wood: #2d1810;
+      --color-wood-light: #4a2c1a;
+      --color-ember: #c8331e;
+      --color-ember-dark: #8b1f0f;
+      --color-gold: #d4a017;
+      --color-bone: #faf3e0;
+      --color-moss: #5a7d3a;
+      --color-moss-dark: #3d5424;
+    }
+    * { box-sizing: border-box; }
+    body {
+      width: 380px;
+      max-height: 600px;
+      margin: 0;
+      background: var(--color-paper);
+      color: var(--color-ink);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      overflow-y: auto;
+    }
+    header {
+      background: var(--color-wood);
+      color: var(--color-bone);
+      padding: 12px 16px;
+      border-bottom: 4px double var(--color-gold);
+    }
+    header h1 {
+      margin: 0;
+      font-family: 'Cinzel', serif;
+      font-size: 14px;
+      letter-spacing: 0.08em;
+      color: var(--color-gold);
+    }
+    header .subtitle {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      opacity: 0.7;
+      margin-top: 2px;
+    }
+    .content { padding: 12px 16px; }
+    .empty {
+      padding: 40px 20px;
+      text-align: center;
+      color: var(--color-wood-light);
+    }
+    .empty-ornament {
+      font-family: 'Cinzel', serif;
+      font-size: 32px;
+      color: var(--color-gold);
+      margin-bottom: 8px;
+    }
+    .draft-card {
+      background: var(--color-bone);
+      border: 1px solid var(--color-paper-dark);
+      padding: 10px 12px;
+      margin-bottom: 10px;
+      border-radius: 2px;
+    }
+    .draft-card.urgent {
+      border-color: var(--color-ember);
+      border-left-width: 3px;
+    }
+    .draft-card.approved {
+      border-left: 3px solid var(--color-moss);
+    }
+    .draft-card .meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-wood-light);
+      margin-bottom: 6px;
+    }
+    .draft-card .author {
+      font-weight: 700;
+      color: var(--color-ink);
+      font-family: 'DM Sans', sans-serif;
+      text-transform: none;
+      letter-spacing: 0;
+      font-size: 13px;
+    }
+    .draft-card .stars { color: var(--color-gold); }
+    .draft-card .review-text {
+      font-style: italic;
+      color: var(--color-wood);
+      font-size: 12px;
+      padding-left: 8px;
+      border-left: 2px solid var(--color-paper-dark);
+      margin: 6px 0;
+    }
+    .draft-card .draft-text {
+      font-size: 13px;
+      color: var(--color-ink);
+      margin: 8px 0;
+      padding: 6px 8px;
+      background: var(--color-paper);
+      border-left: 2px solid var(--color-moss);
+    }
+    .draft-card .actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    button {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 6px 10px;
+      border: 1px solid var(--color-wood);
+      background: var(--color-wood);
+      color: var(--color-bone);
+      cursor: pointer;
+    }
+    button.secondary {
+      background: transparent;
+      color: var(--color-wood);
+    }
+    button.success {
+      background: var(--color-moss);
+      border-color: var(--color-moss);
+    }
+    button.auto-paste {
+      background: var(--color-gold);
+      border-color: var(--color-gold);
+      color: var(--color-ink);
+      font-weight: 700;
+    }
+    button.auto-paste.success {
+      background: var(--color-ember);
+      border-color: var(--color-ember);
+      color: var(--color-bone);
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .login-prompt {
+      padding: 30px 20px;
+      text-align: center;
+    }
+    .login-prompt a {
+      display: inline-block;
+      padding: 8px 16px;
+      background: var(--color-wood);
+      color: var(--color-bone);
+      text-decoration: none;
+      font-family: 'JetBrains Mono', monospace;
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      margin-top: 12px;
+    }
+    .toast {
+      position: fixed;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--color-moss);
+      color: var(--color-bone);
+      padding: 8px 16px;
+      border-radius: 2px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      pointer-events: none;
+    }
+    .toast.show { opacity: 1; }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      padding: 10px 0;
+      border-bottom: 1px dashed var(--color-paper-dark);
+      margin-bottom: 12px;
+    }
+    .stat {
+      text-align: center;
+    }
+    .stat-num {
+      font-family: 'Cinzel', serif;
+      font-size: 22px;
+      font-weight: 900;
+      line-height: 1;
+    }
+    .stat-num.urgent { color: var(--color-ember-dark); }
+    .stat-num.pending { color: var(--color-gold); }
+    .stat-num.approved { color: var(--color-moss-dark); }
+    .stat-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--color-wood-light);
+      margin-top: 2px;
+    }
+    .filter-bar {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 10px;
+    }
+    .filter-bar button {
+      flex: 1;
+      padding: 4px 6px;
+      border: 1px solid var(--color-wood);
+      background: transparent;
+      color: var(--color-wood);
+      font-size: 10px;
+    }
+    .filter-bar button.active {
+      background: var(--color-wood);
+      color: var(--color-bone);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>El Desembarco LucIA</h1>
+    <div class="subtitle">Reply Helper · v0.2 · Auto-paste</div>
+  </header>
+  <div class="content" id="root">
+    <div class="empty">
+      <div class="empty-ornament">◆</div>
+      Cargando…
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+  <script src="popup.js"></script>
+</body>
+</html>

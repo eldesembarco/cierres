@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<title>Métricas disponibles · PedidosYa vs Rappi · El Desembarco</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root {
+    --ink: #1a1714;
+    --ink-2: #4a413a;
+    --ink-3: #7a7065;
+    --rule: #d8d2c4;
+    --rule-soft: #ebe6d8;
+    --bg: #fbf8f1;
+    --amber: #d08813;
+    --check: #2e7d4b;
+    --warn: #a04020;
+    --py: #fa0050;
+    --rappi: #ff1744;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font: 11pt/1.45 -apple-system, "Segoe UI", "Inter", system-ui, sans-serif;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .page {
+    max-width: 21cm;
+    margin: 0 auto;
+    padding: 1.4cm 1.6cm;
+    background: #fff;
+    box-shadow: 0 2px 12px rgba(0,0,0,.08);
+  }
+  .toolbar {
+    position: sticky; top: 0;
+    background: #fff8e6;
+    border-bottom: 1px solid var(--rule);
+    padding: 10px 16px;
+    display: flex; align-items: center; gap: 12px;
+    font-size: 10pt;
+    color: var(--ink-2);
+    z-index: 10;
+  }
+  .toolbar button {
+    background: var(--ink); color: #fff;
+    border: 0; padding: 7px 14px;
+    border-radius: 6px;
+    font-weight: 700; font-size: 10pt;
+    cursor: pointer;
+  }
+  .toolbar button:hover { background: var(--amber); }
+  .toolbar .hint { font-size: 9pt; color: var(--ink-3); }
+
+  h1 {
+    font-size: 22pt; margin: 0 0 4px;
+    letter-spacing: -.01em;
+  }
+  h1 .sub {
+    display: block;
+    font-size: 11pt;
+    font-weight: 400;
+    color: var(--ink-3);
+    letter-spacing: 0;
+    margin-top: 2px;
+  }
+  h2 {
+    font-size: 14pt;
+    margin: 24px 0 8px;
+    padding-bottom: 4px;
+    border-bottom: 2px solid var(--ink);
+  }
+  h3 {
+    font-size: 11pt;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--amber);
+    margin: 18px 0 6px;
+  }
+  .meta {
+    display: flex; justify-content: space-between;
+    color: var(--ink-3); font-size: 9pt;
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    padding: 6px 0;
+    margin: 12px 0 18px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 6px 0 12px;
+    font-size: 10pt;
+  }
+  th, td {
+    text-align: left;
+    padding: 5px 8px;
+    border-bottom: 1px solid var(--rule-soft);
+    vertical-align: top;
+  }
+  thead th {
+    background: var(--ink);
+    color: #fff;
+    font-weight: 700;
+    font-size: 8.5pt;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    padding: 6px 8px;
+  }
+  thead .col-py { background: var(--py); }
+  thead .col-rappi { background: var(--rappi); }
+  th:first-child, td:first-child {
+    font-weight: 600;
+    color: var(--ink-2);
+    width: 28%;
+  }
+  td code {
+    background: #f3eedf;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-size: 9pt;
+    font-family: "JetBrains Mono", Menlo, Consolas, monospace;
+  }
+  .check { color: var(--check); font-weight: 700; }
+  .warn { color: var(--warn); font-weight: 700; }
+  .na { color: var(--ink-3); font-style: italic; font-size: 9.5pt; }
+
+  ul { margin: 4px 0 12px 18px; padding: 0; }
+  ul li { margin: 2px 0; }
+
+  .cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin: 8px 0 12px;
+  }
+  .card {
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 10px 12px;
+    background: #fdfcf7;
+    page-break-inside: avoid;
+  }
+  .card h4 {
+    font-size: 10pt;
+    margin: 0 0 6px;
+    padding-bottom: 4px;
+    border-bottom: 1px dashed var(--rule);
+  }
+  .card.py h4 { color: var(--py); }
+  .card.rappi h4 { color: var(--rappi); }
+  .card ul { margin: 0; padding-left: 16px; }
+  .card li { font-size: 9pt; line-height: 1.4; }
+  .card code {
+    background: #f0e9d5;
+    padding: 0 3px;
+    border-radius: 2px;
+    font-size: 8.5pt;
+  }
+
+  .links {
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin: 8px 0 16px;
+    background: #fafaf3;
+    page-break-inside: avoid;
+  }
+  .links h3 {
+    margin-top: 0;
+    color: var(--amber);
+  }
+  .links table { margin: 4px 0 0; }
+  .links td { font-size: 9pt; padding: 3px 6px; }
+  .links td:first-child { width: 40%; }
+  .links a { color: var(--ink-2); word-break: break-all; }
+
+  .footer {
+    margin-top: 24px;
+    padding-top: 10px;
+    border-top: 1px solid var(--rule);
+    font-size: 8.5pt;
+    color: var(--ink-3);
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .quick-wins {
+    background: #fef6e0;
+    border-left: 4px solid var(--amber);
+    padding: 12px 16px;
+    margin: 14px 0;
+    page-break-inside: avoid;
+  }
+  .quick-wins h2 { margin: 0 0 8px; border: 0; font-size: 13pt; }
+  .quick-wins ol { margin: 0; padding-left: 22px; }
+  .quick-wins ol li { margin: 4px 0; font-size: 10pt; }
+
+  .pill {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 8.5pt;
+    font-weight: 700;
+    letter-spacing: .03em;
+  }
+  .pill.py { background: var(--py); color: #fff; }
+  .pill.rappi { background: var(--rappi); color: #fff; }
+
+  /* Print rules */
+  @media print {
+    @page { size: A4; margin: 1.2cm 1.4cm; }
+    body { background: #fff; box-shadow: none; }
+    .toolbar { display: none; }
+    .page { box-shadow: none; padding: 0; max-width: 100%; }
+    h2 { page-break-after: avoid; }
+    .links, .quick-wins, .card, table { page-break-inside: avoid; }
+    a { color: var(--ink); text-decoration: none; }
+    a:after { content: " (" attr(href) ")"; font-size: 8pt; color: var(--ink-3); }
+    .links a:after { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <button onclick="window.print()">🖨 Imprimir / Guardar PDF</button>
+  <span class="hint">Atajo: Ctrl+P (Cmd+P en Mac). Para PDF elegí "Guardar como PDF" en el destino.</span>
+</div>
+
+<div class="page">
+
+<h1>
+  Métricas disponibles · PedidosYa <span style="color:var(--ink-3)">vs</span> Rappi
+  <span class="sub">Cheat-sheet de qué data oficial provee cada vendor para alimentar reportes · El Desembarco POS</span>
+</h1>
+
+<div class="meta">
+  <span>📅 Mayo 2026</span>
+  <span>📁 docs/METRICAS_DISPONIBLES.md</span>
+  <span>🌐 pos-desembarco.vercel.app</span>
+</div>
+
+<!-- ======================================================== -->
+<h2>📚 Documentación oficial</h2>
+
+<div class="links">
+  <h3>PedidosYa (Delivery Hero)</h3>
+  <table>
+    <tr><td>Plugin API (lo que ELLOS llaman)</td><td><a href="https://integration-middleware.stg.restaurant-partners.com/apidocs/pos-plugin-api">stg.restaurant-partners.com/apidocs/pos-plugin-api</a></td></tr>
+    <tr><td>Middleware API (lo que NOSOTROS llamamos)</td><td><a href="https://integration-middleware.stg.restaurant-partners.com/apidocs/pos-middleware-api">stg.restaurant-partners.com/apidocs/pos-middleware-api</a></td></tr>
+    <tr><td><strong>POS Order Report service</strong> (key reportes)</td><td><a href="https://integration-middleware.stg.restaurant-partners.com/apidocs/pos-middleware-api#tag/POS-Order-Report-service">…/pos-middleware-api#tag/POS-Order-Report-service</a></td></tr>
+    <tr><td>Get List of Order Ids</td><td><a href="https://integration-middleware.stg.restaurant-partners.com/apidocs/pos-middleware-api#operation/Get%20List%20of%20Order%20Ids">…/operation/Get%20List%20of%20Order%20Ids</a></td></tr>
+    <tr><td>Get Order Details</td><td><a href="https://integration-middleware.stg.restaurant-partners.com/apidocs/pos-middleware-api#operation/Get%20Order%20Details">…/operation/Get%20Order%20Details</a></td></tr>
+  </table>
+  <h3 style="margin-top:14px">Rappi (Restaurants Public API)</h3>
+  <table>
+    <tr><td>Home dev portal</td><td><a href="https://dev-portal.rappi.com/es/">dev-portal.rappi.com/es/</a></td></tr>
+    <tr><td>Authentication process</td><td><a href="https://dev-portal.rappi.com/es/authentication-process/">dev-portal.rappi.com/es/authentication-process/</a></td></tr>
+    <tr><td>Self-onboarding (necesita TAM)</td><td><a href="https://dev-portal.rappi.com/es/self-onboarding/">dev-portal.rappi.com/es/self-onboarding/</a></td></tr>
+    <tr><td>Managing user orders</td><td><a href="https://dev-portal.rappi.com/es/managing-user-orders/">dev-portal.rappi.com/es/managing-user-orders/</a></td></tr>
+    <tr><td>Webhook events</td><td><a href="https://dev-portal.rappi.com/es/webhook-events/">dev-portal.rappi.com/es/webhook-events/</a></td></tr>
+    <tr><td><strong>API Reference: Orders</strong> (key reportes)</td><td><a href="https://dev-portal.rappi.com/es/api-reference/orders/">dev-portal.rappi.com/es/api-reference/orders/</a></td></tr>
+    <tr><td>Managing menus</td><td><a href="https://dev-portal.rappi.com/es/managing-store-menus/">dev-portal.rappi.com/es/managing-store-menus/</a></td></tr>
+    <tr><td>Managing availability</td><td><a href="https://dev-portal.rappi.com/es/managing-availability/">dev-portal.rappi.com/es/managing-availability/</a></td></tr>
+  </table>
+</div>
+
+<!-- ======================================================== -->
+<h2>🔍 Comparativa por categoría</h2>
+
+<h3>🆔 Identificación</h3>
+<table>
+  <thead><tr><th>Dato</th><th class="col-py">PedidosYa</th><th class="col-rappi">Rappi</th></tr></thead>
+  <tbody>
+    <tr><td>ID interno único</td><td><code>token</code> (UUID)</td><td><code>order_id</code></td></tr>
+    <tr><td>Código humano</td><td><code>code</code>, <code>shortCode</code></td><td><span class="na">no expone alias</span></td></tr>
+    <tr><td>Tienda / sucursal</td><td><code>platformRestaurant.id</code></td><td><code>store.internal_id</code> + <code>external_id</code></td></tr>
+    <tr><td>Timestamp creación</td><td><code>createdAt</code> ISO</td><td><code>created_at</code> ISO</td></tr>
+  </tbody>
+</table>
+
+<h3>👤 Cliente</h3>
+<table>
+  <thead><tr><th>Dato</th><th class="col-py">PedidosYa</th><th class="col-rappi">Rappi</th></tr></thead>
+  <tbody>
+    <tr><td>Nombre</td><td><code>customer.firstName</code> + <code>lastName</code></td><td><code>customer.first_name</code> + <code>last_name</code></td></tr>
+    <tr><td>Teléfono</td><td><code>customer.mobilePhone</code></td><td><code>customer.phone_number</code></td></tr>
+    <tr><td>Email</td><td><span class="check">✓</span> <code>customer.email</code></td><td><span class="na">no expone</span></td></tr>
+    <tr><td>DNI / documento</td><td>solo corporativo (<code>corporateTaxId</code>)</td><td><span class="check">✓</span> <code>customer.document_number</code></td></tr>
+    <tr><td>Tipo de usuario</td><td><code>corporateOrder</code> (bool)</td><td><span class="check">✓</span> <code>customer.user_type</code> ej <code>USER_VIP</code></td></tr>
+  </tbody>
+</table>
+
+<h3>🛒 Items / productos</h3>
+<table>
+  <thead><tr><th>Dato</th><th class="col-py">PedidosYa</th><th class="col-rappi">Rappi</th></tr></thead>
+  <tbody>
+    <tr><td>Nombre</td><td><code>products[].name</code></td><td><code>items[].name</code></td></tr>
+    <tr><td>Categoría</td><td><span class="check">✓</span> <code>products[].categoryName</code></td><td><span class="na">no expone</span></td></tr>
+    <tr><td>Cantidad</td><td><code>products[].quantity</code></td><td><code>items[].quantity</code></td></tr>
+    <tr><td>Precio unitario</td><td><span class="check">✓</span> <code>unitPrice</code></td><td>calcular <code>price/quantity</code></td></tr>
+    <tr><td>Precio total ítem</td><td><code>products[].paidPrice</code></td><td><code>items[].price</code></td></tr>
+    <tr><td>SKU/código interno</td><td><code>remoteCode</code>, <code>sku</code></td><td><code>items[].sku</code>, <code>items[].id</code></td></tr>
+    <tr><td>Toppings/agregados</td><td><code>selectedToppings[]</code> con name + price</td><td><code>items[].subitems[]</code> con SKU + price</td></tr>
+    <tr><td>Comentarios cliente</td><td><code>products[].comment</code></td><td><code>items[].comments</code></td></tr>
+    <tr><td>Variación</td><td><code>products[].variation</code></td><td>en <code>subitems</code></td></tr>
+  </tbody>
+</table>
+
+<h3>💰 Precios y totales</h3>
+<table>
+  <thead><tr><th>Dato</th><th class="col-py">PedidosYa</th><th class="col-rappi">Rappi</th></tr></thead>
+  <tbody>
+    <tr><td>Total bruto</td><td><code>price.grandTotal</code></td><td><code>totals.total_order</code></td></tr>
+    <tr><td>Total neto</td><td><code>price.totalNet</code></td><td><code>totals.total_products</code></td></tr>
+    <tr><td>IVA separado</td><td><span class="check">✓</span> <code>price.vatTotal</code></td><td><span class="warn">no separado</span></td></tr>
+    <tr><td>Delivery fee</td><td><code>price.deliveryFees[]</code> array detallado</td><td><code>charges.shipping</code></td></tr>
+    <tr><td>Service fee</td><td>oculto en <code>deliveryFee</code></td><td><span class="check">✓</span> <code>charges.service_fee</code></td></tr>
+    <tr><td>Propina al rider</td><td><code>price.riderTip</code></td><td><code>other_totals.tip</code></td></tr>
+    <tr><td>Cobrar en mano (cash)</td><td><code>collectFromCustomer</code>, <code>payRestaurant</code></td><td><code>totals.total_to_pay</code></td></tr>
+    <tr><td>Discount total</td><td><code>discounts[]</code> con sponsorships</td><td><code>totals.total_discounts</code></td></tr>
+    <tr><td>Crédito Rappi usado</td><td><span class="na">n/a</span></td><td><span class="check">✓</span> <code>other_totals.total_rappi_credits</code></td></tr>
+    <tr><td>Pago con Rappi Pay</td><td><span class="na">n/a</span></td><td><span class="check">✓</span> <code>other_totals.total_rappi_pay</code></td></tr>
+  </tbody>
+</table>
+
+<h3>🎁 Descuentos detallados</h3>
+<div class="cards">
+  <div class="card py">
+    <h4><span class="pill py">PY</span> Sponsorships explícitos</h4>
+    <ul>
+      <li><code>discounts[]</code> con <code>name</code>, <code>amount</code></li>
+      <li><code>sponsor: PLATFORM | VENDOR | THIRD_PARTY</code> con <code>amount</code> de cada uno</li>
+      <li>Sabés exactamente quién pagó cada centavo</li>
+      <li>También en <code>products[].discounts</code> y <code>selectedToppings[].discounts</code></li>
+    </ul>
+  </div>
+  <div class="card rappi">
+    <h4><span class="pill rappi">Rappi</span> Discounts segmentados</h4>
+    <ul>
+      <li><code>value</code>, <code>description</code>, <code>title</code>, <code>type</code> (shipping / offer_by_product)</li>
+      <li><code>value_type</code>: percentage / fixed</li>
+      <li><code>percentage_by_rappi</code> vs <code>percentage_by_partners</code></li>
+      <li><code>amount_by_rappi</code> vs <code>amount_by_partner</code></li>
+      <li><code>discount_product_units</code>, <code>discount_product_unit_value</code></li>
+      <li><code>includes_toppings</code>, <code>max_value</code></li>
+      <li><code>delivery_discount.total_percentage_discount</code> aparte</li>
+    </ul>
+  </div>
+</div>
+
+<h3>🚚 Delivery</h3>
+<table>
+  <thead><tr><th>Dato</th><th class="col-py">PedidosYa</th><th class="col-rappi">Rappi</th></tr></thead>
+  <tbody>
+    <tr><td>Tipo</td><td><code>expeditionType: delivery | pickup</code></td><td><code>delivery_method: delivery | marketplace | pickup</code></td></tr>
+    <tr><td>Quien entrega</td><td><code>delivery.riderPickupTime</code> null = vendor</td><td><code>marketplace</code> = vendor; <code>delivery</code> = rider Rappi</td></tr>
+    <tr><td>Dirección</td><td>calle, número, ciudad, postal, lat, lng</td><td><code>street_name</code>, <code>street_number</code>, <code>city</code>, <code>neighborhood</code>, <code>postal_code</code>, <code>complement</code></td></tr>
+    <tr><td>Geocoding quality</td><td><span class="na">no expone</span></td><td><span class="check">✓</span> <code>match_geocoding_address</code>, <code>match_original_address</code>, <code>has_reverse_geocoding_result</code></td></tr>
+    <tr><td>Tiempo de cocción</td><td><code>preparationTimeAdjustments</code></td><td><span class="check">✓</span> <code>cooking_time</code> + <code>min_cooking_time</code> + <code>max_cooking_time</code></td></tr>
+    <tr><td>Tracking del rider en vivo</td><td><span class="na">no expone</span></td><td><span class="check">✓</span> webhook <code>ORDER_RT_TRACKING</code> (lat/lng/eta/courier_id)</td></tr>
+  </tbody>
+</table>
+
+<h3>💳 Pago y facturación</h3>
+<table>
+  <thead><tr><th>Dato</th><th class="col-py">PedidosYa</th><th class="col-rappi">Rappi</th></tr></thead>
+  <tbody>
+    <tr><td>Tipo</td><td><code>payment.type</code></td><td><code>payment_method</code> (cc / cash / online)</td></tr>
+    <tr><td>Estado</td><td><code>payment.status</code></td><td>implícito en <code>total_to_pay = 0</code></td></tr>
+    <tr><td>Datos de facturación</td><td><code>invoicingInformation</code> con CUIT, razón social</td><td><span class="check">✓</span> <code>billing_information</code> con <code>name</code>, <code>email</code>, <code>phone</code>, <code>document_type</code>, <code>document_number</code></td></tr>
+  </tbody>
+</table>
+
+<h3>📅 Estados y eventos lifecycle</h3>
+<div class="cards">
+  <div class="card py">
+    <h4><span class="pill py">PY</span> Webhook simple + status update</h4>
+    <ul>
+      <li><code>order_accepted</code>, <code>order_rejected</code>, <code>order_picked_up</code>, <code>cancelled</code></li>
+      <li>Auto-cancel si no respondés en X min (varía por plataforma)</li>
+    </ul>
+  </div>
+  <div class="card rappi">
+    <h4><span class="pill rappi">Rappi</span> 9 webhooks granulares</h4>
+    <ul>
+      <li><code>NEW_ORDER</code> · <code>ORDER_EVENT_CANCEL</code> · <code>ORDER_OTHER_EVENT</code> · <code>ORDER_RT_TRACKING</code></li>
+      <li>Lifecycle: <code>ready_for_pick_up</code> → <code>domiciliary_in_store</code> → <code>hand_to_domiciliary</code> → <code>arrive</code> → <code>close_order</code></li>
+      <li>10 sub-tipos de cancelación (user/support/fraud/store_closed/etc.)</li>
+      <li>Auto-cancel a los <strong>6 min exactos</strong></li>
+    </ul>
+  </div>
+</div>
+
+<h3>📜 Historial / consulta histórica</h3>
+<div class="cards">
+  <div class="card py">
+    <h4><span class="pill py">PY</span> Order Report service</h4>
+    <ul>
+      <li><code>GET /v2/chains/{chainCode}/orders/ids?status=accepted|cancelled&pastNumberOfHours=24</code></li>
+      <li><code>GET /v2/chains/{chainCode}/orders/{orderId}</code> para detalle</li>
+      <li>Limitación: solo <code>accepted</code> o <code>cancelled</code>, máx 24h</li>
+    </ul>
+  </div>
+  <div class="card rappi">
+    <h4><span class="pill rappi">Rappi</span> Snapshot + events timeline</h4>
+    <ul>
+      <li><code>GET /api/v2/.../orders</code> snapshot (READY → SENT side effect)</li>
+      <li><code>GET /api/v2/.../orders/status/sent</code> últimos 10 min</li>
+      <li><span class="check">✓</span> <code>GET /orders/{id}/events</code> timeline completo con timestamps</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ======================================================== -->
+<h2>📊 Reportes que se pueden armar</h2>
+
+<h3>Operacionales (alta frecuencia, near real-time)</h3>
+<ul>
+  <li>Ventas brutas / netas por canal y hora — ambos</li>
+  <li>Ticket promedio — ambos</li>
+  <li>Top productos por cantidad y ARS — ambos</li>
+  <li>Toppings/agregados más vendidos — ambos (Rappi con SKU = mejor cruce con inventario)</li>
+  <li>Tiempo de prep promedio — Rappi tiene min/max/real, PY ajustes</li>
+  <li>Tasa de rechazo / razones — PY tiene <code>reason</code>, Rappi 10 sub-tipos</li>
+  <li>Pedidos timeout (no aceptados a tiempo) — ambos</li>
+  <li>Items frecuentemente sin stock — vía SKU en rejects (Rappi)</li>
+</ul>
+
+<h3>Financieros (mensual / cierre)</h3>
+<ul>
+  <li>Comisión de la plataforma — PY: sponsor=PLATFORM; Rappi: <code>amount_by_rappi</code></li>
+  <li>Cuánto puso vendor en promos — PY: sponsor=VENDOR; Rappi: <code>amount_by_partner</code></li>
+  <li>Delivery fee real — PY array detallado; Rappi <code>charges.shipping</code></li>
+  <li>Service fee — PY oculto; <span class="check">Rappi separado ✓</span></li>
+  <li>Propinas al rider — ambos</li>
+  <li>IVA discriminado — <span class="check">PY ✓</span> · <span class="warn">Rappi NO</span></li>
+  <li>Pagos online vs efectivo — ambos</li>
+  <li>Crédito Rappi Pay usado — Rappi (datos fidelización)</li>
+</ul>
+
+<h3>Marketing / clientes</h3>
+<ul>
+  <li>Clientes recurrentes — ambos por phone; Rappi además por <code>document_number</code></li>
+  <li>Clientes corporate — PY <code>corporateOrder/Tax</code>; Rappi <code>user_type=USER_VIP</code></li>
+  <li>Heatmap geográfico — ambos lat/lng; Rappi tiene calidad de geocoding</li>
+  <li>Hora pico por barrio — Rappi con <code>neighborhood</code> directo; PY hay que parsear</li>
+  <li>Email para campañas — <span class="check">solo PY ✓</span></li>
+</ul>
+
+<h3>Logística</h3>
+<ul>
+  <li>Tiempo total puerta a puerta — Rappi gana con <code>arrive</code> + <code>close_order</code>; PY no expone entrega final</li>
+  <li>Tiempo en cocina — ambos</li>
+  <li>Tiempo cocina → rider — ambos pero Rappi más granular</li>
+  <li>% pickup vs delivery — ambos</li>
+</ul>
+
+<h3>Calidad / alertas</h3>
+<ul>
+  <li>Pedidos timeout — ambos</li>
+  <li>Direcciones que fallan geocoding — <span class="check">Rappi ✓</span></li>
+  <li>Items con problemas (out-of-stock) — PY <code>ItemUnavailabilityHandling</code>; Rappi vía rejects con SKU</li>
+  <li>Comentarios negativos del cliente — text mining sobre <code>customerComment</code> (PY) o <code>comments</code> (Rappi)</li>
+  <li><span class="warn">⚠</span> Streak de rechazos — <strong>Rappi te deshabilita la tienda si rechazás muchos seguidos</strong></li>
+</ul>
+
+<h3>Estratégicos (cruzar PY + Rappi + POS interno)</h3>
+<ul>
+  <li>Margen real por producto = ARS facturado − comisión_plataforma − costo_insumo</li>
+  <li>Canibalización entre canales = mismo phone pidiendo PY + Rappi</li>
+  <li>Sucursal más rentable por canal</li>
+  <li>Día/hora muerta (los 3 canales bajos = ventana para campaña)</li>
+  <li>ROI de descuento sponsoreado: producto con discount → cuánto subió volumen → ingreso vs costo</li>
+  <li>CAC implícito = comisiones plataforma / clientes nuevos</li>
+</ul>
+
+<!-- ======================================================== -->
+<h2>⚠️ Lo que NO te dan ni una ni la otra</h2>
+<ul>
+  <li>Funnel previo al pedido (impresiones, clicks, abandono carrito)</li>
+  <li>Reviews/calificaciones del pedido (las apps las guardan internas, no las exponen al partner)</li>
+  <li>Datos demográficos (edad, género)</li>
+  <li>Hora exacta de entrega final — Rappi sí via <code>close_order</code>; PY no expone</li>
+  <li>Razón cualitativa de un rechazo desde su lado (Rappi te da el sub-event pero no contexto)</li>
+</ul>
+
+<!-- ======================================================== -->
+<div class="quick-wins">
+<h2>🎯 Quick wins para arrancar</h2>
+<ol>
+  <li><strong>Cierre Z diario</strong> — facturado / tickets / promedio / canales · <em>YA implementado en /reportes</em></li>
+  <li><strong>Ranking semanal de productos</strong> — alimenta decisiones de menú y stock</li>
+  <li><strong>Ratio comisión/facturado por canal</strong> — para negociar con vendor cuando renovás contrato</li>
+  <li><strong>Heatmap de zonas</strong> — definir radios de delivery propio vs apps</li>
+  <li><strong>Alerta automática</strong> si hay streak de 3+ rechazos en Rappi (deshabilita tienda)</li>
+  <li><strong>Tiempo prep real vs estimado</strong> — calibrar para que la app no te penalice por demoras</li>
+</ol>
+<p style="margin: 8px 0 0; font-size: 9.5pt; color: var(--ink-3)">
+Pendiente para activar reportes con persistencia: <strong>activar Postgres en Vercel</strong> (1 click) +
+cron de backfill que tire <code>GET /v2/chains/{chainCode}/orders/ids</code> (PY) cada hora.
+</p>
+</div>
+
+<div class="footer">
+  <span>POS El Desembarco · pos-desembarco.vercel.app</span>
+  <span>Doc fuente: docs/METRICAS_DISPONIBLES.md</span>
+  <span>Mayo 2026</span>
+</div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,1685 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Reporte por Local · El Desembarco</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#080c10; --surface:#0d1117; --card:#111820;
+  --border:#1c2433; --border2:#243040;
+  --text:#e6edf3; --muted:#a8b3c0; --dim:#7a8696;
+  --rec:#ff4757; --rcl:#ff9f43; --nd:#26de81; --prep:#a29bfe;
+  --acc:#4dabf7;
+  --peya:#ff4757; --rappi:#ff9f43; --turbo:#6ee7b7; --meli:#f5c518; --total:#4dabf7;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;font-size:13px;min-height:100vh}
+
+/* deltas (sin flechas) */
+.kpi-up{color:#ff4757}
+.kpi-dn{color:#26de81}
+.kpi-neu{color:var(--muted)}
+
+/* ── HEADER ─────────────────────────────────────────────────── */
+.header{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:50;gap:12px;flex-wrap:wrap}
+.logo{font-weight:800;font-size:17px;letter-spacing:.02em;color:var(--text)}
+.logo span{color:var(--acc)}
+.header-meta{font-size:11px;color:var(--muted);letter-spacing:.06em;margin-top:2px}
+.refresh-btn{display:flex;align-items:center;gap:6px;padding:6px 14px;font-size:10px;letter-spacing:.06em;border:1px solid var(--border2);background:none;color:var(--muted);cursor:pointer;border-radius:4px;transition:all .15s}
+.refresh-btn:hover{color:var(--text);border-color:var(--acc)}
+
+/* ── SELECTORES GLOBALES ────────────────────────────────────── */
+.gsel-bar{display:flex;align-items:center;gap:14px;padding:12px 24px;background:var(--card);border-bottom:1px solid var(--border);flex-wrap:wrap}
+.gsel-group{display:flex;flex-direction:column;gap:3px}
+.gsel-lbl{font-size:10px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;font-weight:600}
+.gsel-input{background:var(--surface);border:1px solid var(--border2);border-radius:5px;padding:6px 12px;font-family:inherit;font-size:12px;color:var(--text);outline:none;min-width:280px}
+.gsel-input:focus{border-color:var(--acc)}
+.gsel-input::placeholder{color:var(--dim)}
+.gsel-input-wrap{position:relative}
+.gsel-drop{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--surface);border:1px solid var(--border2);border-radius:5px;max-height:280px;overflow-y:auto;z-index:60;display:none;box-shadow:0 4px 12px rgba(0,0,0,.4)}
+.gsel-drop.open{display:block}
+.gsel-opt{padding:8px 12px;cursor:pointer;font-size:12px;color:var(--text);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:8px}
+.gsel-opt:last-child{border-bottom:none}
+.gsel-opt:hover, .gsel-opt.highlight{background:var(--card)}
+.gsel-opt-meta{font-size:10px;color:var(--muted);flex-shrink:0}
+.gsel-opt-empty{padding:12px;color:var(--dim);font-style:italic;text-align:center}
+.gsel-sem{background:var(--surface);border:1px solid var(--border2);border-radius:5px;padding:6px 12px;font-family:inherit;font-size:12px;color:var(--text);outline:none;cursor:pointer;min-width:120px}
+.print-btn{margin-left:auto;display:flex;align-items:center;gap:6px;padding:7px 14px;background:#1f6feb;border:none;border-radius:5px;color:#fff;font-family:inherit;font-size:11px;font-weight:600;cursor:pointer;letter-spacing:.04em}
+.print-btn:hover{background:#388bfd}
+
+/* ── VIEW SWITCH (Tablero / Auditoría) ──────────────────────── */
+.viewswitch{display:flex;gap:4px;padding:8px 24px 0;background:var(--surface);border-bottom:1px solid var(--border)}
+.vswitch-btn{padding:10px 18px;font-size:12px;letter-spacing:.05em;text-transform:uppercase;font-weight:700;background:none;border:none;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:color .15s}
+.vswitch-btn:hover{color:var(--text)}
+.vswitch-btn.active{color:var(--text);border-bottom-color:var(--acc)}
+
+/* ── PANEL AUDITORÍA ────────────────────────────────────────── */
+.audit-panel{max-width:1120px;margin:0 auto;padding:26px 24px}
+.audit-intro-t{font-size:18px;font-weight:800;color:var(--text)}
+.audit-intro-d{font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.6;max-width:760px}
+.audit-sep{height:1px;background:var(--border);margin:20px 0}
+.audit-met{margin-bottom:26px}
+.audit-met-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.audit-met-dot{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.audit-met-name{font-size:16px;font-weight:700;color:var(--text)}
+.audit-met-sent{font-size:11px;font-weight:700;padding:3px 11px;border-radius:20px}
+.audit-ladder{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:13px}
+.audit-band{flex:1;min-width:100px;border-radius:10px;padding:15px 10px;text-align:center}
+.audit-band-pts{font-size:27px;font-weight:800;line-height:1}
+.audit-band-u{font-size:9.5px;margin-top:2px}
+.audit-band-rng{font-size:12.5px;font-weight:700;margin-top:8px}
+.audit-def{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px 16px;display:grid;grid-template-columns:auto 1fr;gap:7px 16px;font-size:12.5px;line-height:1.55}
+.audit-def-k{color:var(--dim);white-space:nowrap}
+.audit-def-v{color:var(--muted)}
+.audit-def-v b{color:var(--text);font-weight:600}
+@media(max-width:560px){.audit-def{grid-template-columns:1fr}.audit-def-k{font-weight:700;margin-top:5px}}
+.audit-foot{margin-top:24px;padding-top:12px;border-top:1px solid var(--border);font-size:11px;color:var(--dim);text-align:right}
+
+/* ── TABS ──────────────────────────────────────────────────── */
+.tabs{display:flex;gap:2px;padding:0 24px;background:var(--surface);border-bottom:1px solid var(--border)}
+.tab{padding:11px 20px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;font-weight:700;background:none;border:none;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;display:flex;align-items:center;gap:7px}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--text);border-bottom-color:currentColor}
+.tab-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+
+/* ── CONTENIDO ────────────────────────────────────────────── */
+.main{padding:20px 24px}
+.empty-state{display:flex;align-items:center;justify-content:center;height:60vh;font-size:14px;color:var(--dim);letter-spacing:.04em;text-align:center;flex-direction:column;gap:12px}
+.empty-state svg{opacity:.3}
+
+.layout{display:block}
+.report-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px}
+.sidebar{display:flex;flex-direction:column;gap:12px;position:sticky;top:20px}
+
+/* header del reporte */
+.rep-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border);gap:14px}
+.rep-name{font-size:24px;font-weight:700;margin-bottom:4px}
+.rep-meta{font-size:12px;color:var(--muted);display:flex;gap:14px;margin-top:6px;flex-wrap:wrap}
+.rep-period{font-size:11px;color:var(--muted);text-align:right;flex-shrink:0}
+.orders-wrap{flex:1;max-width:1000px;display:flex;flex-direction:column;gap:6px}
+.orders-donuts{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:8px}
+.donut-unit{display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;min-width:205px}
+.donut-title{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.orders-tags{display:flex;gap:8px;align-items:stretch;justify-content:stretch}
+.otag{background:var(--card2,#161b22);border-radius:6px;padding:10px 14px;flex:1;min-width:0}
+.otag-plat{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;margin-bottom:4px}
+.otag-val{font-size:17px;font-weight:700;color:var(--text)}
+.otag-pct{font-size:12px;font-weight:500;color:var(--muted)}
+.orders-legend{font-size:10px;color:var(--muted);text-align:center;letter-spacing:.02em;margin-top:2px}
+.orders-donut-row{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:8px}
+.orders-donut-row svg{flex-shrink:0}
+.orders-donut-legend{display:flex;flex-direction:column;gap:3px;font-size:10px;color:var(--muted)}
+.orders-donut-legend .dlg-row{display:flex;align-items:center;gap:6px}
+.orders-donut-legend .dlg-dot{width:9px;height:9px;border-radius:2px;flex-shrink:0}
+.orders-donut-legend .dlg-val{color:var(--text);font-weight:600}
+.orders-donut-center{font-size:13px;fill:var(--text);font-weight:700}
+.orders-donut-sub{font-size:9px;fill:var(--muted)}
+.vtabs{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.vtab{padding:9px 14px;cursor:pointer;min-width:140px;transition:background .12s;border-radius:4px}
+.vtab:hover{filter:brightness(1.25)}
+.vtab-name{font-size:11px;font-weight:700;letter-spacing:.03em}
+.vtab-ids{font-size:11px;color:var(--muted);margin-top:3px}
+.rep-period-big{font-size:13px;font-weight:600;color:var(--acc);margin-top:2px}
+.plat-legend{margin-top:32px;display:flex;flex-direction:column;gap:5px;align-items:flex-end}
+.ple-row{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)}
+.ple-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0;order:2}
+.brand-badge{display:inline-block;font-size:9px;padding:2px 8px;border-radius:3px;border:1px solid;font-weight:500;margin-right:5px}
+.plat-tag{display:inline-block;font-size:10px;padding:3px 10px;border-radius:4px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px}
+
+/* KPI row */
+.kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px}
+.kpi-box{background:var(--bg);border-radius:7px;padding:12px 14px;border-top:2px solid}
+.kpi-box-lbl{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text);margin-bottom:8px}
+.kpi-box-val{font-size:26px;font-weight:700;line-height:1}
+.kpi-rate{font-size:15px;font-weight:600;color:var(--muted)}
+.kpi-audit{display:flex;align-items:center;gap:6px;margin-top:8px;padding-top:7px;border-top:1px solid var(--border);font-size:11.5px;color:var(--muted)}
+.kpi-audit-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.kpi-audit b{color:var(--text);font-weight:700;font-size:13px}
+.kpi-audit-den{color:var(--dim);font-size:11px}
+.kpi-box-delta{font-size:11px;margin-top:5px;color:var(--muted)}
+
+/* charts */
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
+.chart-card{background:var(--bg);border-radius:7px;padding:14px}
+.chart-card-lbl{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.chart-card-dot{width:8px;height:3px;border-radius:2px;display:inline-block}
+.chart-h{position:relative;height:140px}
+
+/* razones */
+.reasons-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.comments-sheet{margin-top:22px;border-top:2px solid var(--border2);padding-top:16px}
+.comments-sheet-title{font-size:14px;font-weight:700;margin-bottom:14px;color:var(--fg,#e6edf3)}
+.comments-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.cmt-block{background:var(--card,#0d1117);border:1px solid var(--border);border-radius:8px;padding:12px}
+.cmt-block-title{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.cmt-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.cmt-count{margin-left:auto;font-size:10px;font-weight:500;color:var(--muted);text-transform:none;letter-spacing:0}
+.cmt-item{padding:7px 0;border-bottom:1px solid var(--border)}
+.cmt-item:last-child{border-bottom:none}
+.cmt-meta{font-size:11px;color:var(--muted);margin-bottom:3px}
+.cmt-sem{font-weight:600;color:var(--text)}
+.cmt-mot{color:var(--rcl)}
+.cmt-text{font-size:13px;color:var(--text);line-height:1.45}
+.cmt-empty{font-size:11px;color:var(--dim);font-style:italic;padding:6px 0}
+.comments-screen .comments-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.comments-single{display:block}
+.comments-single .cmt-block{padding:14px 18px}
+.comments-single .cmt-item{padding:9px 0}
+.comments-single .cmt-text{font-size:13px}
+.comments-print{display:none}
+@media print {
+  .comments-screen{display:none}
+  .comments-print{display:block}
+  .comments-print .comments-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+}
+.reasons-card{background:var(--bg);border-radius:7px;padding:12px 14px}
+.reasons-title{font-size:12px;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:7px}
+.reasons-subtitle{font-size:10px;color:var(--muted);margin-bottom:12px}
+.reasons-empty{font-size:12px;color:var(--muted);font-style:italic;padding:14px 0;text-align:center}
+.reason-item{padding:8px 0;border-bottom:1px solid var(--border)}
+.reason-item:last-child{border-bottom:none}
+.reason-name{display:flex;justify-content:space-between;align-items:center;font-size:11px;margin-bottom:6px;gap:8px}
+.reason-name>span:first-child{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.reason-total{font-size:10px;font-weight:600;flex-shrink:0}
+.reason-weeks{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.rw-cell{text-align:center}
+.rw-cell-sem{font-size:8px;color:var(--dim);margin-bottom:2px}
+.rw-cell-val{font-size:12px;font-weight:600;margin-bottom:3px}
+.rw-cell-bar{height:3px;border-radius:2px}
+
+/* sidebar */
+.sb-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px}
+.sb-sec{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin-bottom:10px}
+.sb-placeholder{font-size:11px;color:var(--dim);font-style:italic;padding:16px 0;text-align:center;line-height:1.5}
+
+/* tabla comparativa de semanas */
+.weekcomp-card{background:var(--bg);border-radius:7px;padding:14px;margin-top:20px}
+.weekcomp-title{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text);margin-bottom:12px}
+.weekcomp-table{width:100%;border-collapse:collapse;font-size:12px}
+.weekcomp-table th{text-align:right;padding:7px 8px;font-size:10px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;border-bottom:1px solid var(--border);font-weight:600}
+.weekcomp-table th:first-child{text-align:left}
+.weekcomp-table td{padding:6px 8px;text-align:right;border-bottom:1px solid var(--border);font-variant-numeric:tabular-nums}
+.weekcomp-table td:first-child{text-align:left;color:var(--muted)}
+.weekcomp-table tr:last-child td{border-bottom:none}
+.weekcomp-table tr.current-week td{background:#4dabf708}
+.weekcomp-table tr.current-week td:first-child{color:var(--acc);font-weight:600}
+
+@media print{
+  body{background:#fff;color:#000}
+  .no-print{display:none!important}
+  .header,.gsel-bar,.tabs{display:none!important}
+  .main{padding:0}
+  .sidebar{position:static}
+  /* Auditoría: imprimir tal cual se ve (oscuro + colores de las bandas) */
+  body.audit-active{background:var(--bg)!important;color:var(--text)!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body.audit-active #audit-panel{display:block!important;max-width:none;margin:0;background:var(--bg)!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body.audit-active .audit-intro-t{color:var(--text)!important}
+  body.audit-active .audit-intro-d{color:var(--muted)!important}
+  body.audit-active .audit-met-name{color:var(--text)!important}
+  body.audit-active .audit-band,
+  body.audit-active .audit-met-dot,
+  body.audit-active .audit-met-sent,
+  body.audit-active .audit-def{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  /* mantener cada métrica entera (título + escalera + definición) sin cortes */
+  body.audit-active .audit-met{break-inside:avoid;page-break-inside:avoid}
+  body.audit-active .audit-ladder{break-inside:avoid;page-break-inside:avoid}
+  body.audit-active .audit-band{break-inside:avoid;page-break-inside:avoid}
+  body.audit-active .audit-def{break-inside:avoid;page-break-inside:avoid}
+  body.audit-active .audit-met-head{break-after:avoid;page-break-after:avoid}
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div>
+    <div class="logo">REPORTE POR <span>LOCAL</span></div>
+    <div class="header-meta" id="header-meta">El Desembarco Group · 2026</div>
+  </div>
+  <button class="refresh-btn no-print" onclick="window.location.reload()">
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/><path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"/></svg>
+    ACTUALIZAR
+  </button>
+</div>
+
+<!-- VIEW SWITCH -->
+<div class="viewswitch no-print">
+  <button class="vswitch-btn active" data-view="tablero" onclick="switchView('tablero')">Tablero</button>
+  <button class="vswitch-btn" data-view="audit" onclick="switchView('audit')">Auditoría</button>
+</div>
+
+<!-- SELECTORES GLOBALES -->
+<div class="gsel-bar no-print">
+  <div class="gsel-group" style="flex:1;max-width:380px">
+    <div class="gsel-lbl">Local</div>
+    <div class="gsel-input-wrap">
+      <input type="text" class="gsel-input" id="gsel-local" placeholder="Buscar local (nombre)..." autocomplete="off">
+      <div class="gsel-drop" id="gsel-drop"></div>
+    </div>
+  </div>
+  <div class="gsel-group">
+    <div class="gsel-lbl">Semana</div>
+    <select class="gsel-sem" id="gsel-sem" onchange="onSemChange()"></select>
+  </div>
+  <div class="gsel-group">
+    <div class="gsel-lbl">Ventana</div>
+    <select class="gsel-sem" id="gsel-ventana" onchange="onVentanaChange()">
+      <option value="1">1 semana</option>
+      <option value="4">4 semanas</option>
+      <option value="6">6 semanas</option>
+      <option value="8">8 semanas</option>
+      <option value="10">10 semanas</option>
+      <option value="0" selected>Todas</option>
+    </select>
+  </div>
+  <button class="print-btn" onclick="window.print()">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+    IMPRIMIR
+  </button>
+</div>
+
+<!-- TABS -->
+<div class="tabs no-print" id="tabs"></div>
+
+<!-- CONTENIDO -->
+<div class="main">
+  <div id="empty-state" class="empty-state">
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <div>Seleccioná un local para ver el reporte</div>
+    <div style="font-size:11px;color:var(--dim)">Hay 178 locales disponibles · Empezá a tipear el nombre</div>
+  </div>
+
+  <div id="layout" class="layout" style="display:none">
+    <div class="report-card" id="report-body"></div>
+  </div>
+</div>
+
+<!-- PANEL AUDITORÍA -->
+<div id="audit-panel" class="audit-panel" style="display:none"></div>
+
+<!-- ════════════════════════════════════════════════════════════
+     DATA — inyectada por el backend GAS
+     ════════════════════════════════════════════════════════════ -->
+<script>
+const LOCALS     = /*{{DATA_LOCALS}}*/[];
+const KPI_SERIES = /*{{DATA_KPI_SERIES}}*/{};
+const REASONS    = /*{{DATA_REASONS}}*/{};
+const META       = /*{{DATA_META}}*/{};
+const OPERACIONES = /*{{DATA_OPERACIONES}}*/{};
+const COMMENTS   = /*{{DATA_COMMENTS}}*/{};
+const AUDIT_RUBRICA = /*{{DATA_AUDIT_RUBRICA}}*/{};
+const MARCA_ACTIVA = /*{{DATA_MARCA_ACTIVA}}*/null;
+
+// ════════════════════════════════════════════════════════════
+// CONFIG VISUAL
+// ════════════════════════════════════════════════════════════
+const PLAT_CONF = {
+  peya:  { label: 'PedidosYa', color: '#ff4757', razonesKey: 'PeYa'  },
+  rappi: { label: 'Rappi',     color: '#ff9f43', razonesKey: 'Rappi' },
+  turbo: { label: 'Turbo',     color: '#6ee7b7', razonesKey: null    },  // sin razones en la fuente
+  meli:  { label: 'Meli',      color: '#f5c518', razonesKey: null    },  // sin razones en la fuente
+  total: { label: 'Total',     color: '#4dabf7', razonesKey: null    },  // agregado, ver getReasonsLast4
+};
+
+const KPIS = [
+  { k: 'rec',  lb: 'Rechazos',                color: 'var(--rec)'  },
+  { k: 'rcl',  lb: 'Reclamos',                color: 'var(--rcl)'  },
+  { k: 'prep', lb: 'Prep Time',               color: 'var(--prep)' },
+  { k: 'mins', lb: 'Tiempo no disponible (hs)', color: 'var(--nd)' },
+  { k: 'idx',  lb: 'Índice desconexión',      color: 'var(--nd)'   },
+];
+
+// ════════════════════════════════════════════════════════════
+// ESTADO
+// ════════════════════════════════════════════════════════════
+let state = {
+  ubicKey:   null,      // ubicación seleccionada (ej: "Núñez")
+  vertKey:   null,      // uni_nombre de la vertical activa; null = vista combinada
+  combProp:  null,      // en ubicaciones mixtas: null=todas, "Propio" o "Franquicia"
+  semKey:    null,      // 'S20' por ejemplo
+  platKey:   'peya',    // tab activa
+  ventana:   0,         // 0 = todas, o 4/6/8/10 últimas semanas
+};
+
+// Devuelve las verticales (uni_nombre) de la ubicación seleccionada.
+function verticalesDe(ubic) {
+  return (OPERACIONES[ubic] || []).slice().sort();
+}
+
+// Detecta si una ubicación tiene verticales con propiedad mixta.
+function propiedadesDe(ubic) {
+  const verts = verticalesDe(ubic);
+  const props = {};
+  verts.forEach(v => {
+    const l = LOCALS.find(x => x.uni_nombre === v);
+    if (l && l.propiedad) props[l.propiedad] = true;
+  });
+  return Object.keys(props);
+}
+
+function esMixta(ubic) {
+  return propiedadesDe(ubic).length > 1;
+}
+
+function verticalesPorPropiedad(ubic, prop) {
+  return verticalesDe(ubic).filter(v => {
+    const l = LOCALS.find(x => x.uni_nombre === v);
+    return l && l.propiedad === prop;
+  });
+}
+
+// Devuelve el objeto local que se está mostrando como "principal" en el header:
+// la vertical activa, o la primera de la ubicación si es vista combinada.
+function localActual() {
+  if (state.vertKey) return LOCALS.find(l => l.uni_nombre === state.vertKey) || null;
+  // En combinado: usar las verticales activas (filtradas por propiedad si es mixta)
+  const verts = verticalesActivas_();
+  return verts.length ? LOCALS.find(l => l.uni_nombre === verts[0]) : null;
+}
+
+let chartInstances = {};
+
+// ════════════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════════════
+function init() {
+  // header meta
+  const sems = META.semanas || [];
+  const headerMeta = document.getElementById('header-meta');
+  if (headerMeta) {
+    headerMeta.textContent = `El Desembarco Group · ${sems[0] || ''}–${sems[sems.length-1] || ''} · 2026 · ${LOCALS.length} locales`;
+  }
+
+  buildTabs();
+  buildSemSelector();
+  bindLocalSearch();
+}
+
+// ── TABS ────────────────────────────────────────────────────
+function buildTabs() {
+  const cont = document.getElementById('tabs');
+  const tabs = ['peya','rappi','turbo','meli','total'];
+  cont.innerHTML = tabs.map(p => {
+    const c = PLAT_CONF[p];
+    return `<button class="tab ${p===state.platKey?'active':''}" data-plat="${p}" onclick="switchTab('${p}')" style="color:${p===state.platKey?c.color:''}">
+      <span class="tab-dot" style="background:${c.color}"></span>${c.label}
+    </button>`;
+  }).join('');
+}
+
+function switchTab(plat) {
+  state.platKey = plat;
+  document.querySelectorAll('.tab').forEach(t => {
+    const isActive = t.dataset.plat === plat;
+    t.classList.toggle('active', isActive);
+    t.style.color = isActive ? PLAT_CONF[plat].color : '';
+  });
+  if (state.ubicKey) renderReport();
+}
+
+// ── VISTA AUDITORÍA ─────────────────────────────────────────
+const AUDIT_ORDER = ['Conexión', 'Reclamos', 'FIR'];
+const AUDIT_META = {
+  'Conexión': {
+    dot: '#26de81', dotBg: '#0f3b2a', sent: 'más alta, mejor', sentBg: '#0f3b2a', sentTx: '#26de81',
+    que_es: 'Porcentaje del tiempo que el local estuvo conectado y disponible para recibir pedidos en la plataforma.',
+    como: 'En el tablero se ve como <b>Índice de desconexión</b>. Para auditar se da vuelta: <b>Conexión = 100% − desconexión</b>. Ej.: 5% de desconexión → 95% de conexión.',
+    interp: 'Cuanto más alta la conexión, más disponible estuvo el local. Caer de 95% ya empieza a descontar puntaje; por debajo de 85% es 0.'
+  },
+  'Reclamos': {
+    dot: '#ff9f43', dotBg: '#3d2913', sent: 'más bajo, mejor', sentBg: '#3d2913', sentTx: '#f5a623',
+    que_es: 'Porcentaje de pedidos que terminaron en un reclamo del cliente sobre el total de pedidos del local.',
+    como: '<b>Reclamos ÷ total de órdenes</b> de la ventana. El valor cae en su banda por tramo: 2,4% entra en la banda 2 – 2,99% → 90 pts.',
+    interp: 'Cuanto más bajo, mejor experiencia. Cada punto porcentual de reclamos baja un escalón; del 7% en adelante es 0.'
+  },
+  'FIR': {
+    dot: '#4dabf7', dotBg: '#13334d', sent: 'más alto, mejor', sentBg: '#0f3b2a', sentTx: '#26de81',
+    que_es: '<b>Food Is Ready</b>: porcentaje de pedidos en los que el local accionó el botón FIR para avisar a la plataforma que la comida está lista. Ese aviso actualiza al cliente sobre el estado de su orden.',
+    como: '<b>Veces que se accionó FIR ÷ pedidos entregados</b>, en porcentaje.',
+    interp: 'Mide la disciplina del local en usar el botón. Cuanto más alto, más fiel es el dato que recibe la plataforma: con buen FIR los algoritmos de PeYa, Rappi, Meli y Turbo ajustan el tiempo de preparación esperado a la realidad. Bajo FIR = avisos incompletos y tiempos menos precisos.'
+  }
+};
+
+function auditFmt(n) {
+  if (n === null || n === undefined) return '';
+  if (n === 'inf') return '∞';
+  return (Math.round(n * 100) / 100).toString().replace('.', ',');
+}
+
+function auditRange(b) {
+  if (b.fin === 'inf') return '≥ ' + auditFmt(b.ini) + '%';
+  if (b.ini === b.fin) return b.ini === 100 ? '= 100%' : auditFmt(b.ini) + '%';
+  // Se respeta el orden cargado en la planilla (Inicio → Fin):
+  // en Conexión/FIR el Inicio es el extremo alto (queda alto–bajo);
+  // en Reclamos el Inicio es el bajo (queda bajo–alto).
+  const a = (b.ini === null ? 0 : b.ini), c = (b.fin === null ? 0 : b.fin);
+  return auditFmt(a) + ' – ' + auditFmt(c) + '%';
+}
+
+function auditColors(pts) {
+  const p = (pts === 'inf' || pts === null) ? 0 : pts;
+  const stops = [
+    [100, '#1db97a', '#08311f', '#0b4a30'],
+    [95,  '#26de81', '#08311f', '#0b4a30'],
+    [90,  '#5fe09b', '#08311f', '#0b4a30'],
+    [85,  '#9bd84e', '#233604', '#33480a'],
+    [80,  '#cdd234', '#2e3204', '#43480a'],
+    [75,  '#f5c518', '#412402', '#5e3705'],
+    [70,  '#f5a623', '#412402', '#5e3705'],
+    [65,  '#f58a23', '#4a2a02', '#5e3705'],
+    [55,  '#f5683a', '#4a1408', '#641d0d'],
+    [0,   '#ff5b66', '#501313', '#6e1c1c']
+  ];
+  for (let i = 0; i < stops.length; i++) {
+    if (p >= stops[i][0]) return { bg: stops[i][1], tx: stops[i][2], sub: stops[i][3] };
+  }
+  return { bg: '#ff5b66', tx: '#501313', sub: '#6e1c1c' };
+}
+
+// Dado el valor (en %) de una métrica, devuelve el puntaje de la banda donde cae.
+// Si no hay banda exacta (micro-gaps), toma la banda más cercana.
+function auditScore(metric, val) {
+  const bands = AUDIT_RUBRICA[metric];
+  if (!bands || !bands.length || val === null || val === undefined || isNaN(val)) return null;
+  let best = null, bestDist = Infinity;
+  for (let i = 0; i < bands.length; i++) {
+    const b = bands[i];
+    let lo, hi;
+    if (b.fin === 'inf') { lo = (b.ini === null ? 0 : b.ini); hi = Infinity; }
+    else {
+      const a = (b.ini === null ? 0 : b.ini), c = (b.fin === null ? 0 : b.fin);
+      lo = Math.min(a, c); hi = Math.max(a, c);
+    }
+    if (val >= lo - 1e-9 && val <= hi + 1e-9) return b.pts;
+    const d = val < lo ? (lo - val) : (val - hi);
+    if (d < bestDist) { bestDist = d; best = b.pts; }
+  }
+  return best;
+}
+
+// Pie "Auditoría" (Opción A): número en blanco, punto con el color de la banda.
+function auditFooter(metric, valPct) {
+  if (valPct === null || valPct === undefined || isNaN(valPct)) return '';
+  const pts = auditScore(metric, valPct);
+  if (pts === null || pts === undefined) return '';
+  const c = auditColors(pts);
+  const ptsTxt = (pts === 'inf') ? '—' : pts;
+  return '<div class="kpi-audit"><span class="kpi-audit-dot" style="background:' + c.bg + '"></span>Auditoría <b>' + ptsTxt + '</b><span class="kpi-audit-den">/100</span></div>';
+}
+
+function renderAuditoria() {
+  const panel = document.getElementById('audit-panel');
+  if (!panel) return;
+  let html = '<div class="no-print" style="display:flex;justify-content:flex-end;margin-bottom:14px">' +
+    '<button class="print-btn" onclick="window.print()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg> IMPRIMIR</button></div>' +
+    '<div class="audit-intro-t">Sistema de puntaje por rangos</div>' +
+    '<div class="audit-intro-d">Cada indicador del local se ubica en su banda y toma el puntaje fijo de esa banda (escala 0–100). El puntaje no es el valor: es la nota que la operación le asigna a ese rango.</div>' +
+    '<div class="audit-sep"></div>';
+
+  // Orden fijo conocido + cualquier otra métrica que aparezca en la planilla
+  const orden = AUDIT_ORDER.slice();
+  Object.keys(AUDIT_RUBRICA).forEach(k => { if (orden.indexOf(k) < 0) orden.push(k); });
+
+  let shown = 0;
+  orden.forEach(name => {
+    const bands = AUDIT_RUBRICA[name];
+    if (!bands || !bands.length) return;
+    shown++;
+    const m = AUDIT_META[name] || { dot: '#4dabf7', dotBg: '#13334d', sent: '', sentBg: '#13334d', sentTx: '#4dabf7', que_es: '', como: '', interp: '' };
+
+    html += '<div class="audit-met"><div class="audit-met-head">' +
+      '<span class="audit-met-dot" style="background:' + m.dotBg + '"><span style="width:12px;height:12px;border-radius:3px;background:' + m.dot + '"></span></span>' +
+      '<span class="audit-met-name">' + name + '</span>' +
+      (m.sent ? '<span class="audit-met-sent" style="background:' + m.sentBg + ';color:' + m.sentTx + '">' + m.sent + '</span>' : '') +
+      '</div><div class="audit-ladder">';
+
+    bands.forEach(b => {
+      const c = auditColors(b.pts);
+      const ptsTxt = (b.pts === 'inf' || b.pts === null) ? '—' : b.pts;
+      html += '<div class="audit-band" style="background:' + c.bg + '">' +
+        '<div class="audit-band-pts" style="color:' + c.tx + '">' + ptsTxt + '</div>' +
+        '<div class="audit-band-u" style="color:' + c.sub + '">pts</div>' +
+        '<div class="audit-band-rng" style="color:' + c.tx + '">' + auditRange(b) + '</div>' +
+        '</div>';
+    });
+
+    html += '</div><div class="audit-def">' +
+      '<span class="audit-def-k">Qué es</span><span class="audit-def-v">' + m.que_es + '</span>' +
+      '<span class="audit-def-k">Cómo se mide</span><span class="audit-def-v">' + m.como + '</span>' +
+      '<span class="audit-def-k">Qué interpreta</span><span class="audit-def-v">' + m.interp + '</span>' +
+      '</div></div>';
+  });
+
+  if (!shown) {
+    html += '<div class="audit-intro-d">No se encontró la rúbrica. Verificá que la planilla tenga la tab <b>objetivos_operaciones</b> con columnas Métrica · Inicio rango · Fin rango · Valor/Puntaje.</div>';
+  }
+
+  const hoy = new Date();
+  const fechaStr = auditFechaHora_(hoy);
+  html += '<div class="audit-foot">Impreso el <span id="audit-print-date">' + fechaStr + '</span></div>';
+
+  panel.innerHTML = html;
+}
+
+// Fecha + hora en formato Rioplatense (ej.: "lunes, 8 de junio de 2026 · 15:10 hs").
+function auditFechaHora_(d) {
+  const fecha = d.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const hora = d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false });
+  return fecha + ' · ' + hora + ' hs';
+}
+
+// La fecha/hora se refresca justo antes de imprimir (por si la solapa quedó abierta).
+window.addEventListener('beforeprint', function () {
+  const el = document.getElementById('audit-print-date');
+  if (el) el.textContent = auditFechaHora_(new Date());
+});
+
+let auditView = false;
+function switchView(v) {
+  auditView = (v === 'audit');
+  document.body.classList.toggle('audit-active', auditView);
+  document.querySelectorAll('.vswitch-btn').forEach(b => b.classList.toggle('active', b.dataset.view === v));
+  const tableroEls = [document.querySelector('.gsel-bar'), document.getElementById('tabs'), document.querySelector('.main')];
+  tableroEls.forEach(e => { if (e) e.style.display = auditView ? 'none' : ''; });
+  const panel = document.getElementById('audit-panel');
+  if (panel) panel.style.display = auditView ? 'block' : 'none';
+  if (auditView) renderAuditoria();
+}
+function buildSemSelector() {
+  const sel = document.getElementById('gsel-sem');
+  const sems = (META.semanas || []).slice().reverse();
+  const semActual = META.semana_actual;
+  sel.innerHTML = sems.map(s => {
+    const isW1 = s === semActual;
+    return `<option value="${s}">${s}${isW1?' (W-1)':''}</option>`;
+  }).join('');
+  state.semKey = semActual || sems[0];
+  sel.value = state.semKey;
+}
+
+function onSemChange() {
+  state.semKey = document.getElementById('gsel-sem').value;
+  if (state.ubicKey) renderReport();
+}
+
+function onVentanaChange() {
+  state.ventana = parseInt(document.getElementById('gsel-ventana').value) || 0;
+  if (state.ubicKey) renderReport();
+}
+
+// Devuelve las semanas a mostrar según la ventana seleccionada.
+// Si ventana=0 → todas. Si ventana=N → las últimas N semanas hasta la
+// semana seleccionada (inclusive).
+function getVisibleSemanas() {
+  const all = META.semanas || [];
+  const semIdx = all.indexOf(state.semKey);
+  const endIdx = semIdx >= 0 ? semIdx : all.length - 1;  // hasta la semana elegida
+  const upTo = all.slice(0, endIdx + 1);
+  if (!state.ventana || state.ventana <= 0) return upTo;  // todas (hasta la elegida)
+  return upTo.slice(Math.max(0, upTo.length - state.ventana));
+}
+
+// ── SELECTOR DE LOCAL (autocomplete) ────────────────────────
+function bindLocalSearch() {
+  const input = document.getElementById('gsel-local');
+  const drop = document.getElementById('gsel-drop');
+
+  // Lista de ubicaciones (claves de OPERACIONES) ordenadas alfabéticamente
+  const UBICACIONES = Object.keys(OPERACIONES).sort();
+
+  function showAllOptions() {
+    renderOptions(UBICACIONES);
+  }
+
+  function filterAndRender() {
+    const q = input.value.toLowerCase().trim();
+    if (!q) { showAllOptions(); return; }
+    const filtered = UBICACIONES.filter(u => u.toLowerCase().includes(q));
+    renderOptions(filtered);
+  }
+
+  function renderOptions(list) {
+    if (!list.length) {
+      drop.innerHTML = '<div class="gsel-opt-empty">Sin resultados</div>';
+    } else {
+      drop.innerHTML = list.slice(0, 120).map(u => {
+        const n = (OPERACIONES[u] || []).length;
+        const etiqueta = n === 1 ? '1 vertical' : n + ' verticales';
+        const mixtaTag = esMixta(u) ? ' · mixta' : '';
+        return `<div class="gsel-opt" data-ubic="${escAttr(u)}">
+          <span>${escHtml(u)}</span>
+          <span class="gsel-opt-meta">${etiqueta}${mixtaTag}</span>
+        </div>`;
+      }).join('');
+      drop.querySelectorAll('.gsel-opt').forEach(opt => {
+        opt.addEventListener('click', function() {
+          selectUbicacion(this.dataset.ubic);
+        });
+      });
+    }
+    drop.classList.add('open');
+  }
+
+  input.addEventListener('focus', showAllOptions);
+  input.addEventListener('input', filterAndRender);
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('.gsel-input-wrap')) drop.classList.remove('open');
+  });
+}
+
+// Selección de UBICACIÓN: arranca en vista combinada (vertKey = null)
+function selectUbicacion(ubic) {
+  state.ubicKey = ubic;
+  state.vertKey = null;
+  // En mixtas, arrancar con una propiedad por defecto (no combinar Propio + Franquicia)
+  if (esMixta(ubic)) {
+    state.combProp = propiedadesDe(ubic).sort()[0];  // ej: "Franquicia" antes que "Propio"
+  } else {
+    state.combProp = null;  // combinado total
+  }
+  const input = document.getElementById('gsel-local');
+  input.value = ubic;
+  document.getElementById('gsel-drop').classList.remove('open');
+  document.getElementById('empty-state').style.display = 'none';
+  document.getElementById('layout').style.display = 'block';
+  renderReport();
+}
+
+// ════════════════════════════════════════════════════════════
+// HELPERS
+// ════════════════════════════════════════════════════════════
+function escHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function escAttr(s) { return escHtml(s); }
+
+// Lee un KPI crudo de UNA vertical concreta (uni_nombre) en una plataforma/semana.
+function getRawKpi_(uniNombre, plat, sem, kpi) {
+  const ks = KPI_SERIES[uniNombre];
+  if (!ks || !ks[plat] || !ks[plat][sem]) return 0;
+  return ks[plat][sem][kpi] || 0;
+}
+
+// Lista de verticales sobre las que se calcula el valor actual:
+// si hay vertical activa, solo esa; si es combinado, todas las de la ubicación.
+function verticalesActivas_() {
+  if (state.vertKey) return [state.vertKey];
+  // En ubicaciones mixtas con combProp seteado, solo las verticales de esa propiedad
+  if (state.combProp) return verticalesPorPropiedad(state.ubicKey, state.combProp);
+  return verticalesDe(state.ubicKey);
+}
+
+function getKpiVal(plat, sem, kpi) {
+  const verts = verticalesActivas_();
+
+  // FIR (%) = SUM(orders_with_fir) / SUM(confirmed_orders) sobre las verticales activas.
+  // Solo PeYa trae estas columnas; para otras plataformas dan 0 (la UI muestra "—").
+  if (kpi === 'fir') {
+    let num = 0, den = 0;
+    verts.forEach(v => {
+      num += getRawKpi_(v, plat, sem, 'fir_ow');
+      den += getRawKpi_(v, plat, sem, 'fir_conf');
+    });
+    return den > 0 ? (num / den) : 0;
+  }
+
+  // 'total' = suma de las 4 plataformas (recursivo)
+  if (plat === 'total') {
+    if (kpi === 'idx') {
+      let mins = 0, sched = 0;
+      ['peya','rappi','turbo','meli'].forEach(p => {
+        mins  += getKpiVal(p, sem, 'mins');
+        sched += getKpiVal(p, sem, 'nodq');
+      });
+      return sched > 0 ? (mins / sched) : 0;
+    }
+    if (kpi === 'prep') {
+      let psum = 0, pn = 0;
+      ['peya','rappi','turbo','meli'].forEach(p => {
+        verts.forEach(v => {
+          psum += getRawKpi_(v, p, sem, 'prep_sum');
+          pn   += getRawKpi_(v, p, sem, 'prep_n');
+        });
+      });
+      return pn > 0 ? Math.round(psum / pn * 10) / 10 : 0;
+    }
+    return ['peya','rappi','turbo','meli'].reduce((acc, p) => acc + getKpiVal(p, sem, kpi), 0);
+  }
+
+  // Índice de desconexión: SUM(mins) / SUM(schedule) sobre las verticales activas
+  if (kpi === 'idx') {
+    let mins = 0, sched = 0;
+    verts.forEach(v => {
+      mins  += getRawKpi_(v, plat, sem, 'mins');
+      sched += getRawKpi_(v, plat, sem, 'nodq');  // 'nodq' = schedule
+    });
+    return sched > 0 ? (mins / sched) : 0;
+  }
+
+  // Prep time: promedio ponderado exacto = SUM(prep_sum) / SUM(prep_n)
+  if (kpi === 'prep') {
+    let psum = 0, pn = 0;
+    verts.forEach(v => {
+      psum += getRawKpi_(v, plat, sem, 'prep_sum');
+      pn   += getRawKpi_(v, plat, sem, 'prep_n');
+    });
+    return pn > 0 ? Math.round(psum / pn * 10) / 10 : 0;
+  }
+
+  // Resto (conteos y horas): suma directa sobre las verticales activas
+  return verts.reduce((acc, v) => acc + getRawKpi_(v, plat, sem, kpi), 0);
+}
+
+// Formatea el valor de un KPI según su tipo
+function fmtKpiVal(kpi, v) {
+  if (kpi === 'idx' || kpi === 'fir') {
+    // Índice / FIR como porcentaje con 1 decimal
+    return (v * 100).toLocaleString('es-AR', {minimumFractionDigits: 1, maximumFractionDigits: 1}) + '%';
+  }
+  return v.toLocaleString('es-AR');
+}
+
+function getKpiSeries(plat, kpi) {
+  // Devuelve array alineado con getVisibleSemanas() (respeta la ventana)
+  return getVisibleSemanas().map(s => getKpiVal(plat, s, kpi));
+}
+
+// Acumula un KPI sobre TODAS las semanas visibles de la ventana.
+// - conteos / horas (rec, rcl, mins, total, nodq...): suma directa.
+// - prep: promedio ponderado exacto = SUM(prep_sum) / SUM(prep_n) sobre semanas+verticales.
+// - idx:  SUM(mins) / SUM(schedule) sobre semanas+verticales.
+// Respeta plataforma activa y verticales activas (igual que getKpiVal).
+function getKpiVentana_(plat, kpi) {
+  const sems  = getVisibleSemanas();
+  const verts = verticalesActivas_();
+
+  // FIR (%) acumulado en la ventana = SUM(orders_with_fir) / SUM(confirmed_orders) sobre semanas+verticales.
+  if (kpi === 'fir') {
+    let num = 0, den = 0;
+    sems.forEach(s => verts.forEach(v => {
+      num += getRawKpi_(v, plat, s, 'fir_ow');
+      den += getRawKpi_(v, plat, s, 'fir_conf');
+    }));
+    return den > 0 ? (num / den) : 0;
+  }
+
+  // 'total' = agregado de las 4 plataformas
+  if (plat === 'total') {
+    if (kpi === 'idx') {
+      let mins = 0, sched = 0;
+      ['peya','rappi','turbo','meli'].forEach(p => {
+        mins  += getKpiVentana_(p, 'mins');
+        sched += getKpiVentana_(p, 'nodq');
+      });
+      return sched > 0 ? (mins / sched) : 0;
+    }
+    if (kpi === 'prep') {
+      let psum = 0, pn = 0;
+      ['peya','rappi','turbo','meli'].forEach(p => {
+        sems.forEach(s => verts.forEach(v => {
+          psum += getRawKpi_(v, p, s, 'prep_sum');
+          pn   += getRawKpi_(v, p, s, 'prep_n');
+        }));
+      });
+      return pn > 0 ? Math.round(psum / pn * 10) / 10 : 0;
+    }
+    return ['peya','rappi','turbo','meli'].reduce((acc, p) => acc + getKpiVentana_(p, kpi), 0);
+  }
+
+  if (kpi === 'idx') {
+    let mins = 0, sched = 0;
+    sems.forEach(s => verts.forEach(v => {
+      mins  += getRawKpi_(v, plat, s, 'mins');
+      sched += getRawKpi_(v, plat, s, 'nodq');
+    }));
+    return sched > 0 ? (mins / sched) : 0;
+  }
+
+  if (kpi === 'prep') {
+    let psum = 0, pn = 0;
+    sems.forEach(s => verts.forEach(v => {
+      psum += getRawKpi_(v, plat, s, 'prep_sum');
+      pn   += getRawKpi_(v, plat, s, 'prep_n');
+    }));
+    return pn > 0 ? Math.round(psum / pn * 10) / 10 : 0;
+  }
+
+  // conteos / horas: suma directa sobre las semanas (getKpiVal ya maneja verticales)
+  return sems.reduce((acc, s) => acc + getKpiVal(plat, s, kpi), 0);
+}
+
+// ¿El KPI es de promedio (prep/idx) o de suma? Define el label del sublabel.
+function esKpiPromedio_(kpi) { return kpi === 'prep' || kpi === 'idx' || kpi === 'fir'; }
+
+function deltaStr(curr, prev, higherIsBetter) {
+  if (prev === null || prev === undefined || prev === 0) {
+    return `<span class="kpi-neu">—</span>`;
+  }
+  const pct = Math.round((curr - prev) / prev * 100);
+  if (pct === 0) return `<span class="kpi-neu">0%</span>`;
+  // Por defecto "menos es mejor" (rec/rcl/prep/idx): subir=rojo, bajar=verde.
+  // Con higherIsBetter (FIR): subir=verde, bajar=rojo.
+  const esBueno = higherIsBetter ? (pct > 0) : (pct < 0);
+  const cls = esBueno ? 'kpi-dn' : 'kpi-up';
+  return `<span class="${cls}">${pct > 0 ? '+' : ''}${pct}%</span>`;
+}
+
+function getReasonsLast4(plat, semKey, kpiLabel, topN) {
+  // plat: 'peya','rappi','turbo','meli','total'
+  // kpiLabel: 'Rechazos' | 'Reclamos' | 'Sin Disp'
+  topN = topN || 3;
+  const semIdx = META.semanas.indexOf(semKey);
+  if (semIdx < 0) return { items: [], last4: [] };
+  const last4 = META.semanas.slice(Math.max(0, semIdx - 3), semIdx + 1);
+  while (last4.length < 4) last4.unshift('—');
+
+  // determinar qué claves de razones miramos según plat
+  let razonesKeys;
+  if (plat === 'total') {
+    razonesKeys = META.plataformas_con_razones.map(p => PLAT_CONF[p].razonesKey).filter(Boolean);
+  } else {
+    const k = PLAT_CONF[plat].razonesKey;
+    razonesKeys = k ? [k] : [];
+  }
+  if (!razonesKeys.length) return { items: [], last4 };
+
+  const verts = verticalesActivas_();
+
+  // totales globales + por semana, combinando todas las verticales activas
+  const totals = {};        // {name: total}
+  const perSem = {};        // {name: [v0,v1,v2,v3]}
+
+  last4.forEach((sem, wi) => {
+    if (sem === '—') return;
+    const semNum = parseInt(sem.replace('S', ''));
+    verts.forEach(v => {
+      const locReasons = REASONS[v] || {};
+      const semData = locReasons[semNum] || locReasons[String(semNum)] || {};
+      razonesKeys.forEach(rk => {
+        const arr = ((semData[rk] || {})[kpiLabel]) || [];
+        arr.forEach(r => {
+          totals[r.name] = (totals[r.name] || 0) + r.total;
+          if (!perSem[r.name]) perSem[r.name] = [0, 0, 0, 0];
+          perSem[r.name][wi] += r.total;
+        });
+      });
+    });
+  });
+
+  const items = Object.keys(totals)
+    .map(name => ({
+      name: name,
+      total: totals[name],
+      weekVals: perSem[name],
+      mx: Math.max.apply(null, perSem[name]) || 1
+    }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, topN);
+
+  return { items: items, last4: last4 };
+}
+
+// ════════════════════════════════════════════════════════════
+// RENDER PRINCIPAL
+// ════════════════════════════════════════════════════════════
+function renderReport() {
+  const local = localActual();
+  if (!local) return;
+
+  // destruir charts previos
+  Object.values(chartInstances).forEach(c => { try { c.destroy(); } catch(e){} });
+  chartInstances = {};
+
+  const platConf = PLAT_CONF[state.platKey];
+  const semIdx = META.semanas.indexOf(state.semKey);
+
+  renderReportBody(local, platConf, semIdx);
+  renderSidebar(local);
+}
+
+function renderReportBody(local, platConf, semIdx) {
+  const body = document.getElementById('report-body');
+  const semKey = state.semKey;
+  const prevSemKey = semIdx > 0 ? META.semanas[semIdx - 1] : null;
+
+  // Badge de marca
+  const marca = local.uni_nombre.includes('Desembarco') ? 'El Desembarco'
+              : local.uni_nombre.includes('Tasty')      ? 'Mr. Tasty'
+              : local.uni_nombre.includes('Mila')       ? 'Mila & Go'
+              : null;
+  const marcaColor = marca === 'El Desembarco' ? '#ff4757'
+                   : marca === 'Mr. Tasty'      ? '#ff9f43'
+                   : marca === 'Mila & Go'      ? '#f5c518'
+                   : '#768390';
+  const brandBadge = marca
+    ? `<span class="brand-badge" style="color:${marcaColor};border-color:${marcaColor}30;background:${marcaColor}12">${marca}</span>`
+    : '';
+
+  // KPI row — sensible a la ventana (modo 2.3)
+  // ventana=1  → comportamiento clásico: semana actual vs anterior + delta.
+  // ventana>1  → valor acumulado (suma) o promedio (prep/idx), sin delta,
+  //              con sublabel "Acumulado/Promedio SX → SY · N semanas".
+  const winSemsKpi = getVisibleSemanas();
+  const esVentana = state.ventana !== 1;  // 0 (Todas) o N>1
+  // % de rechazos/reclamos sobre el total de órdenes de la plataforma activa.
+  // Respeta plataforma (incluida TOTAL) + ventana/semana, igual que el valor mostrado.
+  const rateOf = (kpi, v) => {
+    if (kpi !== 'rec' && kpi !== 'rcl') return null;
+    const den = esVentana ? getKpiVentana_(state.platKey, 'total')
+                          : getKpiVal(state.platKey, semKey, 'total');
+    if (!(den > 0)) return null;
+    return { den, pct: v / den * 100 };
+  };
+  const rateBadge = (r) => r
+    ? ` <span class="kpi-rate">${r.pct.toLocaleString('es-AR', {minimumFractionDigits: 1, maximumFractionDigits: 1})}%</span>`
+    : '';
+  const rateNote = (r) => r ? ` · sobre ${r.den.toLocaleString('es-AR')} órd.` : '';
+  const kpiRowHtml = KPIS.map(x => {
+    if (!esVentana) {
+      const v = getKpiVal(state.platKey, semKey, x.k);
+      const p = prevSemKey !== null ? getKpiVal(state.platKey, prevSemKey, x.k) : null;
+      const valStr = fmtKpiVal(x.k, v);
+      const r = rateOf(x.k, v);
+      const prevStr = p !== null ? fmtKpiVal(x.k, p) : '—';
+      const cmpHtml = p !== null
+        ? `<span style="color:var(--muted)">${prevSemKey}: ${prevStr} → ${semKey}: <span style="color:${x.color};font-weight:600">${valStr}</span></span> · ${deltaStr(v, p)}`
+        : `<span style="color:var(--muted)">${semKey}: ${valStr}</span>`;
+      const auditFt = x.k === 'rcl' ? auditFooter('Reclamos', r ? r.pct : null)
+                    : x.k === 'idx' ? auditFooter('Conexión', 100 - v * 100)
+                    : '';
+      return `
+      <div class="kpi-box" style="border-top-color:${x.color}">
+        <div class="kpi-box-lbl">${x.lb}</div>
+        <div class="kpi-box-val" style="color:${x.color}">${valStr}${rateBadge(r)}</div>
+        <div class="kpi-box-delta">${cmpHtml}${rateNote(r)}</div>
+        ${auditFt}
+      </div>`;
+    }
+    // ventana > 1 / Todas
+    const v = getKpiVentana_(state.platKey, x.k);
+    const valStr = fmtKpiVal(x.k, v);
+    const r = rateOf(x.k, v);
+    const rango = winSemsKpi.length ? `${winSemsKpi[0]} → ${winSemsKpi[winSemsKpi.length - 1]}` : semKey;
+    const verbo = esKpiPromedio_(x.k) ? 'Promedio' : 'Acumulado';
+    const cmpHtml = `<span style="color:var(--muted)">${verbo} ${rango} · ${winSemsKpi.length} sem</span>`;
+    const auditFt = x.k === 'rcl' ? auditFooter('Reclamos', r ? r.pct : null)
+                  : x.k === 'idx' ? auditFooter('Conexión', 100 - v * 100)
+                  : '';
+    return `
+      <div class="kpi-box" style="border-top-color:${x.color}">
+        <div class="kpi-box-lbl">${x.lb}</div>
+        <div class="kpi-box-val" style="color:${x.color}">${valStr}${rateBadge(r)}</div>
+        <div class="kpi-box-delta">${cmpHtml}${rateNote(r)}</div>
+        ${auditFt}
+      </div>`;
+  }).join('');
+
+  // 6ta cápsula: FIR (%) — SOLO PeYa (decisión L.1). Otras plataformas/Total no la muestran.
+  // FIR = SUM(orders_with_fir) / SUM(confirmed_orders). "Más alto es mejor", por eso deltaStr(...true).
+  let firCapsuleHtml = '';
+  if (state.platKey === 'peya') {
+    const fx = { lb: 'FIR (%)', color: 'var(--acc)' };
+    let valStr, cmpHtml, firVal = null;
+    if (!esVentana) {
+      const v = getKpiVal('peya', semKey, 'fir');
+      firVal = v;
+      const p = prevSemKey !== null ? getKpiVal('peya', prevSemKey, 'fir') : null;
+      valStr = fmtKpiVal('fir', v);
+      const prevStr = p !== null ? fmtKpiVal('fir', p) : '—';
+      cmpHtml = p !== null
+        ? `<span style="color:var(--muted)">${prevSemKey}: ${prevStr} → ${semKey}: <span style="color:${fx.color};font-weight:600">${valStr}</span></span> · ${deltaStr(v, p, true)}`
+        : `<span style="color:var(--muted)">${semKey}: ${valStr}</span>`;
+    } else {
+      const v = getKpiVentana_('peya', 'fir');
+      firVal = v;
+      valStr = fmtKpiVal('fir', v);
+      const rango = winSemsKpi.length ? `${winSemsKpi[0]} → ${winSemsKpi[winSemsKpi.length - 1]}` : semKey;
+      cmpHtml = `<span style="color:var(--muted)">Promedio ${rango} · ${winSemsKpi.length} sem</span>`;
+    }
+    const firAuditFt = auditFooter('FIR', firVal === null ? null : firVal * 100);
+    firCapsuleHtml = `
+      <div class="kpi-box" style="border-top-color:${fx.color}">
+        <div class="kpi-box-lbl">${fx.lb}</div>
+        <div class="kpi-box-val" style="color:${fx.color}">${valStr}</div>
+        <div class="kpi-box-delta">${cmpHtml}</div>
+        ${firAuditFt}
+      </div>`;
+  }
+
+  // Charts grid (4 charts: rec, rcl, prep, mins/nodq)
+  // El rango del eje X respeta la ventana seleccionada.
+  const visSems = getVisibleSemanas();
+  const rangoLbl = visSems.length ? (visSems[0] + ' → ' + visSems[visSems.length - 1]) : semKey;
+  const chartsHtml = `
+    <div class="chart-card"><div class="chart-card-lbl"><span class="chart-card-dot" style="background:var(--rec)"></span>Rechazos · ${rangoLbl}</div><div class="chart-h"><canvas id="ch-rec"></canvas></div></div>
+    <div class="chart-card"><div class="chart-card-lbl"><span class="chart-card-dot" style="background:var(--rcl)"></span>Reclamos · ${rangoLbl}</div><div class="chart-h"><canvas id="ch-rcl"></canvas></div></div>
+    <div class="chart-card"><div class="chart-card-lbl"><span class="chart-card-dot" style="background:var(--prep)"></span>Prep Time · ${rangoLbl}</div><div class="chart-h"><canvas id="ch-prep"></canvas></div></div>
+    <div class="chart-card"><div class="chart-card-lbl"><span class="chart-card-dot" style="background:var(--nd)"></span>Tiempo no disponible (hs) · ${rangoLbl}</div><div class="chart-h"><canvas id="ch-mins"></canvas></div></div>`;
+
+  // Razones (solo Rechazos y Reclamos, hasta donde la fuente lo permita)
+  const recReasons = getReasonsLast4(state.platKey, semKey, 'Rechazos', 3);
+  const rclReasons = getReasonsLast4(state.platKey, semKey, 'Reclamos', 3);
+  const reasonsHtml = `
+    ${renderReasonsCard('Rechazos', recReasons, '#ff4757', platConf)}
+    ${renderReasonsCard('Reclamos', rclReasons, '#ff9f43', platConf)}`;
+
+  // Tabla comparativa de semanas (todas las semanas, scroll si hace falta)
+  const weekCompHtml = renderWeekComparison(platConf, semKey);
+
+  // Tags de órdenes por plataforma (semana seleccionada), siempre visibles
+  const ordersData = buildOrdersTags(semKey);
+
+  // Solapas de verticales de la ubicación (incluye "Todas (combinado)" primero)
+  const verticalTabsHtml = buildVerticalTabs();
+
+  // Datos del header según modo (combinado vs vertical)
+  const verts = verticalesDe(state.ubicKey);
+  const esCombinado = !state.vertKey;
+  const esMulti = verts.length > 1;
+  const ubicMixta = esMixta(state.ubicKey);
+
+  let headerTagHtml, headerName, headerMetaHtml;
+  if (esCombinado && esMulti) {
+    // Vista combinada — en mixtas, solo las verticales de la propiedad elegida
+    const vertsActivas = verticalesActivas_();
+    const marcas = vertsActivas.map(v => {
+      if (v.includes('Desembarco')) return 'El Desembarco';
+      if (v.includes('Tasty'))      return 'Mr. Tasty';
+      if (v.includes('Mila'))       return 'Mila & Go';
+      return v;
+    });
+    const marcasUnicas = marcas.filter((m, i) => marcas.indexOf(m) === i);
+
+    const tagColor = ubicMixta && state.combProp === 'Propio' ? '#1d9e75' : '#185fa5';
+    const tagLabel = ubicMixta
+      ? 'UBICACIÓN · ' + (state.combProp || '').toUpperCase() + ' (COMBINADO)'
+      : 'UBICACIÓN COMBINADA';
+    headerTagHtml = `<div class="plat-tag" style="background:${tagColor}22;color:${tagColor}">${tagLabel}</div>`;
+
+    const propTexto = ubicMixta ? ` · ${state.combProp}` : '';
+    headerName = `${escHtml(state.ubicKey)}${propTexto} <span style="font-size:13px;color:var(--muted);font-weight:400">· ${vertsActivas.length} vertical${vertsActivas.length>1?'es':''}</span>`;
+    headerMetaHtml = `<span>${marcasUnicas.map(escHtml).join(' + ')}</span>`;
+  } else {
+    // Vista de una vertical (o ubicación de vertical única)
+    const platId = state.platKey !== 'total' ? local.ids[state.platKey] : null;
+    const platIdStr = platId ? `ID ${state.platKey}: ${platId}` : (state.platKey === 'total' ? 'Vista agregada' : 'Sin ID configurado');
+    headerTagHtml = `<div class="plat-tag" style="background:${platConf.color}18;color:${platConf.color}">${platConf.label}</div>`;
+    headerName = escHtml(local.uni_nombre);
+    headerMetaHtml = `<span>${local.propiedad}</span><span>${local.tipo}</span><span>${platIdStr}</span>`;
+  }
+
+  // Hoja de comentarios (segunda sección, entra en la impresión)
+  const commentsHtml = buildCommentsSheet(semKey);
+
+  body.innerHTML = `
+    <div class="rep-header">
+      <div style="flex:1;min-width:0">
+        ${headerTagHtml}
+        <div class="rep-name">${headerName}</div>
+        <div style="margin:5px 0">${brandBadge}</div>
+        <div class="rep-meta">${headerMetaHtml}</div>
+        ${verticalTabsHtml}
+      </div>
+      <div class="orders-wrap">
+        <div class="orders-tags">${ordersData.tags}</div>
+        <div class="orders-legend">Composición por plataforma · acumulado de la ventana</div>
+        ${ordersData.donut}
+      </div>
+      <div class="rep-period">
+        <div>Semana analizada</div>
+        <div class="rep-period-big">${semKey}${semKey === META.semana_actual ? ' (W-1)' : ''}</div>
+        <div style="font-size:9px;color:var(--dim);margin-top:3px">Generado ${META.fecha_generacion || ''}</div>
+        <div class="plat-legend">
+          <div class="ple-row"><span class="ple-dot" style="background:#ff4757"></span>Pedidos Ya</div>
+          <div class="ple-row"><span class="ple-dot" style="background:#ff9f43"></span>Rappi</div>
+          <div class="ple-row"><span class="ple-dot" style="background:#6ee7b7"></span>Rappi Turbo</div>
+          <div class="ple-row"><span class="ple-dot" style="background:#f5c518"></span>Mercado Libre</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="kpi-row" style="grid-template-columns:repeat(${state.platKey === 'peya' ? 6 : 5},1fr)">${kpiRowHtml}${firCapsuleHtml}</div>
+
+    <div class="charts-grid">${chartsHtml}</div>
+
+    <div class="reasons-grid">${reasonsHtml}</div>
+
+    ${weekCompHtml}
+
+    ${commentsHtml}
+  `;
+
+  // Render charts
+  drawCharts(platConf, semIdx);
+}
+
+// Construye los tags de órdenes por plataforma para una semana,
+// más un gráfico de torta (donut) acumulando la ventana seleccionada.
+//
+// - Los TAGS muestran la semana seleccionada (no se acumulan).
+// - El DONUT acumula todas las semanas visibles según la ventana.
+//   Si ventana = N, suma las últimas N semanas hasta semKey inclusive.
+//   Si ventana = 0 (Todas), suma todas las semanas hasta semKey inclusive.
+function buildOrdersTags(semKey) {
+  const plats = ['peya', 'rappi', 'turbo', 'meli'];
+
+  // ── Totales de la ventana (para las cápsulas del head) ──
+  // Acumulan la ventana seleccionada; % sobre el total acumulado.
+  // Con ventana=Todas coinciden con el donut de Órdenes.
+  const headTotals = {};
+  let headGrand = 0;
+  plats.forEach(p => {
+    const t = getKpiVentana_(p, 'total');
+    headTotals[p] = t;
+    headGrand += t;
+  });
+
+  const totalTag = `
+      <div class="otag" style="border-left:3px solid var(--acc)">
+        <div class="otag-plat" style="color:var(--acc)">Total</div>
+        <div class="otag-val">${headGrand.toLocaleString('es-AR')} <span class="otag-pct">/ 100%</span></div>
+      </div>`;
+
+  const tagsHtml = totalTag + plats.map(p => {
+    const conf = PLAT_CONF[p];
+    const t = headTotals[p];
+    const pct = headGrand > 0 ? Math.round(t / headGrand * 100) : 0;
+    return `
+      <div class="otag" style="border-left:3px solid ${conf.color}">
+        <div class="otag-plat" style="color:${conf.color}">${conf.label}</div>
+        <div class="otag-val">${t.toLocaleString('es-AR')} <span class="otag-pct">/ ${pct}%</span></div>
+      </div>`;
+  }).join('');
+
+  // ── Totales acumulados de la ventana (para los donuts) ──
+  // Calculamos por separado: total (órdenes), rec (rechazos) y rcl (reclamos).
+  const winSems = getVisibleSemanas();
+  const acumPorMetrica = (kpi) => {
+    const tot = {};
+    let grand = 0;
+    plats.forEach(p => {
+      let sum = 0;
+      winSems.forEach(s => { sum += getKpiVal(p, s, kpi); });
+      tot[p] = sum;
+      grand += sum;
+    });
+    return { tot, grand };
+  };
+
+  const ord = acumPorMetrica('total');
+  const rec = acumPorMetrica('rec');
+  const rcl = acumPorMetrica('rcl');
+
+  const donutHtml = `
+    <div class="orders-donuts">
+      ${buildMetricDonut('Órdenes',  plats, ord.tot, ord.grand, winSems, semKey)}
+      ${buildMetricDonut('Rechazos', plats, rec.tot, rec.grand, winSems, semKey)}
+      ${buildMetricDonut('Reclamos', plats, rcl.tot, rcl.grand, winSems, semKey)}
+    </div>`;
+
+  return { tags: tagsHtml, donut: donutHtml };
+}
+
+// Donut SVG con leyenda lateral + título arriba.
+// title: rótulo (Órdenes / Rechazos / Reclamos).
+// winTotals: {peya, rappi, turbo, meli} → total acumulado de la ventana por plataforma.
+function buildMetricDonut(title, plats, winTotals, winGrand, winSems, semKey) {
+  // Sublabel del donut (común a todos los casos)
+  let ventanaLabel;
+  if (state.ventana === 1) {
+    ventanaLabel = semKey;
+  } else if (state.ventana && state.ventana > 0) {
+    ventanaLabel = `Últimas ${state.ventana} sem`;
+  } else {
+    ventanaLabel = `${winSems.length} sem`;
+  }
+
+  const cx = 60, cy = 60, r = 50, ri = 32;
+
+  // Caso sin datos en la ventana (frecuente en Rechazos/Reclamos):
+  // anillo gris con "0" en el centro (2 circles: aro gris + centro hueco).
+  if (winGrand <= 0) {
+    const emptyArcs =
+      `<circle cx="${cx}" cy="${cy}" r="${r}" fill="var(--border2)" opacity="0.55"/>`
+    + `<circle cx="${cx}" cy="${cy}" r="${ri}" fill="var(--card)"/>`;
+    const emptyLegend = plats.map(p => {
+      const conf = PLAT_CONF[p];
+      return `
+      <div class="dlg-row">
+        <div class="dlg-dot" style="background:${conf.color}"></div>
+        <div><span class="dlg-val">0</span> <span style="opacity:.6">0,0%</span></div>
+      </div>`;
+    }).join('');
+    return `
+    <div class="donut-unit">
+      <div class="donut-title">${title}</div>
+      <div class="orders-donut-row">
+        <svg width="105" height="105" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+          ${emptyArcs}
+          <text x="${cx}" y="${cy - 2}" text-anchor="middle" class="orders-donut-center">0</text>
+          <text x="${cx}" y="${cy + 12}" text-anchor="middle" class="orders-donut-sub">${ventanaLabel}</text>
+        </svg>
+        <div class="orders-donut-legend">${emptyLegend}</div>
+      </div>
+    </div>`;
+  }
+
+  const cumPct = {};
+  let acum = 0;
+  // Generar arcos
+  let arcs = '';
+  plats.forEach(p => {
+    const conf = PLAT_CONF[p];
+    const v = winTotals[p];
+    if (v <= 0) return;
+    const pct = v / winGrand;
+
+    // Caso especial: 100% (un solo slice ocupa todo). El arc SVG no dibuja
+    // un anillo completo si inicio == fin, así que en ese caso dibujamos
+    // 2 círculos concéntricos por separado (externo con color, interno con
+    // el fondo del card para "vaciar" el centro).
+    if (pct >= 0.9999) {
+      arcs += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${conf.color}" opacity="0.92"/>`
+            + `<circle cx="${cx}" cy="${cy}" r="${ri}" fill="var(--card)"/>`;
+      acum += pct;
+      return;
+    }
+
+    const startAng = acum * 2 * Math.PI - Math.PI / 2;  // arranca arriba
+    acum += pct;
+    const endAng = acum * 2 * Math.PI - Math.PI / 2;
+    const largeArc = pct > 0.5 ? 1 : 0;
+    // Punto externo inicio/fin
+    const x1 = cx + r * Math.cos(startAng);
+    const y1 = cy + r * Math.sin(startAng);
+    const x2 = cx + r * Math.cos(endAng);
+    const y2 = cy + r * Math.sin(endAng);
+    // Punto interno inicio/fin
+    const xi1 = cx + ri * Math.cos(startAng);
+    const yi1 = cy + ri * Math.sin(startAng);
+    const xi2 = cx + ri * Math.cos(endAng);
+    const yi2 = cy + ri * Math.sin(endAng);
+    // Path del slice
+    const d = `M ${x1} ${y1}
+               A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2}
+               L ${xi2} ${yi2}
+               A ${ri} ${ri} 0 ${largeArc} 0 ${xi1} ${yi1}
+               Z`;
+    arcs += `<path d="${d}" fill="${conf.color}" opacity="0.92"/>`;
+  });
+
+  // Leyenda lateral con valores
+  const legend = plats.map(p => {
+    const conf = PLAT_CONF[p];
+    const v = winTotals[p];
+    const pct = winGrand > 0 ? (v / winGrand * 100) : 0;
+    return `
+      <div class="dlg-row">
+        <div class="dlg-dot" style="background:${conf.color}"></div>
+        <div><span class="dlg-val">${v.toLocaleString('es-AR')}</span> <span style="opacity:.6">${pct.toFixed(1)}%</span></div>
+      </div>`;
+  }).join('');
+
+  return `
+    <div class="donut-unit">
+      <div class="donut-title">${title}</div>
+      <div class="orders-donut-row">
+        <svg width="105" height="105" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+          ${arcs}
+          <text x="${cx}" y="${cy - 2}" text-anchor="middle" class="orders-donut-center">${winGrand.toLocaleString('es-AR')}</text>
+          <text x="${cx}" y="${cy + 12}" text-anchor="middle" class="orders-donut-sub">${ventanaLabel}</text>
+        </svg>
+        <div class="orders-donut-legend">${legend}</div>
+      </div>
+    </div>
+  `;
+}
+
+// Hoja de comentarios. En pantalla muestra solo la plataforma activa
+// (top 15, ancho completo, más granular). En impresión muestra los 4 bloques.
+function buildCommentsSheet(semKey) {
+  const verts = verticalesActivas_();
+  // Los comentarios siguen la VENTANA: todas las semanas visibles (no solo semKey).
+  // Con ventana=1, getVisibleSemanas devuelve solo [semKey] → comportamiento clásico.
+  const winSems = getVisibleSemanas();
+  const winNums = winSems.map(s => parseInt(s.replace('S', '')));
+  const rangoLbl = winSems.length > 1
+    ? `${winSems[0]} → ${winSems[winSems.length - 1]} · ${winSems.length} sem`
+    : semKey;
+
+  // ── Bloque de comentarios para una plataforma ──
+  function bloque(plat, opts) {
+    const conf = PLAT_CONF[plat];
+    let items = [];
+    verts.forEach(v => {
+      const porPlat = (COMMENTS[v] || {})[plat] || {};
+      winNums.forEach(num => {
+        (porPlat[num] || []).forEach(c => {
+          items.push({ texto: c.texto, motivo: c.motivo, fecha: c.fecha, _sem: 'S' + num });
+        });
+      });
+    });
+    items.sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+    const top = items.slice(0, opts.max);
+
+    const cuerpo = top.length
+      ? top.map(c => `
+          <div class="cmt-item">
+            <div class="cmt-meta"><span class="cmt-sem">${c._sem}</span>${c.motivo ? ` · <span class="cmt-mot">${escHtml(c.motivo)}</span>` : ''}</div>
+            <div class="cmt-text">${escHtml(c.texto)}</div>
+          </div>`).join('')
+      : `<div class="cmt-empty">Sin comentarios en ${rangoLbl}</div>`;
+
+    return `
+      <div class="cmt-block">
+        <div class="cmt-block-title" style="color:${conf.color}">
+          <span class="cmt-dot" style="background:${conf.color}"></span>${conf.label}
+          <span class="cmt-count">${items.length ? items.length + ' en total' : ''}</span>
+        </div>
+        ${cuerpo}
+      </div>`;
+  }
+
+  // En pantalla: solo la plataforma activa (top 15, ancho completo)
+  // 'total' no tiene comentarios propios, fallback a mostrar los 4 bloques.
+  const platActiva = state.platKey;
+  const onScreen = (platActiva === 'total')
+    ? `<div class="comments-grid">${['peya','rappi','turbo','meli'].map(p => bloque(p, {max: 8})).join('')}</div>`
+    : `<div class="comments-single">${bloque(platActiva, {max: 15})}</div>`;
+
+  // Para impresión: SIEMPRE los 4 bloques (panorámica)
+  const onPrint = `<div class="comments-grid">${['peya','rappi','turbo','meli'].map(p => bloque(p, {max: 8})).join('')}</div>`;
+
+  return `
+    <div class="comments-sheet">
+      <div class="comments-sheet-title">Comentarios de reclamos · ${rangoLbl}</div>
+      <div class="comments-screen">${onScreen}</div>
+      <div class="comments-print">${onPrint}</div>
+    </div>`;
+}
+
+// Solapas de la ubicación actual:
+// - Ubicación no mixta: "Todas (combinado)" + 1 por vertical
+// - Ubicación mixta:    "Todas Propio" + "Todas Franquicia" + 1 por vertical
+// Vertical única: no muestra solapas.
+function buildVerticalTabs() {
+  const verts = verticalesDe(state.ubicKey);
+  if (verts.length <= 1) return '';
+
+  const COMB_PRO = '#1d9e75';  // verde para combinado Propio
+  const COMB_FRA = '#185fa5';  // azul para combinado Franquicia
+  const COMB_ALL = '#185fa5';  // azul para combinado total (no mixta)
+  const ACT      = '#534ab7';  // violeta para vertical activa
+
+  const mixta = esMixta(state.ubicKey);
+
+  // Solapa(s) combinada(s)
+  let combTabs = '';
+  if (mixta) {
+    // Una solapa combinada por propiedad
+    const props = propiedadesDe(state.ubicKey).sort();
+    combTabs = props.map(prop => {
+      const cuantas = verticalesPorPropiedad(state.ubicKey, prop).length;
+      const isActive = !state.vertKey && state.combProp === prop;
+      const color = prop === 'Propio' ? COMB_PRO : COMB_FRA;
+      const bg = isActive ? color+'22' : 'var(--card2,#161b22)';
+      const accent = isActive ? color : 'var(--border)';
+      const titleColor = isActive ? color : 'var(--fg,#e6edf3)';
+      return `
+        <div class="vtab" style="background:${bg};border-left:3px solid ${accent}"
+             onclick="selectCombinadoPropiedad('${escAttr(prop)}')">
+          <div class="vtab-name" style="color:${titleColor};font-weight:600">Todas ${escHtml(prop)}</div>
+          <div class="vtab-ids">${cuantas} vertical${cuantas>1?'es':''} sumada${cuantas>1?'s':''}</div>
+        </div>`;
+    }).join('');
+  } else {
+    // Solapa combinada total (comportamiento anterior)
+    const isActive = !state.vertKey && !state.combProp;
+    const bg = isActive ? COMB_ALL+'22' : 'var(--card2,#161b22)';
+    const accent = isActive ? COMB_ALL : 'var(--border)';
+    const titleColor = isActive ? COMB_ALL : 'var(--fg,#e6edf3)';
+    combTabs = `
+      <div class="vtab" style="background:${bg};border-left:3px solid ${accent}"
+           onclick="selectCombinado()">
+        <div class="vtab-name" style="color:${titleColor};font-weight:600">Todas (combinado)</div>
+        <div class="vtab-ids">${verts.length} verticales sumadas</div>
+      </div>`;
+  }
+
+  // Una solapa por vertical
+  const vertTabs = verts.map(nombre => {
+    const l = LOCALS.find(x => x.uni_nombre === nombre);
+    if (!l) return '';
+    const isActive = nombre === state.vertKey;
+    const accent = isActive ? ACT : 'var(--border)';
+    const bg = isActive ? ACT+'22' : 'var(--card2,#161b22)';
+    const titleColor = isActive ? ACT : 'var(--fg,#e6edf3)';
+    return `
+      <div class="vtab" style="background:${bg};border-left:3px solid ${accent}"
+           onclick="selectVertical('${escAttr(nombre)}')">
+        <div class="vtab-name" style="color:${titleColor}">${escHtml(nombre)}</div>
+        <div class="vtab-ids">${buildVtabIds(l)}</div>
+      </div>`;
+  }).join('');
+
+  return `<div class="vtabs">${combTabs}${vertTabs}</div>`;
+}
+
+// Subtítulo de cada solapa: IDs de plataforma que tenga esa vertical.
+function buildVtabIds(l) {
+  const ids = l.ids || {};
+  const parts = [];
+  if (ids.peya)  parts.push('py ' + ids.peya);
+  if (ids.rappi) parts.push('rp ' + ids.rappi);
+  if (ids.turbo) parts.push('tb ' + ids.turbo);
+  if (ids.meli)  parts.push('ml ' + ids.meli);
+  return parts.join(' · ') || 'sin IDs';
+}
+
+// Vuelve a la vista combinada de la ubicación.
+function selectCombinado() {
+  state.vertKey = null;
+  state.combProp = null;
+  renderReport();
+}
+
+// En ubicaciones mixtas: combinado solo de las verticales de una propiedad.
+function selectCombinadoPropiedad(prop) {
+  state.vertKey = null;
+  state.combProp = prop;
+  renderReport();
+}
+
+// Filtra a una vertical concreta de la ubicación.
+function selectVertical(nombre) {
+  state.vertKey = nombre;
+  state.combProp = null;
+  renderReport();
+}
+
+function renderReasonsCard(kpiLabel, reasonsObj, hex, platConf) {
+  const platHasReasons = platConf.razonesKey ||
+    (state.platKey === 'total' && META.plataformas_con_razones.length > 0);
+
+  if (!platHasReasons) {
+    return `
+      <div class="reasons-card">
+        <div class="reasons-title" style="color:${hex}">
+          <span style="width:8px;height:8px;border-radius:50%;background:${hex};display:inline-block"></span>
+          Top 3 razones · ${kpiLabel}
+        </div>
+        <div class="reasons-empty">Sin desglose de razones disponible para ${platConf.label}</div>
+      </div>`;
+  }
+
+  if (!reasonsObj.items.length) {
+    return `
+      <div class="reasons-card">
+        <div class="reasons-title" style="color:${hex}">
+          <span style="width:8px;height:8px;border-radius:50%;background:${hex};display:inline-block"></span>
+          Top 3 razones · ${kpiLabel}
+        </div>
+        <div class="reasons-subtitle">Últimas 4 semanas (${reasonsObj.last4.filter(s => s !== '—').join(', ')})</div>
+        <div class="reasons-empty">Sin razones registradas en este período</div>
+      </div>`;
+  }
+
+  return `
+    <div class="reasons-card">
+      <div class="reasons-title" style="color:${hex}">
+        <span style="width:8px;height:8px;border-radius:50%;background:${hex};display:inline-block"></span>
+        Top 3 razones · ${kpiLabel}
+      </div>
+      <div class="reasons-subtitle">Últimas 4 semanas (${reasonsObj.last4.filter(s => s !== '—').join(', ')})</div>
+      ${reasonsObj.items.map(r => `
+        <div class="reason-item">
+          <div class="reason-name">
+            <span>${escHtml(r.name)}</span>
+            <span class="reason-total" style="color:${hex}">${r.total} total</span>
+          </div>
+          <div class="reason-weeks">
+            ${r.weekVals.map((v, i) => `
+              <div class="rw-cell">
+                <div class="rw-cell-sem">${reasonsObj.last4[i]}</div>
+                <div class="rw-cell-val" style="color:${hex}">${v}</div>
+                <div class="rw-cell-bar" style="background:${hex};opacity:${(v / r.mx * .8 + .2).toFixed(2)}"></div>
+              </div>`).join('')}
+          </div>
+        </div>`).join('')}
+    </div>`;
+}
+
+function renderWeekComparison(platConf, currentSemKey) {
+  // Tabla con las semanas de la ventana seleccionada, semana actual destacada
+  const sems = getVisibleSemanas();
+  const rows = sems.map(s => {
+    const isCurrent = s === currentSemKey;
+    const cells = KPIS.map(x => {
+      const v = getKpiVal(state.platKey, s, x.k);
+      return `<td style="color:${x.color};opacity:${v > 0 ? 1 : .35}">${fmtKpiVal(x.k, v)}</td>`;
+    }).join('');
+    // Columna FIR extra, SOLO en PeYa. "—" cuando esa semana no tiene confirmadas FIR.
+    let firCell = '';
+    if (state.platKey === 'peya') {
+      const den = getKpiVal('peya', s, 'fir_conf');
+      firCell = den > 0
+        ? `<td style="color:var(--acc)">${fmtKpiVal('fir', getKpiVal('peya', s, 'fir'))}</td>`
+        : `<td style="color:var(--acc);opacity:.35">—</td>`;
+    }
+    return `<tr class="${isCurrent ? 'current-week' : ''}">
+      <td>${s}</td>
+      ${cells}${firCell}
+    </tr>`;
+  }).reverse(); // semana más reciente arriba
+
+  return `
+    <div class="weekcomp-card">
+      <div class="weekcomp-title">Comparativo · ${state.ventana ? 'últimas ' + state.ventana + ' semanas' : 'todas las semanas'} · ${platConf.label}</div>
+      <div style="max-height:280px;overflow-y:auto">
+        <table class="weekcomp-table">
+          <thead>
+            <tr>
+              <th>Semana</th>
+              ${KPIS.map(x => `<th style="color:${x.color}">${x.lb}</th>`).join('')}
+              ${state.platKey === 'peya' ? '<th style="color:var(--acc)">FIR (%)</th>' : ''}
+            </tr>
+          </thead>
+          <tbody>${rows.join('')}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+function drawCharts(platConf, semIdx) {
+  // En el navegador real Chart.js carga. En entorno sin red mostramos placeholder.
+  try {
+    if (typeof Chart === 'undefined') throw new Error('Chart.js no disponible');
+
+    const semsUpTo = getVisibleSemanas();
+    const chartConfigs = [
+      { id: 'ch-rec',  kpi: 'rec',  color: '#ff4757' },
+      { id: 'ch-rcl',  kpi: 'rcl',  color: '#ff9f43' },
+      { id: 'ch-prep', kpi: 'prep', color: '#a29bfe' },
+      { id: 'ch-mins', kpi: 'mins', color: '#26de81' },
+    ];
+
+    const opts = (color) => ({
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#161b22', borderColor: '#21262d', borderWidth: 1,
+          titleColor: '#8b949e', bodyColor: '#e6edf3',
+          titleFont: { family: 'Segoe UI', size: 9 }, bodyFont: { family: 'Segoe UI', size: 10 }
+        }
+      },
+      scales: {
+        x: { grid: { color: '#2d3744' }, ticks: { color: '#a8b3c0', font: { family: 'Segoe UI', size: 10 }, maxRotation: 0 } },
+        y: { grid: { color: '#2d3744' }, ticks: { color: '#a8b3c0', font: { family: 'Segoe UI', size: 10 } }, beginAtZero: true }
+      },
+      elements: { point: { radius: 2, hoverRadius: 4 }, line: { tension: .3, borderWidth: 2 } }
+    });
+
+    chartConfigs.forEach(cfg => {
+      const canvas = document.getElementById(cfg.id);
+      if (!canvas) return;
+      const data = semsUpTo.map(s => getKpiVal(state.platKey, s, cfg.kpi));
+      chartInstances[cfg.id] = new Chart(canvas.getContext('2d'), {
+        type: 'line',
+        data: {
+          labels: semsUpTo,
+          datasets: [{
+            data: data,
+            borderColor: cfg.color,
+            backgroundColor: cfg.color + '22',
+            fill: true,
+            borderWidth: 2
+          }]
+        },
+        options: opts(cfg.color)
+      });
+    });
+  } catch (err) {
+    console.warn('Charts no renderizados:', err.message);
+    ['ch-rec','ch-rcl','ch-prep','ch-mins'].forEach(id => {
+      const canvas = document.getElementById(id);
+      if (canvas && canvas.parentElement) {
+        canvas.parentElement.innerHTML = `<div style="height:140px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--dim);font-size:10px;text-align:center;gap:4px"><div>⚠ Gráfico no disponible</div><div style="font-size:9px">${err.message}</div></div>`;
+      }
+    });
+  }
+}
+
+function renderSidebar(local) {
+  // Por ahora solo placeholder. Cuando definamos contra qué comparar, se llena acá.
+  // Mantenemos el DOM tal cual está en el HTML inicial.
+}
+
+// ════════════════════════════════════════════════════════════
+// BOOT
+// ════════════════════════════════════════════════════════════
+init();
+
+// ── MODO MARCA ──────────────────────────────────────────────
+// Si el backend inyectó una marca, OPERACIONES ya viene filtrado a las
+// ubicaciones de esa marca (y dentro de cada una, solo sus verticales).
+// El selector funciona igual que el general; acá solo ajustamos el título.
+if (typeof MARCA_ACTIVA !== 'undefined' && MARCA_ACTIVA) {
+  const logoEl = document.querySelector('.logo');
+  if (logoEl) logoEl.innerHTML = 'REPORTE POR <span>MARCA</span>';
+  const metaEl = document.getElementById('header-meta');
+  if (metaEl) {
+    const nUbic = Object.keys(OPERACIONES).length;
+    metaEl.textContent = MARCA_ACTIVA + ' · ' + nUbic + ' ubicaciones · El Desembarco Group · 2026';
+  }
+  document.title = 'Reporte · ' + MARCA_ACTIVA;
+
+  // Placeholder del buscador con el nombre de la marca
+  const input = document.getElementById('gsel-local');
+  if (input) input.placeholder = 'Buscar ubicación de ' + MARCA_ACTIVA + '...';
+}
+</body>
+</html>

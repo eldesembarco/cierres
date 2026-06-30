@@ -1,0 +1,171 @@
+/* Shell fullscreen — escala la pantalla nativa al viewport del usuario */
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #0a0807;
+  font-family: "Inter", system-ui, sans-serif;
+}
+
+#root {
+  width: 100vw;
+  height: 100vh;
+}
+
+.fs-stage {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: var(--bg, #0a0807);
+}
+
+.fs-canvas-wrap {
+  position: relative;
+  box-shadow: 0 30px 80px rgba(0,0,0,0.5);
+  flex-shrink: 0;
+}
+[data-fs-fit="true"] .fs-canvas-wrap { box-shadow: none; }
+
+.fs-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: top left;
+  overflow: hidden;
+  background: var(--bg);
+  flex-shrink: 0;
+}
+
+/* Dock de navegación entre pantallas — abajo, flotante */
+.fs-dock {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px;
+  background: rgba(20, 18, 16, 0.92);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 999px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+  z-index: 1000;
+  font-family: "Inter", system-ui, sans-serif;
+  color: #fff;
+}
+
+.fs-dock-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: transparent;
+  border: 0;
+  color: rgba(255,255,255,0.7);
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  font-family: inherit;
+}
+.fs-dock-btn:hover {
+  background: rgba(255,255,255,0.06);
+  color: #fff;
+}
+.fs-dock-btn.is-active {
+  background: rgba(217, 119, 6, 0.22);
+  color: #fbbf24;
+  box-shadow: inset 0 0 0 1px rgba(217, 119, 6, 0.4);
+}
+.fs-dock-btn .fs-dock-num {
+  font-size: 10px;
+  opacity: 0.55;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.5px;
+}
+.fs-dock-sep {
+  width: 1px;
+  height: 22px;
+  background: rgba(255,255,255,0.1);
+  margin: 0 4px;
+}
+.fs-dock-home {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  color: rgba(255,255,255,0.7);
+  transition: all 0.15s ease;
+}
+.fs-dock-home:hover { background: rgba(255,255,255,0.08); color: #fff; }
+
+/* Fit toggle (auto-scale vs 1:1) */
+.fs-fit-toggle {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: rgba(20, 18, 16, 0.92);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  z-index: 1000;
+  font-family: "Inter", system-ui, sans-serif;
+}
+.fs-fit-btn {
+  padding: 6px 12px;
+  background: transparent;
+  border: 0;
+  color: rgba(255,255,255,0.6);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-family: inherit;
+  text-transform: uppercase;
+}
+.fs-fit-btn:hover { color: #fff; }
+.fs-fit-btn.is-active {
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+}
+
+/* Tag de tamaño nativo (top-left) */
+.fs-size-tag {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  padding: 6px 10px;
+  background: rgba(20, 18, 16, 0.92);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.6);
+  z-index: 1000;
+  font-family: "JetBrains Mono", monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.3px;
+  pointer-events: none;
+}
+
+/* Light theme overrides cuando body es claro */
+[data-theme="light"] .fs-stage { background: #f0eee9; }
+[data-theme="light"] body { background: #f0eee9; }

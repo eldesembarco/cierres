@@ -1,0 +1,196 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  CM
+}
+
+enum DraftAction {
+  PENDING
+  APPROVED
+  EDITED
+  DISCARDED
+  SENT
+}
+
+enum AlertSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+enum AlertStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+}
+
+model User {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  password  String
+  name      String?
+  role      Role     @default(CM)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  responseLogs ResponseLog[]
+}
+
+model BrandTone {
+  id        String   @id @default(cuid())
+  brand     String   @unique
+  voice     String   @db.Text
+  examples  String?  @db.Text
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+}
+
+model ResponseLog {
+  id           String      @id @default(cuid())
+  reviewId     String
+  placeId      String
+  brand        String
+  rating       Int
+  reviewText   String      @db.Text
+  prompt       String      @db.Text
+  draft        String      @db.Text
+  finalText    String?     @db.Text
+  action       DraftAction @default(PENDING)
+  llmProvider  String?     // 'deepseek' | 'gemini'
+  llmModel     String?     // e.g. 'deepseek/deepseek-chat:free' o 'gemini-2.5-flash'
+  cmUserId     String?
+  cmUser       User?       @relation(fields: [cmUserId], references: [id])
+  sentAt       DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@index([reviewId])
+  @@index([placeId])
+  @@index([action])
+}
+
+model Alert {
+  id          String        @id @default(cuid())
+  type        String
+  severity    AlertSeverity @default(INFO)
+  status      AlertStatus   @default(OPEN)
+  placeId     String?
+  brand       String?
+  title       String
+  description String        @db.Text
+  metadata    Json?
+  createdAt   DateTime      @default(now())
+  acknowledgedAt DateTime?
+  resolvedAt  DateTime?
+
+  @@index([status, severity])
+  @@index([placeId])
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Meta (Facebook + Instagram) — Parte 2
+// ──────────────────────────────────────────────────────────────────────────────
+
+enum MetaChannel {
+  INSTAGRAM_DM
+  MESSENGER
+  INSTAGRAM_COMMENT
+}
+
+model MetaAccount {
+  id            String   @id @default(cuid())
+  channel       MetaChannel
+  externalId    String   @unique  // IG account ID o FB Page ID
+  brandName     String   // "Mr Tasty" | "El Desembarco" | "Mila & Go"
+  handle        String?  // @mrtasty.ok, etc.
+  pageName      String?  // nombre como aparece en FB/IG
+  accessToken   String?  @db.Text  // long-lived token, refrescado periodicamente
+  tokenExpiresAt DateTime?
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  conversations MetaConversation[]
+  comments      MetaComment[]
+
+  @@index([channel])
+  @@index([brandName])
+}
+
+model MetaConversation {
+  id            String   @id @default(cuid())
+  externalId    String   @unique  // ID de la conversation en Meta Graph
+  channel       MetaChannel
+  accountId     String
+  account       MetaAccount @relation(fields: [accountId], references: [id])
+  brandName     String
+  contactId     String   // PSID (Messenger) o IGSID (Instagram)
+  contactName   String?
+  contactImage  String?
+  lastMessageAt DateTime
+  lastMessagePreview String? @db.Text
+  unread        Boolean  @default(true)
+  archived      Boolean  @default(false)
+  // 24-hour window de Meta: se puede mandar mensaje libre solo si el cliente
+  // mensajeó dentro de las últimas 24hs. Después requiere "Human Agent" tag.
+  windowExpiresAt DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  messages      MetaMessage[]
+
+  @@index([channel])
+  @@index([brandName])
+  @@index([accountId])
+  @@index([unread, archived])
+}
+
+model MetaMessage {
+  id              String   @id @default(cuid())
+  externalId      String   @unique  // mid de Meta
+  conversationId  String
+  conversation    MetaConversation @relation(fields: [conversationId], references: [id])
+  fromBrand       Boolean  // true si lo mandó la marca, false si el cliente
+  text            String?  @db.Text
+  attachmentType  String?  // "image" | "video" | "audio" | "file"
+  attachmentUrl   String?  @db.Text
+  receivedAt      DateTime
+  // Si es respuesta IA, link al log
+  responseLogId   String?
+  createdAt       DateTime @default(now())
+
+  @@index([conversationId])
+  @@index([receivedAt])
+}
+
+model MetaComment {
+  id          String  @id @default(cuid())
+  externalId  String  @unique
+  channel     MetaChannel  // INSTAGRAM_COMMENT (también podría ser FB pero por ahora solo IG)
+  accountId   String
+  account     MetaAccount @relation(fields: [accountId], references: [id])
+  brandName   String
+  postId      String   // ID del post de IG o FB
+  postCaption String?  @db.Text
+  postUrl     String?
+  contactId   String
+  contactName String?
+  text        String   @db.Text
+  receivedAt  DateTime
+  replied     Boolean  @default(false)
+  reply       String?  @db.Text
+  repliedAt   DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([brandName])
+  @@index([replied])
+  @@index([accountId])
+}

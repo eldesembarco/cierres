@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_top">
+<style>
+  body { font-family: Arial, sans-serif; margin: 0; padding: 18px; color: #1a2230; }
+  .head { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+  .head .ico { font-size: 18px; }
+  .head .ttl { font-size: 15px; font-weight: 600; }
+  .row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+  .lbl { font-size: 12px; color: #5f5e5a; }
+  .cur { font-size: 14px; font-weight: 600; }
+  .bar { height: 8px; background: #eceef1; border-radius: 4px; overflow: hidden; margin-bottom: 8px; }
+  .fill { height: 100%; width: 0%; background: #185fa5; border-radius: 4px; transition: width .3s ease; }
+  .meta { display: flex; justify-content: space-between; font-size: 12px; color: #5f5e5a; margin-bottom: 14px; }
+  .list { border-top: 1px solid #e6e8ec; padding-top: 10px; font-size: 12px; max-height: 150px; overflow-y: auto; }
+  .item { display: flex; align-items: center; gap: 8px; padding: 3px 0; color: #888780; }
+  .item.done { color: #5f5e5a; }
+  .item.run  { color: #1a2230; font-weight: 600; }
+  .item.fail { color: #a32d2d; font-weight: 600; }
+  .dot { width: 14px; text-align: center; }
+  .btn { margin-top: 14px; width: 100%; padding: 9px; border: 1px solid #d3d1c7; background: #fff; border-radius: 6px; font-size: 13px; cursor: pointer; }
+  .btn:hover { background: #f1efe8; }
+  .btn[disabled] { opacity: .5; cursor: default; }
+</style>
+</head>
+<body>
+  <div class="head">
+    <span class="ico">📸</span>
+    <span class="ttl">Ejecutando snapshots</span>
+  </div>
+
+  <div class="row">
+    <span class="lbl">Página actual</span>
+    <span class="cur" id="cur">Iniciando…</span>
+  </div>
+  <div class="bar"><div class="fill" id="fill"></div></div>
+  <div class="meta">
+    <span id="count">0 de 0</span>
+    <span id="eta">calculando…</span>
+  </div>
+
+  <div class="list" id="list"></div>
+
+  <button class="btn" id="btn" disabled onclick="google.script.host.close()">Cerrar</button>
+
+<script>
+  var pasos = [];
+  var idx = 0;
+  var t0 = Date.now();
+
+  function fmt(s){ s = Math.round(s); if (s < 60) return '~' + s + ' s restantes'; var m = Math.floor(s/60); return '~' + m + ' min ' + (s%60) + ' s'; }
+
+  function render(){
+    var lst = document.getElementById('list');
+    lst.innerHTML = pasos.map(function(p, i){
+      var cls = 'item', dot = '○';
+      if (p.estado === 'done') { cls += ' done'; dot = '✓'; }
+      else if (p.estado === 'run')  { cls += ' run';  dot = '⏳'; }
+      else if (p.estado === 'fail') { cls += ' fail'; dot = '✗'; }
+      return '<div class="'+cls+'"><span class="dot">'+dot+'</span>'+p.label+'</div>';
+    }).join('');
+  }
+
+  function correr(){
+    if (idx >= pasos.length){ terminar(); return; }
+    pasos[idx].estado = 'run';
+    document.getElementById('cur').textContent = pasos[idx].label;
+    render();
+    google.script.run.withSuccessHandler(function(res){
+      pasos[idx].estado = res.ok ? 'done' : 'fail';
+      idx++;
+      var pct = Math.round(idx / pasos.length * 100);
+      document.getElementById('fill').style.width = pct + '%';
+      document.getElementById('count').textContent = idx + ' de ' + pasos.length;
+      var elapsed = (Date.now() - t0) / 1000;
+      var rest = idx > 0 ? (elapsed / idx) * (pasos.length - idx) : 0;
+      document.getElementById('eta').textContent = idx < pasos.length ? fmt(rest) : 'listo';
+      render();
+      correr();
+    }).withFailureHandler(function(err){
+      pasos[idx].estado = 'fail';
+      idx++;
+      render();
+      correr();
+    }).SNAP_progresoCorrerPaso(idx);
+  }
+
+  function terminar(){
+    document.getElementById('cur').textContent = '✓ Completado';
+    document.getElementById('eta').textContent = ((Date.now()-t0)/1000).toFixed(1) + ' s total';
+    var b = document.getElementById('btn'); b.disabled = false; b.textContent = 'Cerrar';
+  }
+
+  google.script.run.withSuccessHandler(function(lista){
+    pasos = lista.map(function(p){ return { label: p.label, estado: 'wait' }; });
+    document.getElementById('count').textContent = '0 de ' + pasos.length;
+    render();
+    correr();
+  }).SNAP_progresoPasos();
+</script>
+</body>
+</html>
