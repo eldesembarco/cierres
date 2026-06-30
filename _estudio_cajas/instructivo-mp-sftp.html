@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Mercado Pago — Envío de reportes por SFTP</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  :root{
+    --blue:#2563eb; --blue-dark:#1e3a8a; --blue-soft:#eff6ff;
+    --ink:#0f172a; --muted:#64748b; --line:#e2e8f0; --soft:#f8fafc;
+    --green:#059669; --green-soft:#ecfdf5; --amber:#b45309; --amber-soft:#fffbeb; --red:#dc2626;
+  }
+  body{ font-family:"Segoe UI", system-ui, -apple-system, Helvetica, Arial, sans-serif; color:var(--ink); font-size:11pt; line-height:1.55; max-width:210mm; margin:0 auto; padding:16mm 16mm; }
+  h1,h2,h3{ font-weight:600; line-height:1.2; }
+  p{ margin:0 0 8px; } .muted{ color:var(--muted); }
+  .kicker{ display:inline-block; font-size:9.5pt; letter-spacing:.14em; text-transform:uppercase; color:var(--blue); font-weight:600; }
+  .bar{ width:54px; height:5px; background:var(--blue); border-radius:3px; margin:12px 0 14px; }
+  h1.title{ font-size:24pt; letter-spacing:-.01em; }
+  .lead{ font-size:11.5pt; color:var(--muted); margin-top:8px; max-width:170mm; }
+  section{ margin:20px 0 0; page-break-inside:avoid; }
+  .h-sec{ display:flex; align-items:center; gap:11px; margin:0 0 10px; }
+  .h-sec .n{ flex:none; width:26px; height:26px; border-radius:7px; background:var(--blue); color:#fff; font-size:11pt; font-weight:600; display:flex; align-items:center; justify-content:center; }
+  .h-sec h2{ font-size:15pt; }
+  table.vals{ width:100%; border-collapse:collapse; font-size:11pt; margin:8px 0; }
+  table.vals td{ padding:9px 12px; border:1px solid var(--line); }
+  table.vals tr td:first-child{ width:38%; background:var(--soft); font-weight:600; }
+  table.vals .val{ font-family:"Consolas", "Courier New", monospace; font-size:11.5pt; color:var(--blue-dark); }
+  .callout{ background:var(--blue-soft); border-left:4px solid var(--blue); border-radius:0 8px 8px 0; padding:11px 15px; margin:8px 0; font-size:10.5pt; }
+  .callout b{ color:var(--blue-dark); }
+  .warn{ background:var(--amber-soft); border-left:4px solid var(--amber); border-radius:0 8px 8px 0; padding:10px 15px; margin:8px 0; font-size:10.5pt; }
+  .warn b{ color:var(--amber); }
+  .ok{ background:var(--green-soft); border-left:4px solid var(--green); border-radius:0 8px 8px 0; padding:10px 15px; margin:8px 0; font-size:10.5pt; }
+  .ok b{ color:var(--green); }
+  ul{ margin:4px 0 8px 2px; list-style:none; } li{ position:relative; padding-left:18px; margin:5px 0; }
+  li:before{ content:""; position:absolute; left:2px; top:7px; width:6px; height:6px; border-radius:50%; background:var(--blue); }
+  .foot{ margin-top:22px; border-top:1px solid var(--line); padding-top:10px; font-size:9.5pt; color:var(--muted); }
+  code{ background:var(--soft); border:1px solid var(--line); border-radius:4px; padding:1px 5px; font-size:10pt; font-family:"Consolas","Courier New",monospace; }
+  b.k{ color:var(--blue-dark); }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="kicker">Grupo Desembarco · Instructivo</span>
+  <div class="bar"></div>
+  <h1 class="title">Mercado Pago → enviar los reportes por SFTP</h1>
+  <p class="lead">Para quien administra la cuenta de Mercado Pago. Son ~5 minutos. El objetivo es que MP <b>mande solo</b> el reporte de cobros a un servidor, para alimentar el sistema de control de cajas (hoy se baja a mano).</p>
+</header>
+
+<section>
+  <div class="h-sec"><div class="n">1</div><h2>Configurar el servidor SFTP</h2></div>
+  <p>En el panel de Mercado Pago, en la sección de <b>Reportes</b> → la pantalla de entrega que dice <b>“Servidor SFTP”</b> (“Configurá tu servidor SFTP, probá la conexión y recibí los reportes generados”), completá los campos <b>exactamente así</b>:</p>
+  <table class="vals">
+    <tr><td>Servidor</td><td class="val">76.13.175.222</td></tr>
+    <tr><td>Puerto</td><td class="val">22</td></tr>
+    <tr><td>Directorio</td><td class="val">/home/mpreportes/reportes</td></tr>
+    <tr><td>Usuario</td><td class="val">mpreportes</td></tr>
+    <tr><td>Contraseña</td><td class="val">Desembarco.MP.2026!</td></tr>
+  </table>
+  <div class="warn"><b>Atención con el Puerto:</b> el ejemplo en pantalla dice <code>21</code>, pero hay que poner <b class="k">22</b> (21 es FTP antiguo; este servidor es SFTP, que usa el 22).</div>
+</section>
+
+<section>
+  <div class="h-sec"><div class="n">2</div><h2>Probar la conexión</h2></div>
+  <p>Hacé click en el botón <b>“Probar conexión”</b>.</p>
+  <div class="ok"><b>✓ Si dice “conexión exitosa” / OK:</b> ¡listo, el servidor quedó conectado! Pasá al paso 3.</div>
+  <div class="warn"><b>✗ Si da error:</b> casi siempre es el <b>Directorio</b>. Probá poniendo solo <code>reportes</code> (sin la ruta larga) y volvé a “Probar conexión”. Si sigue fallando, sacale una captura del error y mandásela a Pablo.</div>
+</section>
+
+<section>
+  <div class="h-sec"><div class="n">3</div><h2>Programar el reporte</h2></div>
+  <p>Que se genere y se envíe a ese servidor el <b>reporte de cobros</b> (el “collection” / detalle de cobros — el mismo que se venía descargando), con esta configuración:</p>
+  <ul>
+    <li><b>Frecuencia:</b> <b class="k">diaria</b> (todos los días).</li>
+    <li><b>Formato del archivo:</b> <b class="k">CSV o Excel (.xlsx)</b> — cualquiera de los dos sirve.</li>
+    <li><b>Columnas:</b> dejá las <b>columnas por defecto / todas</b>. Es imprescindible que incluya: <b>N° de local (store_id)</b>, <b>Estado de la operación</b>, <b>Valor del producto</b>, <b>Monto recibido</b> y <b>Fecha de compra</b>.</li>
+    <li><b>Entrega:</b> por <b>SFTP</b> (el servidor que configuraste en el paso 1).</li>
+  </ul>
+  <div class="callout">Si el panel ofrece elegir el rango de fechas del reporte, que sea de <b>los últimos días</b> (ej. el día anterior o los últimos 2–3 días). Tener en cuenta que Mercado Pago acredita el dinero a los ~7 días, así que el reporte se arma por <b>fecha de la venta</b>.</div>
+</section>
+
+<section>
+  <div class="h-sec"><div class="n">4</div><h2>Confirmar a Pablo</h2></div>
+  <p>Cuando termines, avisale a Pablo:</p>
+  <ul>
+    <li>Si <b>“Probar conexión”</b> dio OK. ✅</li>
+    <li>Qué <b>reporte</b> y con qué <b>frecuencia</b> quedó programado.</li>
+    <li>El <b>formato</b> (que quedó en Excel .xlsx).</li>
+    <li>Si algo falló, el <b>mensaje de error</b> (captura de pantalla).</li>
+  </ul>
+</section>
+
+<div class="callout"><b>Sobre la seguridad:</b> el usuario <code>mpreportes</code> es exclusivo para esto y <b>no tiene permisos para nada más</b> en el servidor (solo dejar archivos en esa carpeta). Podés usar estos datos con tranquilidad.</div>
+
+<div class="foot">
+  Instructivo generado para el equipo de Grupo Desembarco · Control de cajas · Cualquier duda, escribir a Pablo.
+</div>
+
+</body>
+</html>

@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Control de cajas — Guía + Demo</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  :root{
+    --blue:#2563eb; --blue-dark:#1e3a8a; --blue-soft:#eff6ff;
+    --ink:#0f172a; --muted:#64748b; --line:#e2e8f0; --soft:#f8fafc;
+    --green:#059669; --green-soft:#ecfdf5; --amber:#b45309; --amber-soft:#fffbeb; --red:#dc2626; --red-soft:#fef2f2;
+  }
+  body{ font-family:"Segoe UI", system-ui, -apple-system, Helvetica, Arial, sans-serif; color:var(--ink); font-size:11pt; line-height:1.55; max-width:210mm; margin:0 auto; padding:18mm 16mm; }
+  h1,h2,h3{ font-weight:600; line-height:1.2; }
+  p{ margin:0 0 8px; } .muted{ color:var(--muted); }
+  .kicker{ display:inline-block; font-size:9.5pt; letter-spacing:.14em; text-transform:uppercase; color:var(--blue); font-weight:600; }
+  .bar{ width:54px; height:5px; background:var(--blue); border-radius:3px; margin:14px 0 16px; }
+  h1.title{ font-size:27pt; letter-spacing:-.01em; }
+  .sub{ font-size:12.5pt; color:var(--muted); margin-top:10px; }
+  .pill{ display:inline-block; font-size:9.5pt; background:var(--blue-soft); border:1px solid #dbeafe; color:var(--blue-dark); border-radius:8px; padding:5px 10px; margin-top:12px; }
+  section{ margin:22px 0 0; page-break-inside:avoid; }
+  .h-sec{ display:flex; align-items:center; gap:11px; margin:0 0 11px; }
+  .h-sec .n{ flex:none; width:26px; height:26px; border-radius:7px; background:var(--blue); color:#fff; font-size:11pt; font-weight:600; display:flex; align-items:center; justify-content:center; }
+  .h-sec h2{ font-size:15pt; }
+  ul{ margin:4px 0 8px 2px; list-style:none; } li{ position:relative; padding-left:18px; margin:5px 0; }
+  li:before{ content:""; position:absolute; left:2px; top:7px; width:6px; height:6px; border-radius:50%; background:var(--blue); }
+  table{ width:100%; border-collapse:collapse; font-size:10pt; margin-top:6px; }
+  thead th{ background:var(--blue); color:#fff; text-align:left; padding:8px 10px; font-weight:600; font-size:9.5pt; }
+  thead th:first-child{ border-radius:7px 0 0 0; } thead th:last-child{ border-radius:0 7px 0 0; }
+  tbody td{ padding:7px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  tbody tr:nth-child(even){ background:var(--soft); }
+  .num{ text-align:right; font-variant-numeric:tabular-nums; }
+  .callout{ background:var(--blue-soft); border-left:4px solid var(--blue); border-radius:0 8px 8px 0; padding:10px 14px; margin:8px 0; font-size:10.5pt; }
+  .callout b{ color:var(--blue-dark); }
+  .steps{ counter-reset:step; } .step{ display:flex; gap:11px; margin:8px 0; page-break-inside:avoid; }
+  .step .num2{ counter-increment:step; flex:none; width:23px; height:23px; border-radius:50%; background:var(--blue-soft); color:var(--blue-dark); font-weight:600; font-size:10pt; display:flex; align-items:center; justify-content:center; }
+  .step .num2:before{ content:counter(step); } .step b{ font-weight:600; }
+  .cols{ display:flex; gap:14px; } .col{ flex:1; }
+  .card{ border:1px solid var(--line); border-radius:10px; padding:12px 14px; background:#fff; }
+  .card.green{ border-color:#a7f3d0; background:var(--green-soft); } .card.green h3{ color:var(--green); }
+  .card.amber{ border-color:#fde68a; background:var(--amber-soft); } .card.amber h3{ color:var(--amber); }
+  .card h3{ font-size:11pt; margin-bottom:6px; }
+  .g{ color:var(--green); font-weight:600; } .a{ color:var(--amber); font-weight:600; } .r{ color:var(--red); font-weight:600; }
+  .tag{ display:inline-block; font-size:8.5pt; font-weight:600; border-radius:5px; padding:1px 7px; }
+  .tag.q{ background:var(--green-soft); color:var(--green); } .tag.m{ background:var(--amber-soft); color:var(--amber); }
+  .foot{ margin-top:22px; border-top:1px solid var(--line); padding-top:10px; font-size:9.5pt; color:var(--muted); display:flex; justify-content:space-between; }
+  .pagebreak{ page-break-before:always; }
+  code{ background:var(--soft); border:1px solid var(--line); border-radius:4px; padding:0 4px; font-size:9.5pt; }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="kicker">Grupo Desembarco · Prototipo funcional</span>
+  <div class="bar"></div>
+  <h1 class="title">Control de cajas</h1>
+  <p class="sub">Carga del cierre, importación de Mercado Pago y apps, y conciliación automática del delivery.</p>
+  <span class="pill">App: <b>cierres-seven.vercel.app</b> · Admin: admin@eldesembarco.com / admin1234</span>
+</header>
+
+<section>
+  <div class="h-sec"><div class="n">1</div><h2>La idea: que tres números cierren</h2></div>
+  <table>
+    <thead><tr><th>Pata</th><th>De dónde sale</th><th>Qué responde</th></tr></thead>
+    <tbody>
+      <tr><td><b>Qué se vendió + cómo se cobró</b></td><td>Cierre de caja (encargado / PDF Tango)</td><td>venta por turno y <b>forma de cobro</b> (efectivo/tarjeta/QR/delivery)</td></tr>
+      <tr><td><b>Qué plata entró de verdad</b></td><td>Mercado Pago + PedidosYa</td><td>cobranza real, comisión, devoluciones</td></tr>
+      <tr><td><b>Cuánto se depositó</b></td><td>Cierre (efectivo depositado)</td><td>el cuadre físico de la caja</td></tr>
+    </tbody>
+  </table>
+  <div class="callout">El <b>efectivo</b> es lo único que mueve la <b>diferencia de caja</b>. El delivery (Mercado Pago / PedidosYa) entra como <b>control</b>, no toca la caja.</div>
+</section>
+
+<section>
+  <div class="h-sec"><div class="n">2</div><h2>Paso a paso — cómo cargar cada archivo</h2></div>
+  <div class="cols">
+    <div class="col card">
+      <h3>A) El cierre de caja</h3>
+      <p class="muted" style="font-size:10pt">El encargado lo carga del cel en <b>Cierres → Cierre de hoy</b> (“+ Agregar ingreso / gasto”, efectivo depositado, cerrar turno). O el admin sube el <b>PDF de cierre de Tango</b> en Importaciones y lo precarga desde la planilla.</p>
+    </div>
+    <div class="col card">
+      <h3>B) Mercado Pago <span class="tag q">nuevo</span></h3>
+      <p class="muted" style="font-size:10pt">Bajás el reporte <b>“collection”</b> de MP → <b>Importaciones → Mercado Pago</b> → subís el <code>.xlsx</code>. Muestra por local: <b>bruto, neto, comisión y devoluciones</b>.</p>
+    </div>
+    <div class="col card">
+      <h3>C) Apps (PedidosYa)</h3>
+      <p class="muted" style="font-size:10pt">Bajás el CSV <b>“endOfDay”</b> → <b>Importaciones → PedidosYa</b> → fecha + archivo → Subir.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="h-sec"><div class="n">3</div><h2>Cómo leer el cruce (Control → local + día)</h2></div>
+  <table>
+    <thead><tr><th>Plataforma</th><th class="num">Declarado</th><th class="num">App (cobrado)</th><th class="num">Dif.</th><th class="num">%</th></tr></thead>
+    <tbody>
+      <tr><td>Mercado Delivery</td><td class="num">$1.211.930</td><td class="num">$1.211.930</td><td class="num g">🟢 $0</td><td class="num">0%</td></tr>
+      <tr><td>PedidosYa</td><td class="num">$480.000</td><td class="num">$478.500</td><td class="num a">🟡 −$1.500</td><td class="num">−0,3%</td></tr>
+    </tbody>
+  </table>
+  <ul>
+    <li><b>Declarado</b> = lo que el cierre dice que se vendió por ese canal · <b>App</b> = lo que MP/PedidosYa cobró de verdad.</li>
+    <li><span class="g">verde</span> cuadra · <span class="a">amarillo</span> diferencia chica · <span class="r">rojo</span> revisar (faltante, pedido no cobrado o anulación).</li>
+  </ul>
+  <div class="callout">La <b>comisión</b> de MP (~2,8%) no es un error: el cruce compara contra el <b>bruto cobrado</b>; el <b>neto</b> (lo que entró a la cuenta) se muestra aparte.</div>
+</section>
+
+<section class="pagebreak">
+  <div class="h-sec"><div class="n">4</div><h2>Guion de la demo (5 minutos)</h2></div>
+  <div class="steps">
+    <div class="step"><div class="num2"></div><div><b>Entrar como admin</b> → mostrar el panel y el selector de local.</div></div>
+    <div class="step"><div class="num2"></div><div><b>Subir el Excel de Mercado Pago</b> → el panel muestra al toque: San Telmo <b>bruto $1.211.930 / neto $1.183.808 / comisión $28.121 / 17 devoluciones</b>; Microcentro $257.560; Mila&amp;Go sin mapear. <i>(Momento fuerte: en 2 segundos sabés cuánto cobró cada local y cuánto se llevó MP.)</i></div></div>
+    <div class="step"><div class="num2"></div><div><b>Abrir el cierre de San Telmo del 28/05</b>, cargar un ingreso <b>Mercado Delivery $1.211.930</b> y cerrar.</div></div>
+    <div class="step"><div class="num2"></div><div><b>Control → San Telmo → 28/05</b> → la fila Mercado Delivery da <span class="g">🟢 cuadra</span>. Si cargás $1.200.000, se pone <span class="r">🔴 faltan $11.930</span>.</div></div>
+    <div class="step"><div class="num2"></div><div>Cerrar mostrando las otras patas: cierre por turno, mobile, control <b>ciego</b> (anti-fraude), auditoría, informes en Excel.</div></div>
+  </div>
+</section>
+
+<section>
+  <div class="h-sec"><div class="n">5</div><h2>Chequeo del prototipo</h2></div>
+  <div class="cols">
+    <div class="col card green">
+      <h3>✅ Ya sólido (destacar)</h3>
+      <ul style="font-size:10pt">
+        <li>Cierre por turno, mobile, carga simple.</li>
+        <li>Control <b>ciego</b> para el local + auditoría (anti-fraude).</li>
+        <li>Forma de cobro desde el PDF de Tango.</li>
+        <li>Conciliación de delivery: PedidosYa <b>+ Mercado Delivery</b>.</li>
+        <li>Multi-local, informes en Excel, fondo fijo, gastos con comprobante.</li>
+      </ul>
+    </div>
+    <div class="col card amber">
+      <h3>🔧 Lo que mejoraría</h3>
+      <ul style="font-size:10pt">
+        <li><span class="tag q">rápida</span> <b>Tablero del día</b> con semáforos (venta, delivery, caja).</li>
+        <li><span class="tag q">rápida</span> Mostrar <b>neto y comisión</b> en el Control.</li>
+        <li><span class="tag q">rápida</span> Pantalla para <b>mapear locales nuevos</b> (store_id).</li>
+        <li><span class="tag m">media</span> <b>Cierres por mail automáticos</b> (n8n).</li>
+        <li><span class="tag m">media</span> Importador <b>Qlik</b> (CMV / margen / rentabilidad).</li>
+        <li><span class="tag m">media</span> Usuarios/locales desde la app; cuenta corriente y compensaciones.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="callout"><b>Honesto:</b> el prototipo <b>ya concilia delivery de verdad</b>. Lo que falta para “producción” es sobre todo <b>operativo</b> (activar los correos automáticos, mapear los 16 locales, conseguir reportes del mismo rango), no técnico.</div>
+</section>
+
+<div class="foot">
+  <span><b>Accesos:</b> admin@eldesembarco.com / admin1234 · santelmo@eldesembarco.com / santelmo1234</span>
+  <span>Datos cargados: importación MP 28/05 (San Telmo + Microcentro)</span>
+</div>
+
+</body>
+</html>

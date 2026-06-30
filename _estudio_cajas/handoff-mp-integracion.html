@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Integración Mercado Pago → App Cierres (handoff técnico)</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  :root{
+    --blue:#2563eb; --blue-dark:#1e3a8a; --blue-soft:#eff6ff;
+    --ink:#0f172a; --muted:#64748b; --line:#e2e8f0; --soft:#f8fafc;
+    --green:#059669; --green-soft:#ecfdf5; --amber:#b45309; --amber-soft:#fffbeb; --red:#dc2626; --red-soft:#fef2f2;
+  }
+  body{ font-family:"Segoe UI", system-ui, -apple-system, Helvetica, Arial, sans-serif; color:var(--ink); font-size:10.5pt; line-height:1.5; max-width:210mm; margin:0 auto; padding:14mm 15mm; }
+  h1,h2,h3{ font-weight:600; line-height:1.2; }
+  p{ margin:0 0 7px; } .muted{ color:var(--muted); }
+  .kicker{ display:inline-block; font-size:9pt; letter-spacing:.14em; text-transform:uppercase; color:var(--blue); font-weight:600; }
+  .bar{ width:50px; height:5px; background:var(--blue); border-radius:3px; margin:10px 0 12px; }
+  h1.title{ font-size:21pt; letter-spacing:-.01em; }
+  .lead{ font-size:10.5pt; color:var(--muted); margin-top:6px; max-width:175mm; }
+  section{ margin:16px 0 0; page-break-inside:avoid; }
+  .h-sec{ display:flex; align-items:center; gap:10px; margin:0 0 8px; }
+  .h-sec .n{ flex:none; width:24px; height:24px; border-radius:7px; background:var(--blue); color:#fff; font-size:10.5pt; font-weight:600; display:flex; align-items:center; justify-content:center; }
+  .h-sec h2{ font-size:14pt; }
+  table.kv{ width:100%; border-collapse:collapse; font-size:10pt; margin:6px 0; }
+  table.kv td{ padding:7px 11px; border:1px solid var(--line); vertical-align:top; }
+  table.kv tr td:first-child{ width:32%; background:var(--soft); font-weight:600; }
+  .mono, code{ font-family:"Consolas","Courier New",monospace; }
+  .mono{ color:var(--blue-dark); word-break:break-all; }
+  code{ background:var(--soft); border:1px solid var(--line); border-radius:4px; padding:1px 5px; font-size:9.5pt; }
+  pre{ background:#0f172a; color:#e2e8f0; border-radius:8px; padding:11px 13px; font-family:"Consolas","Courier New",monospace; font-size:9pt; line-height:1.45; overflow:auto; margin:6px 0; white-space:pre-wrap; }
+  pre .c{ color:#94a3b8; } pre .k{ color:#7dd3fc; } pre .s{ color:#86efac; }
+  .callout{ background:var(--blue-soft); border-left:4px solid var(--blue); border-radius:0 8px 8px 0; padding:9px 13px; margin:7px 0; font-size:9.5pt; }
+  .callout b{ color:var(--blue-dark); }
+  .warn{ background:var(--amber-soft); border-left:4px solid var(--amber); border-radius:0 8px 8px 0; padding:9px 13px; margin:7px 0; font-size:9.5pt; }
+  .warn b{ color:var(--amber); }
+  .danger{ background:var(--red-soft); border-left:4px solid var(--red); border-radius:0 8px 8px 0; padding:9px 13px; margin:7px 0; font-size:9.5pt; }
+  ul{ margin:3px 0 7px 2px; list-style:none; } li{ position:relative; padding-left:16px; margin:4px 0; }
+  li:before{ content:""; position:absolute; left:2px; top:6px; width:5px; height:5px; border-radius:50%; background:var(--blue); }
+  ol{ margin:4px 0 7px 20px; } ol li{ padding-left:4px; } ol li:before{ display:none; }
+  .foot{ margin-top:18px; border-top:1px solid var(--line); padding-top:9px; font-size:9pt; color:var(--muted); }
+  .pill{ display:inline-block; font-size:8pt; font-weight:600; border-radius:5px; padding:1px 7px; background:var(--green-soft); color:var(--green); }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="kicker">Grupo Desembarco · Handoff técnico</span>
+  <div class="bar"></div>
+  <h1 class="title">Integración Mercado Pago → App de Cierres</h1>
+  <p class="lead">Para el compañero que maneja la integración (ya tiene andando Tango). <b>Es el mismo patrón que Tango</b>: n8n levanta el reporte y lo POSTea a un endpoint de la app. La diferencia: en vez de llegar por mail, el reporte de MP llega por <b>SFTP</b>. El servidor SFTP ya está creado y probado.</p>
+</header>
+
+<section>
+  <div class="h-sec"><div class="n">1</div><h2>Flujo general</h2></div>
+  <pre><span class="c">Mercado Pago</span>  ──(SFTP, .csv o .xlsx)──►  <span class="c">Carpeta en el VPS</span>  ──(n8n)──►  <span class="c">POST /api/mp/ingest</span>  ──►  <span class="c">conciliación en la app</span></pre>
+  <p>El compañero arma <b>la parte de n8n</b> (puntos 4). La app y el servidor SFTP ya están listos. La configuración del lado de Mercado Pago la hace quien administra esa cuenta (ver instructivo aparte “Mercado Pago - Configurar envio de reportes (SFTP)”).</p>
+</section>
+
+<section>
+  <div class="h-sec"><div class="n">2</div><h2>Endpoint de la app <span class="pill">ya desplegado y probado</span></h2></div>
+  <table class="kv">
+    <tr><td>URL</td><td class="mono">https://cierres-seven.vercel.app/api/mp/ingest</td></tr>
+    <tr><td>Método</td><td class="mono">POST</td></tr>
+    <tr><td>Autenticación</td><td><span class="mono">Header x-ingest-secret</span> — el <b>mismo secreto</b> que ya usás para <code>/api/tango/ingest</code> (variable <code>TANGO_INGEST_SECRET</code>).<br>Valor: <span class="mono">a60d5f6cfbf0a4c86115a75e4ecec3f5b13fe3d613986148</span></td></tr>
+    <tr><td>Cuerpo (body)</td><td>El archivo de MP (<b>.csv o .xlsx</b>, los dos sirven), en cualquiera de estas dos formas:<br>• <code>multipart/form-data</code> con el campo <code>archivo</code>, o<br>• el <b>cuerpo crudo</b> (binary) = los bytes del archivo (Content-Type <code>application/octet-stream</code>).</td></tr>
+    <tr><td>Respuesta (200)</td><td class="mono">{ ok:true, filasMapeadas, filasSinMapear, totales:{ brutoCobrado, netoLiquidado, comision, pedidos, devoluciones } }</td></tr>
+    <tr><td>Errores</td><td><span class="mono">401</span> secreto inválido · <span class="mono">400</span> archivo vacío / no se pudo procesar.</td></tr>
+  </table>
+  <p class="muted">La app se encarga de parsear el Excel, agregar por (store_id, fecha), netear devoluciones, calcular comisión y guardarlo. n8n <b>solo reenvía el archivo</b>, no lo abre.</p>
+  <p>Prueba rápida desde consola (debería devolver <code>ok:true</code> + totales):</p>
+  <pre><span class="k">curl</span> -X POST \
+  --data-binary <span class="s">@collection-XXXX.xlsx</span> \
+  -H <span class="s">"content-type: application/octet-stream"</span> \
+  -H <span class="s">"x-ingest-secret: a60d5f6cfbf0a4c86115a75e4ecec3f5b13fe3d613986148"</span> \
+  https://cierres-seven.vercel.app/api/mp/ingest</pre>
+</section>
+
+<section>
+  <div class="h-sec"><div class="n">3</div><h2>Servidor SFTP <span class="pill">creado y probado</span></h2></div>
+  <p>Está en el mismo VPS donde corre n8n (Hostinger). Usuario dedicado y sin permisos para nada más.</p>
+  <table class="kv">
+    <tr><td>Host / IP</td><td class="mono">76.13.175.222  (hostname: srv1312396.hstgr.cloud)</td></tr>
+    <tr><td>Puerto</td><td class="mono">22</td></tr>
+    <tr><td>Usuario</td><td class="mono">mpreportes</td></tr>
+    <tr><td>Contraseña</td><td class="mono">Desembarco.MP.2026!</td></tr>
+    <tr><td>Carpeta de los reportes</td><td class="mono">/home/mpreportes/reportes</td></tr>
+  </table>
+  <p class="muted">Como n8n corre en el mismo VPS, el nodo SFTP puede apuntar a <code>localhost</code> / <code>127.0.0.1</code> también, si preferís.</p>
+</section>
+
+<section>
+  <div class="h-sec"><div class="n">4</div><h2>El flujo de n8n a armar</h2></div>
+  <ol>
+    <li><b>Trigger:</b> <code>Schedule Trigger</code> (ej. cada 30 min o cada hora). MP no avisa, así que se chequea la carpeta por intervalo.</li>
+    <li><b>Listar archivos:</b> nodo <code>FTP</code> en modo <b>SFTP</b>, operación <b>List</b>, path <code>/home/mpreportes/reportes</code> (credencial SFTP con los datos del punto 3). Filtrar por <code>.xlsx</code> y por archivos nuevos.</li>
+    <li><b>Descargar:</b> nodo <code>FTP</code> (SFTP) <b>Download</b> de cada archivo nuevo → queda como binary en n8n.</li>
+    <li><b>Enviar a la app:</b> nodo <code>HTTP Request</code> → <b>POST</b> a <code>https://cierres-seven.vercel.app/api/mp/ingest</code>, header <code>x-ingest-secret</code> (punto 2), y el <b>archivo binario como body</b> (Content-Type <code>application/octet-stream</code>) o como <code>multipart/form-data</code> con el campo <code>archivo</code>.</li>
+    <li><b>Marcar como procesado:</b> mover o borrar el archivo (nodo FTP <b>Move/Delete</b>) a una subcarpeta <code>/home/mpreportes/reportes/procesados</code> para no reprocesarlo.</li>
+  </ol>
+  <div class="callout">Es exactamente el mismo esqueleto que el flujo de Tango, cambiando el origen (SFTP en vez de Gmail) y la URL del POST. La respuesta <code>ok:true</code> confirma que la app lo recibió.</div>
+</section>
+
+<section>
+  <div class="h-sec"><div class="n">5</div><h2>Mapeo de locales (store_id → local)</h2></div>
+  <p>El reporte de MP identifica cada local por su <b>N° de local (store_id)</b>. La app mapea ese store_id al local correspondiente. Ya están cargados:</p>
+  <ul>
+    <li><span class="mono">72488709</span> → Desembarco San Telmo</li>
+    <li><span class="mono">77378254</span> → Desembarco Microcentro</li>
+  </ul>
+  <p>Los store_id de los demás locales se agregan desde la app (al subir un reporte, los no mapeados aparecen con un selector para asignarlos a un local). <b>No es algo que tenga que hacer n8n.</b></p>
+</section>
+
+<section>
+  <div class="h-sec"><div class="n">6</div><h2>Notas y gotchas</h2></div>
+  <ul>
+    <li><b>Puerto SFTP = 22</b> (no 21). El campo de MP muestra “Ej: 21” pero es SFTP.</li>
+    <li><b>Formato: CSV o Excel (.xlsx)</b> — la app acepta los dos (detecta el formato sola). n8n no necesita abrir el archivo, solo reenviarlo tal cual.</li>
+    <li><b>Reporte:</b> el de cobros (“collection” / detalle de cobros), diario, columnas por defecto (debe incluir store_id, Estado, Valor del producto, Monto recibido, Fecha de compra).</li>
+    <li>MP acredita a <b>T+7</b>: el reporte se arma por <b>fecha de venta</b> y el control es a nivel <b>día</b>.</li>
+    <li>La app cuenta solo las operaciones <b>approved</b> como cobro; las <b>refunded</b> van como devoluciones (no suman ingreso).</li>
+  </ul>
+</section>
+
+<section>
+  <div class="h-sec"><div class="n">7</div><h2>Cómo probar sin esperar a MP</h2></div>
+  <p>Para validar toda la cadena hoy mismo: dejar un <b>.xlsx de muestra</b> (un “collection” real ya descargado) en <code>/home/mpreportes/reportes</code> y correr el flujo de n8n a mano. Si la app responde <code>ok:true</code> con totales, está andando. Después se activa el Schedule.</p>
+</section>
+
+<div class="danger"><b>⚠ Datos sensibles:</b> este documento contiene la contraseña del usuario SFTP y el secreto del endpoint. Manejar como confidencial (es un usuario restringido y un endpoint que solo acepta ese secreto, pero igual conviene no difundirlo).</div>
+
+<div class="foot">
+  Handoff técnico · Integración Mercado Pago para el Control de Cajas de Grupo Desembarco · Dudas: Pablo.
+</div>
+
+</body>
+</html>

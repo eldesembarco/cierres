@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  :root{
+    --blue:#2563eb; --blue-dark:#1e3a8a; --blue-soft:#eff6ff;
+    --ink:#0f172a; --muted:#64748b; --line:#e2e8f0; --soft:#f8fafc;
+    --green:#059669; --green-soft:#ecfdf5; --amber:#b45309; --amber-soft:#fffbeb; --red:#dc2626;
+  }
+  body{ font-family:"Segoe UI", system-ui, -apple-system, Helvetica, Arial, sans-serif; color:var(--ink); font-size:11pt; line-height:1.55; }
+  h1,h2,h3{ font-weight:600; line-height:1.2; }
+  p{ margin:0 0 8px; }
+  .muted{ color:var(--muted); }
+
+  /* Cover */
+  .cover{ height:247mm; display:flex; flex-direction:column; justify-content:space-between; page-break-after:always; }
+  .cover-top .kicker{ display:inline-block; font-size:10pt; letter-spacing:.14em; text-transform:uppercase; color:var(--blue); font-weight:600; }
+  .cover-bar{ width:54px; height:5px; background:var(--blue); border-radius:3px; margin:26px 0 22px; }
+  .cover h1{ font-size:33pt; letter-spacing:-.01em; }
+  .cover .sub{ font-size:14pt; color:var(--muted); margin-top:14px; max-width:150mm; font-weight:400; line-height:1.45; }
+  .cover .tag{ margin-top:30px; background:var(--blue-soft); border:1px solid #dbeafe; border-radius:10px; padding:16px 18px; max-width:150mm; }
+  .cover .tag b{ color:var(--blue-dark); }
+  .cover-foot{ display:flex; justify-content:space-between; align-items:flex-end; border-top:1px solid var(--line); padding-top:14px; font-size:10pt; color:var(--muted); }
+  .brand-dot{ display:inline-flex; align-items:center; gap:9px; font-weight:600; color:var(--ink); }
+  .brand-dot span.sq{ width:22px; height:22px; border-radius:6px; background:var(--blue); display:inline-block; }
+
+  /* Sections */
+  section{ page-break-inside:avoid; margin:0 0 20px; }
+  .h-sec{ display:flex; align-items:center; gap:11px; margin:0 0 12px; }
+  .h-sec .n{ flex:none; width:26px; height:26px; border-radius:7px; background:var(--blue); color:#fff; font-size:11pt; font-weight:600; display:flex; align-items:center; justify-content:center; }
+  .h-sec h2{ font-size:15.5pt; }
+  .lead{ font-size:11.5pt; }
+
+  ul{ margin:4px 0 8px 2px; list-style:none; }
+  li{ position:relative; padding-left:18px; margin:5px 0; }
+  li:before{ content:""; position:absolute; left:2px; top:7px; width:6px; height:6px; border-radius:50%; background:var(--blue); }
+
+  .cols{ display:flex; gap:14px; }
+  .col{ flex:1; }
+  .card{ border:1px solid var(--line); border-radius:10px; padding:13px 15px; background:#fff; }
+  .card h3{ font-size:11.5pt; margin-bottom:6px; }
+  .card.soft{ background:var(--soft); }
+
+  .callout{ background:var(--blue-soft); border-left:4px solid var(--blue); border-radius:0 8px 8px 0; padding:11px 15px; margin:6px 0; }
+  .callout b{ color:var(--blue-dark); }
+
+  table{ width:100%; border-collapse:collapse; font-size:10pt; margin-top:4px; }
+  thead th{ background:var(--blue); color:#fff; text-align:left; padding:9px 11px; font-weight:600; font-size:9.5pt; }
+  thead th:first-child{ border-radius:7px 0 0 0; }
+  thead th:last-child{ border-radius:0 7px 0 0; }
+  tbody td{ padding:8px 11px; border-bottom:1px solid var(--line); vertical-align:top; }
+  tbody tr:nth-child(even){ background:var(--soft); }
+  .topic{ font-weight:600; width:24%; }
+  .excel{ color:var(--muted); width:38%; }
+  .app{ width:38%; }
+  .yes{ color:var(--green); font-weight:600; }
+  .no{ color:var(--red); font-weight:600; }
+
+  .steps{ counter-reset:step; }
+  .step{ display:flex; gap:12px; margin:9px 0; page-break-inside:avoid; }
+  .step .num{ counter-increment:step; flex:none; width:24px; height:24px; border-radius:50%; background:var(--blue-soft); color:var(--blue-dark); font-weight:600; font-size:10pt; display:flex; align-items:center; justify-content:center; }
+  .step .num:before{ content:counter(step); }
+  .step .b{ font-weight:600; }
+
+  .phase{ border:1px solid var(--line); border-left:4px solid var(--blue); border-radius:0 8px 8px 0; padding:10px 14px; margin:8px 0; page-break-inside:avoid; }
+  .phase .badge{ display:inline-block; font-size:8.5pt; font-weight:600; color:#fff; background:var(--muted); border-radius:5px; padding:2px 8px; margin-right:8px; }
+  .phase.done .badge{ background:var(--green); }
+  .phase .badge.now{ background:var(--blue); }
+
+  .kpis{ display:flex; gap:12px; margin:10px 0; }
+  .kpi{ flex:1; background:var(--soft); border:1px solid var(--line); border-radius:10px; padding:12px 14px; text-align:center; }
+  .kpi .big{ font-size:20pt; font-weight:600; color:var(--blue-dark); }
+  .kpi .lbl{ font-size:9pt; color:var(--muted); margin-top:2px; }
+
+  .pagebreak{ page-break-before:always; }
+  .small{ font-size:9.5pt; }
+  a{ color:var(--blue); text-decoration:none; }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="cover-top">
+    <span class="kicker">Grupo Desembarco</span>
+    <div class="cover-bar"></div>
+    <h1>Sistema de Cierres de Caja</h1>
+    <p class="sub">Guía para gerencia: qué es, cómo funciona, las ventajas sobre el Excel actual y el plan para implementarlo en los 16 locales propios.</p>
+    <div class="tag">
+      <p style="margin:0">De <b>un Excel mensual con ~6.500 fórmulas que se rompen</b> a <b>una aplicación web confiable, multi-local y ya en funcionamiento</b>, lista para pilotear.</p>
+    </div>
+  </div>
+  <div class="cover-foot">
+    <span class="brand-dot"><span class="sq"></span> Cierres · Grupo Desembarco</span>
+    <span>Documento interno</span>
+  </div>
+</div>
+
+<section>
+  <div class="h-sec"><div class="n">1</div><h2>Resumen ejecutivo</h2></div>
+  <p class="lead">Hoy el cierre de caja diario de cada local se lleva en un Excel. Es un sistema frágil: se rompe con frecuencia, no permite comparar entre sucursales y depende de carga 100% manual sin controles. Construimos una <b>aplicación web</b> que reemplaza ese Excel con una <b>base de datos única y confiable</b>, una <b>pantalla de carga a prueba de errores</b> y un <b>control automático</b> contra lo que reportan las apps de delivery.</p>
+  <div class="kpis">
+    <div class="kpi"><div class="big">16</div><div class="lbl">locales propios a unificar</div></div>
+    <div class="kpi"><div class="big">1</div><div class="lbl">fuente de verdad (no 16 Excels)</div></div>
+    <div class="kpi"><div class="big">0</div><div class="lbl">fórmulas que se rompen</div></div>
+    <div class="kpi"><div class="big">$0</div><div class="lbl">costo de infraestructura hoy</div></div>
+  </div>
+  <p class="muted small">La aplicación ya está construida, probada y publicada en línea, lista para implementar: se valida en un local que los números coinciden y se despliega al resto.</p>
+</section>
+
+<section>
+  <div class="h-sec"><div class="n">2</div><h2>El problema con el Excel actual</h2></div>
+  <ul>
+    <li><b>Frágil y poco confiable:</b> ~6.500 fórmulas encadenadas; cuando una referencia se rompe, arrastra errores (<span class="small" style="font-family:monospace">#REF!</span>, <span class="small" style="font-family:monospace">#DIV/0!</span>) a todo el mes.</li>
+    <li><b>Un archivo por mes y por local:</b> imposible comparar sucursales; al copiar el del mes anterior se pisan datos sin querer.</li>
+    <li><b>Carga 100% manual y sin control:</b> se puede tipear cualquier valor y no hay forma de detectar si la caja cuadra o si lo declarado coincide con la realidad.</li>
+    <li><b>Sin trazabilidad:</b> no queda registro de quién cargó qué ni cuándo.</li>
+  </ul>
+</section>
+
+<section>
+  <div class="h-sec"><div class="n">3</div><h2>La solución: cómo funciona</h2></div>
+  <p>El sistema se apoya en tres piezas simples:</p>
+  <div class="cols">
+    <div class="col card soft"><h3>Base de datos única</h3><p class="small muted">La "fuente de verdad". Sin hojas con fórmulas: los totales se calculan al instante y siempre bien.</p></div>
+    <div class="col card soft"><h3>App web (con roles)</h3><p class="small muted">Se entra desde el celular o la PC con usuario y contraseña. Cada uno ve lo que le corresponde.</p></div>
+    <div class="col card soft"><h3>Control automático</h3><p class="small muted">Cruza lo que el local declara contra lo que reportan las apps de delivery, y resalta diferencias.</p></div>
+  </div>
+  <div class="callout"><p style="margin:0"><b>Roles:</b> cada <b>encargado</b> ve y carga únicamente <b>su local</b>; la <b>administración</b> ve todos los locales, importa los reportes de las apps y accede al control. Está hecho con la misma tecnología que los otros paneles del grupo (Next.js + Vercel + base Postgres).</p></div>
+</section>
+
+<section>
+  <div class="h-sec"><div class="n">4</div><h2>Cómo se usa, día a día</h2></div>
+  <div class="cols">
+    <div class="col card">
+      <h3>El encargado (en cada local)</h3>
+      <div class="steps">
+        <div class="step"><div class="num"></div><div><span class="b">Abre la app</span> desde el celular y elige "Cierre de hoy".</div></div>
+        <div class="step"><div class="num"></div><div><span class="b">Carga</span> cierre Z por turno, ventas por método de pago, gastos y tickets.</div></div>
+        <div class="step"><div class="num"></div><div><span class="b">Ve en vivo</span> la venta total, el saldo y la <b>diferencia de caja con semáforo</b>.</div></div>
+        <div class="step"><div class="num"></div><div><span class="b">Cierra</span> el día; si la diferencia es grande, el sistema exige una nota.</div></div>
+      </div>
+    </div>
+    <div class="col card">
+      <h3>La administración</h3>
+      <div class="steps">
+        <div class="step"><div class="num"></div><div><span class="b">Sube</span> el reporte diario de las apps (ej. PedidosYa) a la aplicación.</div></div>
+        <div class="step"><div class="num"></div><div><span class="b">El sistema procesa:</span> filtra a tus locales y guarda la venta de delivery.</div></div>
+        <div class="step"><div class="num"></div><div><span class="b">Revisa el Control:</span> lo declarado por el local vs lo que dice la app, por día.</div></div>
+        <div class="step"><div class="num"></div><div><span class="b">Actúa</span> sobre las diferencias y faltantes que el panel resalta.</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="pagebreak">
+  <div class="h-sec"><div class="n">5</div><h2>Ventajas sobre el Excel</h2></div>
+  <table>
+    <thead><tr><th>Tema</th><th>Excel actual</th><th>App de Cierres</th></tr></thead>
+    <tbody>
+      <tr><td class="topic">Confiabilidad</td><td class="excel"><span class="no">✗</span> Se rompe y arrastra errores</td><td class="app"><span class="yes">✓</span> Sin fórmulas frágiles; totales siempre correctos</td></tr>
+      <tr><td class="topic">Errores de carga</td><td class="excel"><span class="no">✗</span> Se puede tipear cualquier cosa</td><td class="app"><span class="yes">✓</span> Valida; no deja guardar cajas que no cuadran</td></tr>
+      <tr><td class="topic">Diferencia de caja</td><td class="excel"><span class="no">✗</span> Manual y poco clara</td><td class="app"><span class="yes">✓</span> Automática, con semáforo y nota obligatoria</td></tr>
+      <tr><td class="topic">Multi-local</td><td class="excel"><span class="no">✗</span> Un archivo por local, sin comparar</td><td class="app"><span class="yes">✓</span> Los 16 en un solo lugar, comparables</td></tr>
+      <tr><td class="topic">Pisar datos</td><td class="excel"><span class="no">✗</span> Se sobrescribe al copiar</td><td class="app"><span class="yes">✓</span> Un solo cierre por local y día</td></tr>
+      <tr><td class="topic">Control vs delivery</td><td class="excel"><span class="no">✗</span> No existe</td><td class="app"><span class="yes">✓</span> Cruce automático declarado-vs-app</td></tr>
+      <tr><td class="topic">Acceso</td><td class="excel"><span class="no">✗</span> El archivo lo tiene alguien</td><td class="app"><span class="yes">✓</span> Desde el celular, con usuario y rol</td></tr>
+      <tr><td class="topic">Trazabilidad</td><td class="excel"><span class="no">✗</span> No se sabe quién cargó</td><td class="app"><span class="yes">✓</span> Registra quién cerró y cuándo</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <div class="h-sec"><div class="n">6</div><h2>Plan de implementación</h2></div>
+  <div class="steps">
+    <div class="step"><div class="num"></div><div><span class="b">Validación en San Telmo.</span> El encargado carga en la app en paralelo al Excel para confirmar que los números coinciden y ajustar la fórmula de "diferencia de caja" y el umbral del semáforo. Apenas validado, se avanza con el resto: está listo para implementar.</div></div>
+    <div class="step"><div class="num"></div><div><span class="b">Alta de los 16 locales.</span> Cargamos cada local y sus identificadores en cada app de delivery. Es trabajo de datos, no de desarrollo: se hace rápido. Se le da usuario a cada encargado.</div></div>
+    <div class="step"><div class="num"></div><div><span class="b">Despliegue.</span> Cada local pasa a cargar en la app y se deja el Excel. La administración controla todo desde un solo lugar.</div></div>
+  </div>
+  <div class="callout"><p style="margin:0"><b>No se migra el Excel viejo</b> (está roto): se arranca limpio desde el piloto. Si se quisiera histórico, se cargan después solo los meses sanos.</p></div>
+</section>
+
+<section>
+  <div class="h-sec"><div class="n">7</div><h2>Estado actual y próximos pasos</h2></div>
+  <div class="phase done"><p style="margin:0"><span class="badge">Listo</span><span class="badge now">Fase 1 · MVP</span> Carga de cierre, importación de PedidosYa, control declarado-vs-app y acceso por roles. <b>Construido, probado y publicado en línea.</b></p></div>
+  <div class="phase"><p style="margin:0"><span class="badge">Próximo</span><b>Fase 2 · Proveedores y cuentas por pagar:</b> carga de facturas por rubro, panel de pendientes y alertas de pago.</p></div>
+  <div class="phase"><p style="margin:0"><span class="badge">Próximo</span><b>Fase 3 · Conciliación de cobranzas y dashboards:</b> cruzar lo que las apps efectivamente depositan (comisiones), comparativos entre locales, P&amp;L y costo de mercadería.</p></div>
+  <div class="phase"><p style="margin:0"><span class="badge">Próximo</span><b>Fase 4 · Automatización total:</b> bajar los reportes automáticamente e integración con el sistema de punto de venta (Tango Restô).</p></div>
+</section>
+
+<section>
+  <div class="h-sec"><div class="n">8</div><h2>Datos prácticos</h2></div>
+  <div class="cols">
+    <div class="col card soft"><h3>Acceso</h3><p class="small">Aplicación web en línea, sin instalar nada. Se ingresa con usuario y contraseña desde el celular o la PC.</p></div>
+    <div class="col card soft"><h3>Seguridad</h3><p class="small">Acceso por rol; contraseñas encriptadas; cada encargado ve solo su local.</p></div>
+    <div class="col card soft"><h3>Costo</h3><p class="small">Funciona hoy sobre planes gratuitos. Recién escalaría a un costo bajo con mucho volumen.</p></div>
+  </div>
+  <p class="muted small" style="margin-top:12px">En síntesis: el sistema convierte un proceso manual y propenso a errores en una herramienta de gestión confiable, con control real sobre las ventas declaradas y visión consolidada de los 16 locales.</p>
+</section>
+
+</body>
+</html>
