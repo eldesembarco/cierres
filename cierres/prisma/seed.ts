@@ -54,6 +54,7 @@ async function main() {
     { id: 16, nombre: 'Desembarco Quilmes',       marcaId: D, ciudad: 'Buenos Aires',  direccion: 'Av. Mitre 747' },
     { id: 17, nombre: 'Desembarco Recoleta',      marcaId: D, ciudad: 'CABA',          direccion: 'Marcelo Torcuato de Alvear 2321' },
     { id: 18, nombre: 'Mr Tasty Florida',         marcaId: T, ciudad: 'Buenos Aires',  direccion: 'Florida 482' },
+    { id: 19, nombre: 'Mr Tasty San Fernando',    marcaId: T, ciudad: 'Buenos Aires',  direccion: '' },
   ]
   for (const l of locales) {
     await prisma.local.upsert({
@@ -119,7 +120,7 @@ async function main() {
   })
 
   // slug del email por local (email = <slug>@eldesembarco.com, contraseña = <slug>1234).
-  const encargados: { localId: number; slug: string }[] = [
+  const encargados: { localId: number; slug: string; email?: string; pass?: string }[] = [
     { localId: 1,  slug: 'santelmo' },
     { localId: 2,  slug: 'caballito' },
     { localId: 3,  slug: 'nunez' },
@@ -138,11 +139,14 @@ async function main() {
     { localId: 16, slug: 'quilmes' },
     { localId: 17, slug: 'recoleta' },
     { localId: 18, slug: 'florida' },
+    // Mr Tasty San Fernando usa el dominio mrtasty.com.ar (no eldesembarco.com).
+    { localId: 19, slug: 'mrtsanfernando', email: 'mrtsanfernando@mrtasty.com.ar', pass: 'mrtsanfernando1234' },
   ]
   const nombreById = new Map(locales.map((l) => [l.id, l.nombre]))
   for (const e of encargados) {
-    const email = `${e.slug}@eldesembarco.com`
-    const hash = await bcrypt.hash(`${e.slug}1234`, 10)
+    const email = e.email ?? `${e.slug}@eldesembarco.com`
+    const pass = e.pass ?? `${e.slug}1234`
+    const hash = await bcrypt.hash(pass, 10)
     await prisma.usuario.upsert({
       where: { email },
       // update NO toca passwordHash: no pisa una contraseña ya seteada/cambiada.
@@ -151,7 +155,7 @@ async function main() {
     })
   }
 
-  console.log('Seed OK — 18 locales (16 Desembarco + 2 Mr Tasty), 18 encargados + admin')
+  console.log('Seed OK — 19 locales (16 Desembarco + 3 Mr Tasty), 19 encargados + admin')
 }
 
 main().catch((e) => { console.error(e); process.exit(1) }).finally(() => prisma.$disconnect())
