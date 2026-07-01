@@ -39,7 +39,11 @@ export interface ConciliacionCanal {
   totalMp: number
   totalEncargado: number
   diferencia: number // totalEncargado - totalMp (positivo = cargó de más)
-  cuadra: boolean
+  cuadra: boolean // el DETALLE empareja perfecto (nada suelto de ningún lado)
+  totalCuadra: boolean // el TOTAL coincide aunque el detalle no empareje
+  // El encargado parece haber cargado EL TOTAL del día en vez de cada venta: cargó
+  // pocas líneas y una ≈ la suma de varias operaciones de MP sin emparejar.
+  probableTotalCargado: boolean
 }
 
 function multiset(items: { monto: number }[]): Map<number, number> {
@@ -71,6 +75,20 @@ function conciliarUnCanal(canal: CanalMp, mp: OperacionMp[], enc: LineaEncargado
 
   const totalMp = round2(mp.reduce((s, o) => s + o.monto, 0))
   const totalEncargado = round2(enc.reduce((s, o) => s + o.monto, 0))
+  const diferencia = round2(totalEncargado - totalMp)
+  const cuadra = soloMp.length === 0 && soloEncargado.length === 0
+  const totalCuadra = Math.abs(diferencia) <= Math.max(1, round2(totalMp * 0.005))
+
+  // "Cargó el total": el encargado cargó pocas líneas y una de ellas ≈ la suma de
+  // varias operaciones de MP sin emparejar → cargó el total del día, no cada venta.
+  const sumaSoloMp = round2(soloMp.reduce((s, p) => s + p.monto * p.cantidad, 0))
+  const cantSoloMp = soloMp.reduce((s, p) => s + p.cantidad, 0)
+  const probableTotalCargado =
+    cantSoloMp >= 2 &&
+    soloEncargado.length > 0 &&
+    soloEncargado.length <= 2 &&
+    soloEncargado.some((p) => Math.abs(p.monto - sumaSoloMp) <= Math.max(1, sumaSoloMp * 0.005))
+
   return {
     canal,
     coincidencias,
@@ -78,8 +96,10 @@ function conciliarUnCanal(canal: CanalMp, mp: OperacionMp[], enc: LineaEncargado
     soloEncargado,
     totalMp,
     totalEncargado,
-    diferencia: round2(totalEncargado - totalMp),
-    cuadra: soloMp.length === 0 && soloEncargado.length === 0,
+    diferencia,
+    cuadra,
+    totalCuadra,
+    probableTotalCargado,
   }
 }
 

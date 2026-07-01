@@ -103,23 +103,39 @@ export default async function ConciliacionPage({ searchParams }: { searchParams:
 }
 
 function CanalCard({ c }: { c: ConciliacionCanal }) {
-  const cuadra = c.cuadra
+  const estado = c.cuadra ? 'ok' : c.totalCuadra ? 'total' : 'mal'
+  const cfg =
+    estado === 'ok'
+      ? { bg: 'bg-emerald-50', text: 'text-emerald-800', dif: 'text-emerald-700', label: 'cuadra', icon: <CheckCircle2 size={18} className="text-emerald-600" /> }
+      : estado === 'total'
+        ? { bg: 'bg-amber-50', text: 'text-amber-800', dif: 'text-amber-700', label: 'el total cierra, revisá el detalle', icon: <AlertTriangle size={18} className="text-amber-600" /> }
+        : { bg: 'bg-red-50', text: 'text-red-800', dif: 'text-red-600', label: 'con diferencias', icon: <AlertTriangle size={18} className="text-red-600" /> }
+  const totalCargadoMonto = [...c.soloEncargado].sort((a, b) => b.monto - a.monto)[0]?.monto ?? c.totalEncargado
   return (
     <section className="mb-5 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-      <div className={`flex items-center justify-between gap-3 px-4 py-3 ${cuadra ? 'bg-emerald-50' : 'bg-red-50'}`}>
+      <div className={`flex items-center justify-between gap-3 px-4 py-3 ${cfg.bg}`}>
         <div className="flex items-center gap-2">
-          {cuadra ? <CheckCircle2 size={18} className="text-emerald-600" /> : <AlertTriangle size={18} className="text-red-600" />}
-          <h2 className={`text-sm font-semibold ${cuadra ? 'text-emerald-800' : 'text-red-800'}`}>
-            {CANAL_LABEL[c.canal] ?? c.canal} — {cuadra ? 'cuadra' : 'con diferencias'}
+          {cfg.icon}
+          <h2 className={`text-sm font-semibold ${cfg.text}`}>
+            {CANAL_LABEL[c.canal] ?? c.canal} — {cfg.label}
           </h2>
         </div>
         <div className="text-right text-xs">
           <div className="text-slate-500">MP {formatMoney(c.totalMp)} · Encargado {formatMoney(c.totalEncargado)}</div>
-          <div className={`font-semibold tabular-nums ${c.diferencia === 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+          <div className={`font-semibold tabular-nums ${c.diferencia === 0 ? 'text-emerald-700' : cfg.dif}`}>
             Diferencia {formatMoney(c.diferencia)}
           </div>
         </div>
       </div>
+      {c.probableTotalCargado && (
+        <div className="flex items-start gap-2 border-b border-amber-200 bg-amber-50/60 px-4 py-2.5 text-xs text-amber-800">
+          <AlertTriangle size={15} className="mt-0.5 shrink-0 text-amber-600" />
+          <span>
+            Parece que el encargado cargó <b>el total del día ({formatMoney(totalCargadoMonto)})</b> en una sola línea, en vez de cada venta.
+            El total coincide, pero hay que cargarlo <b>venta por venta</b>.
+          </span>
+        </div>
+      )}
       <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-3">
         <Columna titulo="✅ Coinciden" tono="emerald" filas={c.coincidencias} vacio="—" />
         <Columna titulo="⚠️ MP cobró, no se cargó" tono="red" filas={c.soloMp} vacio="Nada pendiente" />

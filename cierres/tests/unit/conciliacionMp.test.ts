@@ -56,6 +56,31 @@ describe('conciliarMp', () => {
     expect(r.porCanal[0].cuadra).toBe(true)
   })
 
+  it('detecta que el encargado cargó EL TOTAL en vez de cada venta', () => {
+    // MP tiene 3 ventas; el encargado cargó una sola línea = la suma.
+    const r = conciliarMp([md(100), md(200), md(300)], [eMd(600)])
+    const c = r.porCanal[0]
+    expect(c.cuadra).toBe(false) // el detalle no empareja
+    expect(c.totalCuadra).toBe(true) // pero el total sí cierra
+    expect(c.probableTotalCargado).toBe(true) // ⚠️ cargó el total
+  })
+
+  it('el total cierra por errores que se compensan, pero NO es "cargó el total"', () => {
+    const r = conciliarMp([md(100), md(200)], [eMd(150), eMd(150)])
+    const c = r.porCanal[0]
+    expect(c.cuadra).toBe(false)
+    expect(c.totalCuadra).toBe(true) // 300 == 300
+    expect(c.probableTotalCargado).toBe(false) // ninguna línea ≈ la suma
+  })
+
+  it('cuando empareja perfecto no marca "cargó el total"', () => {
+    const r = conciliarMp([md(100), md(200)], [eMd(100), eMd(200)])
+    const c = r.porCanal[0]
+    expect(c.cuadra).toBe(true)
+    expect(c.totalCuadra).toBe(true)
+    expect(c.probableTotalCargado).toBe(false)
+  })
+
   it('mapea CANAL DE VENTA a canal interno', () => {
     expect(canalDeVenta('Delivery')).toBe('mercado_pedidos')
     expect(canalDeVenta('MERCADO DELIVERY')).toBe('mercado_pedidos')
