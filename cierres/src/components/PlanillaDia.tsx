@@ -247,6 +247,40 @@ export function PlanillaDia({
     }
   }
 
+  // Los dos bloques de turno (se usan apilados para admin, o uno-a-la-vez para encargado).
+  const bloqueManana = (
+    <TurnoCierre
+      fecha={fecha}
+      turno="manana"
+      titulo="Mañana"
+      fondoFijoDefault={fondoFijoDefault}
+      inicial={inicialManana}
+      onTotales={onTotales}
+      onGastos={onGastos}
+      precarga={precargaManana}
+      verDiferencia={verDiferencia}
+      estado={estadoManana}
+      esCentral={esCentral}
+      auditorias={auditoriasManana}
+    />
+  )
+  const bloqueTarde = (
+    <TurnoCierre
+      fecha={fecha}
+      turno="tarde"
+      titulo="Tarde"
+      fondoFijoDefault={fondoFijoDefault}
+      inicial={inicialTarde}
+      onTotales={onTotales}
+      onGastos={onGastos}
+      precarga={precargaTarde}
+      verDiferencia={verDiferencia}
+      estado={estadoTarde}
+      esCentral={esCentral}
+      auditorias={auditoriasTarde}
+    />
+  )
+
   return (
     <div className="flex flex-col gap-5 pb-16">
       {/* Importar desde Tango — solo administración (central/admin) */}
@@ -470,70 +504,49 @@ export function PlanillaDia({
         </div>
       )}
 
-      {/* Selector de turno — se carga y cierra UN turno a la vez, bien claro cuál */}
-      <div className="grid grid-cols-2 gap-2 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm">
-        {([
-          { t: 'manana' as const, label: 'Turno mañana', estado: estadoManana },
-          { t: 'tarde' as const, label: 'Turno tarde', estado: estadoTarde },
-        ]).map(({ t, label, estado }) => {
-          const activo = turnoActivo === t
-          const esManana = t === 'manana'
-          const activoCls = esManana ? 'bg-amber-500 text-white shadow-sm' : 'bg-indigo-500 text-white shadow-sm'
-          const estadoTxt = estado === 'cerrado' ? 'Cerrado' : estado === 'borrador' ? 'En carga' : 'Sin empezar'
-          return (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setTurnoActivo(t)}
-              aria-pressed={activo}
-              className={`flex flex-col items-start gap-0.5 rounded-xl px-4 py-2.5 text-left transition ${activo ? activoCls : 'text-slate-500 hover:bg-slate-50'}`}
-            >
-              <span className="flex items-center gap-1.5 text-base font-semibold">
-                {esManana ? <Sun size={18} /> : <Moon size={18} />} {label}
-              </span>
-              <span className={`flex items-center gap-1 text-xs font-medium ${activo ? 'text-white/90' : 'text-slate-400'}`}>
-                {estado === 'cerrado' && <Lock size={11} />}
-                {estadoTxt}
-              </span>
-            </button>
-          )
-        })}
-      </div>
-
-      {/* Turno activo (uno a la vez). Ambos quedan montados; ocultamos el inactivo con
-          `hidden` para no perder lo cargado ni el Total del día. */}
-      <div hidden={turnoActivo !== 'manana'}>
-        <TurnoCierre
-          fecha={fecha}
-          turno="manana"
-          titulo="Mañana"
-          fondoFijoDefault={fondoFijoDefault}
-          inicial={inicialManana}
-          onTotales={onTotales}
-          onGastos={onGastos}
-          precarga={precargaManana}
-          verDiferencia={verDiferencia}
-          estado={estadoManana}
-          esCentral={esCentral}
-          auditorias={auditoriasManana}
-        />
-      </div>
-      <div hidden={turnoActivo !== 'tarde'}>
-        <TurnoCierre
-          fecha={fecha}
-          turno="tarde"
-          titulo="Tarde"
-          fondoFijoDefault={fondoFijoDefault}
-          inicial={inicialTarde}
-          onTotales={onTotales}
-          onGastos={onGastos}
-          precarga={precargaTarde}
-          verDiferencia={verDiferencia}
-          estado={estadoTarde}
-          esCentral={esCentral}
-          auditorias={auditoriasTarde}
-        />
-      </div>
+      {esCentral ? (
+        /* Administración: ve AMBOS turnos apilados, para revisar y reabrir cualquiera. */
+        <>
+          {bloqueManana}
+          {bloqueTarde}
+        </>
+      ) : (
+        /* Encargado: carga y cierra UN turno a la vez, con un selector bien claro.
+           Ambos bloques quedan montados (ocultamos el inactivo con `hidden`) para no
+           perder lo cargado ni el Total del día. */
+        <>
+          <div className="grid grid-cols-2 gap-2 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm">
+            {([
+              { t: 'manana' as const, label: 'Turno mañana', estado: estadoManana },
+              { t: 'tarde' as const, label: 'Turno tarde', estado: estadoTarde },
+            ]).map(({ t, label, estado }) => {
+              const activo = turnoActivo === t
+              const esManana = t === 'manana'
+              const activoCls = esManana ? 'bg-amber-500 text-white shadow-sm' : 'bg-indigo-500 text-white shadow-sm'
+              const estadoTxt = estado === 'cerrado' ? 'Cerrado' : estado === 'borrador' ? 'En carga' : 'Sin empezar'
+              return (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setTurnoActivo(t)}
+                  aria-pressed={activo}
+                  className={`flex flex-col items-start gap-0.5 rounded-xl px-4 py-2.5 text-left transition ${activo ? activoCls : 'text-slate-500 hover:bg-slate-50'}`}
+                >
+                  <span className="flex items-center gap-1.5 text-base font-semibold">
+                    {esManana ? <Sun size={18} /> : <Moon size={18} />} {label}
+                  </span>
+                  <span className={`flex items-center gap-1 text-xs font-medium ${activo ? 'text-white/90' : 'text-slate-400'}`}>
+                    {estado === 'cerrado' && <Lock size={11} />}
+                    {estadoTxt}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+          <div hidden={turnoActivo !== 'manana'}>{bloqueManana}</div>
+          <div hidden={turnoActivo !== 'tarde'}>{bloqueTarde}</div>
+        </>
+      )}
     </div>
   )
 }
