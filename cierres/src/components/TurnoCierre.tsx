@@ -30,6 +30,8 @@ import {
   Lock,
   Unlock,
   History,
+  Sun,
+  Moon,
 } from 'lucide-react'
 
 const CANALES: Canal[] = [
@@ -600,11 +602,14 @@ export function TurnoCierre({
   // `index` null = nuevo; número = editar esa fila.
   const [ingresoModal, setIngresoModal] = useState<{ index: number | null } | null>(null)
   const [gastoModal, setGastoModal] = useState<{ index: number | null } | null>(null)
+  // Modal de resumen/confirmación al cerrar el turno (muestra qué se está guardando).
+  const [resumenModal, setResumenModal] = useState(false)
 
   // Estado/observación: el turno puede estar cerrado. Para el encargado, un turno
   // cerrado queda de sólo lectura. Administración puede editar/reabrir, pero al
   // hacerlo sobre un cierre existente debe dejar una observación.
   const cerrado = estado === 'cerrado'
+  const esManana = turno === 'manana'
   const bloqueado = !esCentral && cerrado
   const existe = estado != null // ya hay un cierre guardado (mañana o tarde)
   // Modal de observación pendiente: para guardar (con `cerrar`) o reabrir.
@@ -742,14 +747,20 @@ export function TurnoCierre({
     return res.ok
   }
 
-  // Disparador de Guardar/Cerrar. Administración editando un cierre EXISTENTE pasa
-  // primero por el modal de observación; el resto (alta nueva o encargado) guarda directo.
+  // Disparador de Guardar/Cerrar.
+  //  - Administración editando un cierre EXISTENTE → modal de observación.
+  //  - CERRAR (encargado o alta nueva) → modal de resumen para confirmar qué se guarda.
+  //  - Guardar borrador → directo.
   async function submit(cerrar: boolean) {
     if (esCentral && existe) {
       setObsModal({ tipo: 'guardar', cerrar })
       return
     }
-    await persistir(cerrar)
+    if (cerrar) {
+      setResumenModal(true)
+      return
+    }
+    await persistir(false)
   }
 
   // Reapertura (administración). Pasa siempre por el modal de observación.
@@ -805,11 +816,16 @@ export function TurnoCierre({
 
   return (
     <section className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white/60 p-3 shadow-sm sm:p-4">
-      <header className="flex items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 text-base font-semibold text-slate-900">
-          {titulo}
+      <header
+        className={`-mx-3 -mt-3 flex items-center justify-between gap-2 rounded-t-2xl border-b px-4 py-3 sm:-mx-4 sm:-mt-4 ${
+          esManana ? 'border-amber-200 bg-amber-50' : 'border-indigo-200 bg-indigo-50'
+        }`}
+      >
+        <h2 className={`flex items-center gap-2 text-lg font-bold ${esManana ? 'text-amber-800' : 'text-indigo-800'}`}>
+          {esManana ? <Sun size={20} /> : <Moon size={20} />}
+          Turno {titulo.toLowerCase()}
           {cerrado && (
-            <span className="flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
+            <span className="flex items-center gap-1 rounded-md bg-white/70 px-2 py-0.5 text-xs font-medium text-slate-500">
               <Lock size={12} /> cerrado
             </span>
           )}
@@ -1230,11 +1246,110 @@ export function TurnoCierre({
             disabled={pending}
             className="flex-1 rounded-lg bg-blue-600 px-4 py-2.5 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
           >
-            Cerrar
+            Cerrar turno {titulo.toLowerCase()}
           </button>
         </div>
         )}
       </div>
+
+      {/* Resumen al cerrar: sumatoria de ingresos + resumen de gastos + caja, para
+          confirmar qué se guarda antes de cerrar el turno. */}
+      {resumenModal && (
+        <Modal title={`Cerrar turno ${titulo.toLowerCase()}`} onClose={() => setResumenModal(false)}>
+          <div className="flex flex-col gap-4">
+            <div>
+              <p className="mb-1.5 text-sm font-semibold text-slate-900">Ingresos</p>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5 text-sm">
+                {efectivoVenta > 0 && (
+                  <div className="flex justify-between py-0.5">
+                    <span className="text-slate-600">Efectivo</span>
+                    <span className="tabular-nums text-slate-800">{formatMoney(efectivoVenta)}</span>
+                  </div>
+                )}
+                {ingresos.map((r, i) => (
+                  <div key={i} className="flex justify-between py-0.5">
+                    <span className="text-slate-600">
+                      {MEDIO_LABEL[r.medio]}
+                      {r.referencia.trim() !== '' && <span className="text-xs text-slate-400"> · {r.referencia}</span>}
+                    </span>
+                    <span className="tabular-nums text-slate-800">{formatMoney(r.monto)}</span>
+                  </div>
+                ))}
+                {efectivoVenta === 0 && ingresos.length === 0 && (
+                  <p className="py-0.5 text-slate-400">Sin ingresos cargados.</p>
+                )}
+                <div className="mt-1.5 flex justify-between border-t border-slate-200 pt-1.5 font-semibold text-slate-900">
+                  <span>Total ingresos</span>
+                  <span className="tabular-nums">{formatMoney(t.ventaTotal)}</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <p className="mb-1.5 text-sm font-semibold text-slate-900">Gastos</p>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5 text-sm">
+                {gastos.length === 0 ? (
+                  <p className="py-0.5 text-slate-400">Sin gastos cargados.</p>
+                ) : (
+                  <>
+                    {gastos.map((g, i) => (
+                      <div key={i} className="flex justify-between py-0.5">
+                        <span className="text-slate-600">
+                          {g.tipo} <span className="text-xs text-slate-400">· {FORMA_PAGO_LABEL[g.formaPago]}</span>
+                        </span>
+                        <span className="tabular-nums text-slate-800">{formatMoney(g.monto)}</span>
+                      </div>
+                    ))}
+                    <div className="mt-1.5 flex justify-between border-t border-slate-200 pt-1.5 font-semibold text-slate-900">
+                      <span>Total gastos</span>
+                      <span className="tabular-nums">{formatMoney(t.gastosTotal)}</span>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <p className="mb-1.5 text-sm font-semibold text-slate-900">Caja</p>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5 text-sm">
+                <div className="flex justify-between py-0.5">
+                  <span className="text-slate-600">Cierre Z</span>
+                  <span className="tabular-nums text-slate-800">{formatMoney(montoZ)}</span>
+                </div>
+                <div className="flex justify-between py-0.5">
+                  <span className="text-slate-600">Efectivo depositado</span>
+                  <span className="tabular-nums text-slate-800">{formatMoney(efectivoDepositado)}</span>
+                </div>
+                <div className="flex justify-between py-0.5">
+                  <span className="text-slate-600">Cantidad de tickets</span>
+                  <span className="tabular-nums text-slate-800">{cantidadTickets === '' ? '—' : cantidadTickets}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-5 flex gap-2">
+            <button
+              type="button"
+              onClick={() => setResumenModal(false)}
+              className="flex-1 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              disabled={pending}
+              onClick={async () => {
+                await persistir(true)
+                setResumenModal(false)
+              }}
+              className="flex-1 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+            >
+              Confirmar cierre
+            </button>
+          </div>
+        </Modal>
+      )}
 
       {/* Modales de carga/edición. La key fuerza un remount al cambiar de fila para
           que el borrador interno arranque del valor correcto. */}

@@ -18,23 +18,25 @@ test.beforeAll(async () => {
   // debe usar la MISMA fecha UTC o no limpia el cierre correcto cuando el día local
   // y el UTC difieren (ej. de noche en AR, UTC-3).
   const fecha = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
-  await prisma.cierre.deleteMany({ where: { localId: 1, fecha, turno: 'manana' } })
+  // Corre contra el "Local de Prueba" (id 99) con el usuario test, para no ensuciar
+  // datos de un local real.
+  await prisma.cierre.deleteMany({ where: { localId: 99, fecha, turno: 'manana' } })
   await prisma.$disconnect()
 })
 
 test('encargado carga y cierra el turno Mañana', async ({ page }) => {
   await page.goto('/login')
-  await page.fill('input[name=email]', 'santelmo@eldesembarco.com')
-  await page.fill('input[name=password]', 'santelmo1234')
+  await page.fill('input[name=email]', 'test@eldesembarco.com')
+  await page.fill('input[name=password]', 'test1234')
   await page.click('button:has-text("Entrar")')
 
   await expect(page).toHaveURL(/\/cierres/)
   await page.click('text=+ Cierre de hoy')
 
-  // La planilla del día tiene DOS bloques (Mañana / Tarde), cada uno es un <section>
-  // con su <h2> de título y su botón "Cerrar". Apuntamos al bloque Mañana.
-  const manana = page.locator('section', { has: page.getByRole('heading', { name: 'Mañana' }) })
-  await expect(manana.getByRole('button', { name: 'Cerrar', exact: true })).toBeVisible()
+  // La planilla muestra UN turno a la vez (selector Mañana/Tarde); Mañana viene activo
+  // por defecto. El turno es un <section> con su <h2> "Turno mañana" y su botón de cierre.
+  const manana = page.locator('section', { has: page.getByRole('heading', { name: 'Turno mañana' }) })
+  await expect(manana.getByRole('button', { name: 'Cerrar turno mañana' })).toBeVisible()
 
   // Cada campo de moneda es un <label> con un <span> (texto) + un MoneyInput (text input).
   await manana.locator('label:has-text("Cierre Z") input').fill('100000')
@@ -59,6 +61,11 @@ test('encargado carga y cierra el turno Mañana', async ({ page }) => {
   await expect(modal).toBeHidden()
   await expect(manana.getByText('Visa crédito', { exact: true }).first()).toBeVisible()
 
-  await manana.getByRole('button', { name: 'Cerrar', exact: true }).click()
+  // Cerrar abre el modal de resumen (sumatoria de ingresos + gastos); confirmamos ahí.
+  await manana.getByRole('button', { name: 'Cerrar turno mañana' }).click()
+  const resumen = page.getByRole('dialog', { name: 'Cerrar turno mañana' })
+  await expect(resumen).toBeVisible()
+  await expect(resumen.getByText('Total ingresos')).toBeVisible()
+  await resumen.getByRole('button', { name: 'Confirmar cierre' }).click()
   await expect(manana.getByText('Cerrado correctamente.')).toBeVisible()
 })

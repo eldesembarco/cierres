@@ -7,7 +7,7 @@ import { sumarDia } from '@/lib/cierre/calculations'
 import type { DiaTotales, Turno, TurnoInput, TurnoTotales } from '@/lib/cierre/types'
 import type { TangoParseResult, TangoTurno } from '@/lib/ingest/parseTango'
 import { formatMoney } from '@/lib/money'
-import { CheckCircle2, AlertCircle, Loader2, RefreshCw, Receipt, ShieldAlert, Upload } from 'lucide-react'
+import { CheckCircle2, AlertCircle, Loader2, RefreshCw, Receipt, ShieldAlert, Upload, Sun, Moon, Lock } from 'lucide-react'
 
 const TURNO_LABEL: Record<Turno, string> = { manana: 'Mañana', tarde: 'Tarde' }
 
@@ -61,6 +61,20 @@ export function PlanillaDia({
   const onTotales = useCallback((turno: Turno, t: TurnoTotales) => {
     setTotales((p) => (p[turno] === t ? p : { ...p, [turno]: t }))
   }, [])
+
+  // Se carga y cierra UN turno a la vez (para que quede bien claro cuál se abre/cierra).
+  // Ambos TurnoCierre quedan montados (ocultamos el inactivo) para no perder lo cargado
+  // ni el "Total del día".
+  // Turno activo inicial: mostramos el que corresponde para que lo cargado/cerrado no
+  // "parezca perdido". Si Mañana ya está cerrado, arrancamos en Tarde (lo que sigue);
+  // si sólo Tarde tiene datos, arrancamos en Tarde; si no, Mañana.
+  const turnoInicial: Turno =
+    estadoManana === 'cerrado' && estadoTarde !== 'cerrado'
+      ? 'tarde'
+      : !estadoManana && estadoTarde
+        ? 'tarde'
+        : 'manana'
+  const [turnoActivo, setTurnoActivo] = useState<Turno>(turnoInicial)
 
   // Gastos con N° de factura por turno → para el pendiente por factura del día.
   const [gastosFactura, setGastosFactura] = useState<Record<Turno, GastoFactura[]>>({
@@ -456,35 +470,70 @@ export function PlanillaDia({
         </div>
       )}
 
-      {/* Bloques por turno */}
-      <TurnoCierre
-        fecha={fecha}
-        turno="manana"
-        titulo="Mañana"
-        fondoFijoDefault={fondoFijoDefault}
-        inicial={inicialManana}
-        onTotales={onTotales}
-        onGastos={onGastos}
-        precarga={precargaManana}
-        verDiferencia={verDiferencia}
-        estado={estadoManana}
-        esCentral={esCentral}
-        auditorias={auditoriasManana}
-      />
-      <TurnoCierre
-        fecha={fecha}
-        turno="tarde"
-        titulo="Tarde"
-        fondoFijoDefault={fondoFijoDefault}
-        inicial={inicialTarde}
-        onTotales={onTotales}
-        onGastos={onGastos}
-        precarga={precargaTarde}
-        verDiferencia={verDiferencia}
-        estado={estadoTarde}
-        esCentral={esCentral}
-        auditorias={auditoriasTarde}
-      />
+      {/* Selector de turno — se carga y cierra UN turno a la vez, bien claro cuál */}
+      <div className="grid grid-cols-2 gap-2 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm">
+        {([
+          { t: 'manana' as const, label: 'Turno mañana', estado: estadoManana },
+          { t: 'tarde' as const, label: 'Turno tarde', estado: estadoTarde },
+        ]).map(({ t, label, estado }) => {
+          const activo = turnoActivo === t
+          const esManana = t === 'manana'
+          const activoCls = esManana ? 'bg-amber-500 text-white shadow-sm' : 'bg-indigo-500 text-white shadow-sm'
+          const estadoTxt = estado === 'cerrado' ? 'Cerrado' : estado === 'borrador' ? 'En carga' : 'Sin empezar'
+          return (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setTurnoActivo(t)}
+              aria-pressed={activo}
+              className={`flex flex-col items-start gap-0.5 rounded-xl px-4 py-2.5 text-left transition ${activo ? activoCls : 'text-slate-500 hover:bg-slate-50'}`}
+            >
+              <span className="flex items-center gap-1.5 text-base font-semibold">
+                {esManana ? <Sun size={18} /> : <Moon size={18} />} {label}
+              </span>
+              <span className={`flex items-center gap-1 text-xs font-medium ${activo ? 'text-white/90' : 'text-slate-400'}`}>
+                {estado === 'cerrado' && <Lock size={11} />}
+                {estadoTxt}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Turno activo (uno a la vez). Ambos quedan montados; ocultamos el inactivo con
+          `hidden` para no perder lo cargado ni el Total del día. */}
+      <div hidden={turnoActivo !== 'manana'}>
+        <TurnoCierre
+          fecha={fecha}
+          turno="manana"
+          titulo="Mañana"
+          fondoFijoDefault={fondoFijoDefault}
+          inicial={inicialManana}
+          onTotales={onTotales}
+          onGastos={onGastos}
+          precarga={precargaManana}
+          verDiferencia={verDiferencia}
+          estado={estadoManana}
+          esCentral={esCentral}
+          auditorias={auditoriasManana}
+        />
+      </div>
+      <div hidden={turnoActivo !== 'tarde'}>
+        <TurnoCierre
+          fecha={fecha}
+          turno="tarde"
+          titulo="Tarde"
+          fondoFijoDefault={fondoFijoDefault}
+          inicial={inicialTarde}
+          onTotales={onTotales}
+          onGastos={onGastos}
+          precarga={precargaTarde}
+          verDiferencia={verDiferencia}
+          estado={estadoTarde}
+          esCentral={esCentral}
+          auditorias={auditoriasTarde}
+        />
+      </div>
     </div>
   )
 }
