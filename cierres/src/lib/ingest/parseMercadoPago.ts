@@ -52,7 +52,7 @@ function cellText(v: ExcelJS.CellValue): string {
   return String(v)
 }
 
-function num(v: string): number {
+export function num(v: string): number {
   let s = String(v ?? '').replace(/[^\d.,-]/g, '').trim()
   if (!s) return 0
   // Soporta en-US ("1,519,950.00") y es-AR ("1.519.950,00"): el separador decimal
@@ -80,7 +80,7 @@ function parseFecha(v: string): string {
 }
 
 // ── Lector unificado: cualquier reporte (xlsx o csv) → {headers, filas-objeto} ──
-async function readTabular(
+export async function readTabular(
   buffer: ArrayBuffer | Buffer,
 ): Promise<{ headers: string[]; rows: Record<string, string>[] }> {
   const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer)

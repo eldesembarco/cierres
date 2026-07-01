@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Consolidado diario de Mercado Pago por mail (pasos en n8n)</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  :root{
+    --blue:#2563eb; --blue-dark:#1e3a8a; --blue-soft:#eff6ff;
+    --ink:#0f172a; --muted:#64748b; --line:#e2e8f0; --soft:#f8fafc;
+    --green:#059669; --green-soft:#ecfdf5; --amber:#b45309; --amber-soft:#fffbeb; --red:#dc2626; --red-soft:#fef2f2;
+  }
+  body{ font-family:"Segoe UI", system-ui, -apple-system, Helvetica, Arial, sans-serif; color:var(--ink); font-size:10.5pt; line-height:1.5; max-width:210mm; margin:0 auto; padding:14mm 15mm; }
+  h1,h2,h3{ font-weight:600; line-height:1.2; }
+  p{ margin:0 0 7px; } .muted{ color:var(--muted); }
+  .kicker{ display:inline-block; font-size:9pt; letter-spacing:.14em; text-transform:uppercase; color:var(--blue); font-weight:600; }
+  .bar{ width:50px; height:5px; background:var(--blue); border-radius:3px; margin:10px 0 12px; }
+  h1.title{ font-size:21pt; letter-spacing:-.01em; }
+  .lead{ font-size:10.5pt; color:var(--muted); margin-top:6px; max-width:180mm; }
+  section{ margin:16px 0 0; page-break-inside:avoid; }
+  .h-sec{ display:flex; align-items:center; gap:10px; margin:0 0 8px; }
+  .h-sec .n{ flex:none; width:24px; height:24px; border-radius:7px; background:var(--blue); color:#fff; font-size:10.5pt; font-weight:600; display:flex; align-items:center; justify-content:center; }
+  .h-sec h2{ font-size:14pt; }
+  table.kv{ width:100%; border-collapse:collapse; font-size:10pt; margin:6px 0; }
+  table.kv td{ padding:7px 11px; border:1px solid var(--line); vertical-align:top; }
+  table.kv tr td:first-child{ width:30%; background:var(--soft); font-weight:600; }
+  .mono, code{ font-family:"Consolas","Courier New",monospace; }
+  .mono{ color:var(--blue-dark); word-break:break-all; }
+  code{ background:var(--soft); border:1px solid var(--line); border-radius:4px; padding:1px 5px; font-size:9.5pt; }
+  pre{ background:#0f172a; color:#e2e8f0; border-radius:8px; padding:11px 13px; font-family:"Consolas","Courier New",monospace; font-size:9pt; line-height:1.45; overflow:auto; margin:6px 0; white-space:pre-wrap; }
+  pre .c{ color:#94a3b8; } pre .k{ color:#7dd3fc; } pre .s{ color:#86efac; }
+  .callout{ background:var(--blue-soft); border-left:4px solid var(--blue); border-radius:0 8px 8px 0; padding:9px 13px; margin:7px 0; font-size:9.5pt; }
+  .callout b{ color:var(--blue-dark); }
+  .warn{ background:var(--amber-soft); border-left:4px solid var(--amber); border-radius:0 8px 8px 0; padding:9px 13px; margin:7px 0; font-size:9.5pt; }
+  .warn b{ color:var(--amber); }
+  .ok{ background:var(--green-soft); border-left:4px solid var(--green); border-radius:0 8px 8px 0; padding:9px 13px; margin:7px 0; font-size:9.5pt; }
+  .ok b{ color:var(--green); }
+  ul{ margin:3px 0 7px 2px; list-style:none; } li{ position:relative; padding-left:16px; margin:4px 0; }
+  li:before{ content:""; position:absolute; left:2px; top:6px; width:5px; height:5px; border-radius:50%; background:var(--blue); }
+  ol{ margin:4px 0 7px 20px; } ol li{ padding-left:4px; margin:6px 0; } ol li:before{ display:none; }
+  .step{ border:1px solid var(--line); border-radius:9px; padding:11px 13px; margin:8px 0; }
+  .step h3{ font-size:11pt; margin-bottom:4px; } .step .tag{ display:inline-block; font-size:8pt; font-weight:600; color:#fff; background:var(--blue); border-radius:5px; padding:1px 7px; margin-right:6px; }
+  .foot{ margin-top:18px; border-top:1px solid var(--line); padding-top:9px; font-size:9pt; color:var(--muted); }
+  .pill{ display:inline-block; font-size:8pt; font-weight:600; border-radius:5px; padding:1px 7px; background:var(--green-soft); color:var(--green); }
+  mark{ background:#fde68a; padding:0 4px; border-radius:3px; font-weight:600; }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="kicker">Grupo Desembarco · Instructivo n8n</span>
+  <div class="bar"></div>
+  <h1 class="title">Consolidado diario de Mercado Pago por mail</h1>
+  <p class="lead">Cada mañana sale automáticamente un mail con el <b>consolidado de Liberaciones de Mercado Pago del día</b>: un solo Excel con <b>todos los locales y todas las operaciones</b> (hoja <b>Detalle</b> operación por operación + hoja <b>Resumen por local</b>). <b>La app arma todo sola</b> — incluso lee los reportes crudos del SFTP directamente. En n8n solo hay que <b>disparar y enviar</b>.</p>
+</header>
+
+<section>
+  <div class="h-sec"><div class="n">1</div><h2>Cómo encaja</h2></div>
+  <pre><span class="k">GET /api/mp/resumen</span>
+  <span class="c">→ la app lee TODOS los reportes del SFTP, filtra el día objetivo y consolida</span>
+  <span class="c">→ devuelve el asunto + el cuerpo del mail + el Excel adjunto (base64)</span>
+n8n  ──►  arma el mail con eso  ──►  ✉ <mark>destinatario</mark></pre>
+  <p class="muted">Este flujo es <b>independiente</b> de la ingesta a la base: la app lee el SFTP por su cuenta (usuario read-only), así que n8n no necesita tocar archivos ni SFTP. Solo hacen falta <b>3 nodos + un disparador</b>.</p>
+</section>
+
+<section>
+  <div class="h-sec"><div class="n">2</div><h2>El endpoint que llama n8n</h2></div>
+  <table class="kv">
+    <tr><td>Método / URL</td><td class="mono">GET https://cierres-seven.vercel.app/api/mp/resumen</td></tr>
+    <tr><td>Header</td><td><code>x-ingest-secret: &lt;el mismo secreto que ya usás para /api/mp/ingest&gt;</code></td></tr>
+    <tr><td>Query (opcional)</td><td><code>?fecha=YYYY-MM-DD</code> — si no la mandás, usa <b>ayer</b> en hora Argentina. Normalmente: dejarla vacía.</td></tr>
+    <tr><td>Respuesta</td><td>JSON con todo lo necesario para el mail (ver abajo).</td></tr>
+  </table>
+  <p><b>La respuesta trae:</b></p>
+  <table class="kv">
+    <tr><td class="mono">asunto</td><td>Asunto sugerido, ej. <i>“Liberaciones Mercado Pago — 29/06/2026 — 288 operaciones · 14 locales”</i>.</td></tr>
+    <tr><td class="mono">cuerpoHtml</td><td>El cuerpo del mail ya armado y con estilo (resumen por local + totales). Va tal cual en el campo HTML del mail.</td></tr>
+    <tr><td class="mono">archivoNombre</td><td>Nombre del adjunto, ej. <code>MP Liberaciones 2026-06-29 - COMPLETO (todos los locales).xlsx</code>.</td></tr>
+    <tr><td class="mono">archivoBase64</td><td>El Excel (Detalle + Resumen por local) en base64 — se convierte a binario para adjuntarlo.</td></tr>
+    <tr><td class="mono">totalOperaciones · locales · resumen · total</td><td>Los números (por si querés usarlos en el flujo). <code>hayDatos:false</code> si ese día todavía no llegó nada.</td></tr>
+  </table>
+</section>
+
+<section>
+  <div class="h-sec"><div class="n">3</div><h2>El flujo en n8n (1 disparador + 3 nodos)</h2></div>
+
+  <div class="step">
+    <h3><span class="tag">Disparador</span> Schedule Trigger</h3>
+    <ul>
+      <li>Todos los días a la mañana, ej. <b>08:00</b> (zona horaria America/Argentina/Buenos_Aires).</li>
+    </ul>
+  </div>
+
+  <div class="step">
+    <h3><span class="tag">Nodo A</span> HTTP Request — traer el consolidado</h3>
+    <ul>
+      <li><b>Method:</b> GET · <b>URL:</b> <code>https://cierres-seven.vercel.app/api/mp/resumen</code></li>
+      <li><b>Headers:</b> agregá <code>x-ingest-secret</code> = el secreto de siempre.</li>
+      <li><b>Response Format:</b> JSON. (Sin <code>fecha</code> usa ayer; para un día puntual: Query param <code>fecha</code> = <code>YYYY-MM-DD</code>.)</li>
+    </ul>
+  </div>
+
+  <div class="step">
+    <h3><span class="tag">Nodo B</span> Convert to File — base64 → adjunto</h3>
+    <ul>
+      <li>Nodo <b>“Convert to File”</b>, operación <b>“Move Base64 String to File”</b>.</li>
+      <li><b>Base64 Input Field:</b> <code>archivoBase64</code></li>
+      <li><b>Put Output in Field (binary):</b> <code>data</code> · <b>File Name:</b> <code>={{ $json.archivoNombre }}</code></li>
+      <li><b>MIME:</b> <code>application/vnd.openxmlformats-officedocument.spreadsheetml.sheet</code></li>
+    </ul>
+    <p class="muted">(En versiones viejas de n8n es el nodo “Move Binary Data”, modo <i>JSON→Binary</i>, con la misma idea.)</p>
+  </div>
+
+  <div class="step">
+    <h3><span class="tag">Nodo C</span> Send Email — enviar</h3>
+    <ul>
+      <li><b>To:</b> <mark>&lt;destinatario puntual — lo define Pablo&gt;</mark></li>
+      <li><b>Subject:</b> <code>={{ $json.asunto }}</code></li>
+      <li><b>Email Format:</b> HTML · <b>HTML:</b> <code>={{ $json.cuerpoHtml }}</code></li>
+      <li><b>Attachments (binary property):</b> <code>data</code> (el del Nodo B)</li>
+    </ul>
+    <p class="muted">Usá la credencial SMTP / cuenta de mail que ya tenés configurada en n8n.</p>
+  </div>
+</section>
+
+<section>
+  <div class="h-sec"><div class="n">4</div><h2>Prueba rápida</h2></div>
+  <p>Para validar sin esperar a la mañana, apuntá el Nodo A a un día con datos, ej. <code>?fecha=2026-06-29</code>. Debería devolver <code>ok:true</code>, <code>hayDatos:true</code>. Respuesta real de ese día:</p>
+  <pre><span class="k">GET</span> /api/mp/resumen?fecha=2026-06-29
+<span class="c">→</span> { "ok": true, "fecha": "2026-06-29", "hayDatos": true,
+    "archivosLeidos": 33, "totalOperaciones": 288, "locales": 14,
+    "asunto": "Liberaciones Mercado Pago — 29/06/2026 — 288 operaciones · 14 locales",
+    "archivoNombre": "MP Liberaciones 2026-06-29 - COMPLETO (todos los locales).xlsx",
+    "cuerpoHtml": "…", "archivoBase64": "UEsDBB…" }</pre>
+  <div class="ok"><b>Listo del lado de la app:</b> el endpoint está deployado y probado en producción (lee el SFTP, consolida y devuelve el Excel). Solo faltan estos nodos en n8n y el mail del destinatario.</div>
+</section>
+
+<section>
+  <div class="h-sec"><div class="n">5</div><h2>Notas</h2></div>
+  <ul>
+    <li>El Excel es el <b>consolidado crudo de Liberaciones</b>: incluye todos los tipos de operación (pagos aprobados, devoluciones, reclamos, envíos y <b>retiros/PAYOUTS</b>). Las <b>comisiones</b> y los <b>retiros</b> figuran en negativo.</li>
+    <li>Los reportes de MP llegan con <b>demora variable por cuenta</b>: el mail de la mañana es una foto “hasta ahora”. Si un local todavía no reportó, aparece cuando llegue su archivo (al reejecutar el endpoint se recalcula).</li>
+    <li>La app junta las operaciones del día objetivo de <b>todos</b> los reportes (settlement diario del día siguiente + stragglers posteriores) y <b>deduplica filas repetidas</b>, así no se cuenta nada dos veces aunque un reporte se pullee más de una vez.</li>
+    <li>Si <code>hayDatos:false</code> (no llegó nada ese día), podés saltear el envío con un <b>IF</b>, o mandarlo igual (sale vacío).</li>
+    <li>Todo con el <b>mismo secreto</b> <code>x-ingest-secret</code> que <code>/api/mp/ingest</code>: no hay nada nuevo que configurar del lado de n8n.</li>
+  </ul>
+</section>
+
+<div class="foot">Grupo Desembarco · App de Cierres · Instructivo para la integración de n8n · Generado automáticamente.</div>
+
+</body>
+</html>

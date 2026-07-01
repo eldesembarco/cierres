@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Cómo cargar el cierre de caja — Guía para el local</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  :root{
+    --blue:#2563eb; --blue-dark:#1e3a8a; --blue-soft:#eff6ff;
+    --ink:#0f172a; --muted:#64748b; --line:#e2e8f0; --soft:#f8fafc;
+    --green:#059669; --green-soft:#ecfdf5; --amber:#b45309; --amber-soft:#fffbeb; --red:#dc2626;
+    --slate2:#334155; --slate3:#475569;
+  }
+  body{ font-family:"Segoe UI", system-ui, -apple-system, Helvetica, Arial, sans-serif; color:var(--ink); font-size:10.5pt; line-height:1.5; max-width:210mm; margin:0 auto; padding:13mm 15mm; }
+  h1,h2,h3{ font-weight:600; line-height:1.2; }
+  p{ margin:0 0 7px; } .muted{ color:var(--muted); }
+  .kicker{ display:inline-block; font-size:9pt; letter-spacing:.14em; text-transform:uppercase; color:var(--blue); font-weight:600; }
+  .bar{ width:50px; height:5px; background:var(--blue); border-radius:3px; margin:10px 0 12px; }
+  h1.title{ font-size:22pt; letter-spacing:-.01em; }
+  .lead{ font-size:10.5pt; color:var(--muted); margin-top:6px; max-width:180mm; }
+  section{ margin:18px 0 0; page-break-inside:avoid; }
+  .h-sec{ display:flex; align-items:center; gap:10px; margin:0 0 8px; }
+  .h-sec .n{ flex:none; width:26px; height:26px; border-radius:8px; background:var(--blue); color:#fff; font-size:11pt; font-weight:700; display:flex; align-items:center; justify-content:center; }
+  .h-sec h2{ font-size:14.5pt; }
+  .row2{ display:flex; gap:18px; align-items:flex-start; }
+  .row2 .txt{ flex:1; } .row2 .fig{ flex:none; }
+  code{ background:var(--soft); border:1px solid var(--line); border-radius:4px; padding:1px 5px; font-family:"Consolas","Courier New",monospace; font-size:9.5pt; }
+  .callout{ background:var(--blue-soft); border-left:4px solid var(--blue); border-radius:0 8px 8px 0; padding:9px 13px; margin:8px 0; font-size:9.5pt; }
+  .callout b{ color:var(--blue-dark); }
+  .warn{ background:var(--amber-soft); border-left:4px solid var(--amber); border-radius:0 8px 8px 0; padding:9px 13px; margin:8px 0; font-size:9.5pt; }
+  .warn b{ color:var(--amber); }
+  ol{ margin:4px 0 7px 20px; } ol li{ padding-left:4px; margin:6px 0; }
+  ul.dot{ margin:4px 0 7px 2px; list-style:none; } ul.dot li{ position:relative; padding-left:16px; margin:5px 0; }
+  ul.dot li:before{ content:""; position:absolute; left:2px; top:6px; width:5px; height:5px; border-radius:50%; background:var(--blue); }
+  table.kv{ width:100%; border-collapse:collapse; font-size:9.5pt; margin:6px 0; }
+  table.kv td{ padding:5px 10px; border:1px solid var(--line); }
+  table.kv tr td:first-child{ width:46%; background:var(--soft); font-weight:600; }
+  .foot{ margin-top:20px; border-top:1px solid var(--line); padding-top:9px; font-size:9pt; color:var(--muted); }
+
+  /* ---- Mockups (look de la app) ---- */
+  .frame{ background:#f1f5f9; border:1px solid var(--line); border-radius:14px; padding:14px; }
+  .frame.narrow{ width:300px; }
+  .card{ background:#fff; border:1px solid var(--line); border-radius:12px; padding:12px; }
+  .btn-blue{ background:var(--blue); color:#fff; border-radius:9px; padding:8px 12px; font-weight:600; font-size:9.5pt; text-align:center; display:inline-block; }
+  .btn-wht{ background:#fff; color:var(--slate2); border:1px solid #cbd5e1; border-radius:9px; padding:8px 12px; font-weight:600; font-size:9.5pt; text-align:center; display:inline-block; }
+  .inp{ background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:7px 10px; font-size:9.5pt; color:var(--ink); }
+  .lbl{ font-size:9pt; font-weight:600; color:var(--slate2); margin-bottom:3px; display:block; }
+  .chip{ display:inline-block; font-size:8pt; font-weight:600; border-radius:6px; padding:2px 7px; }
+  .chip.g{ background:var(--green-soft); color:var(--green); }
+  .chip.a{ background:#fffbeb; color:var(--amber); }
+  .chip.z{ background:#f1f5f9; color:#94a3b8; }
+  .chip.blue{ background:var(--blue-soft); color:var(--blue-dark); border:1px solid #bfdbfe; }
+  .chip.wht{ background:#fff; color:var(--slate2); border:1px solid #cbd5e1; }
+  .kv2{ display:flex; justify-content:space-between; align-items:center; padding:5px 0; border-bottom:1px solid #f1f5f9; font-size:9.5pt; }
+  .kv2 .k{ color:var(--slate3); } .kv2 .v{ font-weight:600; }
+  .num{ font-variant-numeric:tabular-nums; }
+  .tag{ display:inline-flex; align-items:center; justify-content:center; min-width:16px; height:16px; padding:0 4px; border-radius:8px; background:var(--blue); color:#fff; font-size:8pt; font-weight:700; margin-right:5px; }
+  .capnote{ font-size:8.5pt; color:var(--muted); margin-top:5px; }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="kicker">Grupo Desembarco · Cierres de caja</span>
+  <div class="bar"></div>
+  <h1 class="title">Cómo cargar el cierre de caja</h1>
+  <p class="lead">Guía rápida para el encargado del local. Con tu usuario cargás la venta y los gastos de cada turno (mañana y tarde) desde el celular o la compu, y cerrás la caja. No hace falta instalar nada: es una página web.</p>
+</header>
+
+<!-- 1. LOGIN -->
+<section>
+  <div class="h-sec"><div class="n">1</div><h2>Entrar</h2></div>
+  <div class="row2">
+    <div class="txt">
+      <ol>
+        <li>Abrí en el navegador (celular o PC): <code>cierres-seven.vercel.app</code></li>
+        <li>Escribí el <b>correo de tu local</b> y tu <b>contraseña</b> (te los da administración).</li>
+        <li>Tocá <b>Entrar</b>. Entrás directo a la pantalla de <b>Cierres</b> de tu local.</li>
+      </ol>
+      <div class="callout"><b>Un local = un usuario.</b> Cada local entra con su propio correo y ve solamente sus cierres. Si te dice “Email o contraseña incorrectos”, revisá que no haya espacios y que el correo sea el de tu local.</div>
+      <p class="muted">La sesión dura alrededor de 1 hora; si te saca, volvés a entrar igual que la primera vez.</p>
+    </div>
+    <div class="fig">
+      <div class="frame narrow">
+        <div style="text-align:center;margin-bottom:12px">
+          <div style="width:40px;height:40px;border-radius:11px;background:var(--blue);margin:0 auto 8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:16pt">▤</div>
+          <div style="font-size:13pt;font-weight:600">Cierres</div>
+          <div style="font-size:9pt;color:var(--muted)">Ingresá a tu panel</div>
+        </div>
+        <div class="card">
+          <span class="lbl">Email</span>
+          <div class="inp" style="margin-bottom:10px;color:var(--muted)">santelmo@eldesembarco.com</div>
+          <span class="lbl">Contraseña</span>
+          <div class="inp" style="margin-bottom:12px;color:var(--muted)">••••••••</div>
+          <div class="btn-blue" style="display:block">Entrar</div>
+        </div>
+      </div>
+      <p class="capnote" style="text-align:center">Pantalla de ingreso</p>
+    </div>
+  </div>
+</section>
+
+<!-- 2. LISTA -->
+<section>
+  <div class="h-sec"><div class="n">2</div><h2>La pantalla de Cierres</h2></div>
+  <div class="row2">
+    <div class="txt">
+      <p>Ves la lista de días de tu local. Cada día muestra el estado de sus dos turnos:</p>
+      <ul class="dot">
+        <li><span class="chip a">Mañana borrador</span> — empezado, todavía sin cerrar.</li>
+        <li><span class="chip g">Tarde cerrado</span> — turno ya cerrado.</li>
+        <li><span class="chip z">Tarde —</span> — todavía sin cargar.</li>
+      </ul>
+      <p>Para cargar el día de hoy tocá <b>“＋ Cierre de hoy”</b> (arriba a la derecha). Para ver o seguir un día anterior, tocá esa fila.</p>
+    </div>
+    <div class="fig">
+      <div class="frame" style="width:330px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div>
+            <div style="font-size:13pt;font-weight:600">Cierres</div>
+            <div style="font-size:9pt;color:var(--muted)">Desembarco San Telmo</div>
+          </div>
+          <div class="btn-blue">＋ Cierre de hoy</div>
+        </div>
+        <div class="card" style="padding:0">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid #f1f5f9">
+            <div><div style="font-weight:600">01 jul 2026</div><div style="font-size:8.5pt;color:var(--muted)">Desembarco San Telmo</div></div>
+            <div style="display:flex;gap:4px;align-items:center"><span class="chip a">Mañana borrador</span><span class="chip z">Tarde —</span> ›</div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px">
+            <div><div style="font-weight:600">30 jun 2026</div><div style="font-size:8.5pt;color:var(--muted)">Desembarco San Telmo</div></div>
+            <div style="display:flex;gap:4px;align-items:center"><span class="chip g">Mañana cerrado</span><span class="chip g">Tarde cerrado</span> ›</div>
+          </div>
+        </div>
+      </div>
+      <p class="capnote" style="text-align:center">Lista de cierres del local</p>
+    </div>
+  </div>
+</section>
+
+<!-- 3. CARGAR EL TURNO -->
+<section>
+  <div class="h-sec"><div class="n">3</div><h2>Cargar un turno</h2></div>
+  <p>Al abrir el día ves <b>Mañana</b> y <b>Tarde</b>, uno debajo del otro. Cargá cada turno por separado. Dentro del turno:</p>
+  <div class="row2">
+    <div class="txt">
+      <ul class="dot">
+        <li><span class="tag">1</span><b>Agregar ingreso</b> / <b>Agregar gasto</b>: los botones de arriba abren una ventanita para cargar cada movimiento.</li>
+        <li><span class="tag">2</span><b>Venta del turno</b>: se calcula sola con lo que vas cargando. Chequeala contra el Z.</li>
+        <li><span class="tag">3</span><b>Caja</b>: cargás el <b>Cierre Z</b>, el <b>Efectivo depositado</b> y la <b>Cantidad de tickets</b>. (Fondo fijo y nota de crédito están en “Otros datos”.)</li>
+        <li><span class="tag">4</span><b>Ingresos</b>: el <b>Efectivo</b> va en un solo campo; las tarjetas y apps se cargan <b>una por una</b> con “Agregar ingreso”.</li>
+        <li><span class="tag">5</span><b>Gastos</b>: cada gasto con su rubro y forma de pago.</li>
+        <li><span class="tag">6</span><b>Guardar borrador</b> (seguir después) o <b>Cerrar</b> (queda cerrado).</li>
+      </ul>
+      <div class="callout"><b>El efectivo va aparte.</b> El campo “Efectivo” es la venta cobrada en efectivo. Las tarjetas y las apps (PedidosYa, Rappi, Mercado Pago, etc.) se cargan como ingresos individuales, cada cobro con su monto.</div>
+    </div>
+    <div class="fig">
+      <div class="frame" style="width:340px">
+        <div class="card" style="background:#fff">
+          <div style="font-weight:600;margin-bottom:8px">Mañana</div>
+          <div style="display:flex;gap:8px;margin-bottom:10px">
+            <div class="btn-blue" style="flex:1"><span class="tag" style="background:#fff;color:var(--blue)">1</span>＋ Agregar ingreso</div>
+            <div class="btn-wht" style="flex:1">＋ Agregar gasto</div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;background:var(--soft);border:1px solid var(--line);border-radius:9px;padding:9px 12px;margin-bottom:10px">
+            <span style="font-weight:600;color:var(--slate3)"><span class="tag">2</span>Venta del turno</span><span style="font-size:13pt;font-weight:700" class="num">$80.000</span>
+          </div>
+          <div class="card" style="margin-bottom:10px">
+            <div style="font-weight:600;margin-bottom:4px">◧ Caja <span class="tag" style="vertical-align:middle">3</span></div>
+            <div class="kv2"><span class="k">Cierre Z</span><span class="v num">$80.000</span></div>
+            <div class="kv2"><span class="k">Efectivo depositado</span><span class="v num">$50.000</span></div>
+            <div class="kv2" style="border:0"><span class="k">Cantidad de tickets</span><span class="v num">40</span></div>
+            <div style="font-size:9pt;color:var(--muted);padding-top:4px">▸ Otros datos (fondo fijo, nota de crédito)</div>
+          </div>
+          <div class="card" style="margin-bottom:10px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-weight:600">◍ Ingresos <span class="tag" style="vertical-align:middle">4</span></span><span class="chip" style="background:var(--blue);color:#fff">＋ Agregar</span></div>
+            <div style="background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:7px 10px;display:flex;justify-content:space-between;margin-bottom:7px"><span style="font-weight:600;color:var(--slate2)">Efectivo</span><span class="num" style="font-weight:600">$50.000</span></div>
+            <div style="display:flex;align-items:center;gap:8px;background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:6px 9px"><span class="chip blue">Visa crédito</span><span class="num" style="font-weight:600">$30.000</span></div>
+          </div>
+          <div class="card" style="margin-bottom:10px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-weight:600">▤ Gastos <span class="tag" style="vertical-align:middle">5</span></span><span class="chip wht">＋ Agregar</span></div>
+            <div style="display:flex;align-items:center;gap:8px;background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:6px 9px"><span class="chip wht">Librería</span><span style="font-size:8.5pt;color:var(--muted)">Efectivo</span><span class="num" style="font-weight:600">$5.000</span></div>
+          </div>
+          <div style="display:flex;gap:8px"><div class="btn-wht" style="flex:1">Guardar borrador</div><div class="btn-blue" style="flex:1"><span class="tag" style="background:#fff;color:var(--blue)">6</span>Cerrar</div></div>
+        </div>
+      </div>
+      <p class="capnote" style="text-align:center">Un turno (Mañana)</p>
+    </div>
+  </div>
+</section>
+
+<!-- 4. INGRESO -->
+<section>
+  <div class="h-sec"><div class="n">4</div><h2>Agregar un ingreso</h2></div>
+  <div class="row2">
+    <div class="txt">
+      <p>Al tocar <b>Agregar ingreso</b> se abre esta ventanita. Cargás un cobro con tarjeta o app:</p>
+      <ul class="dot">
+        <li><b>Medio</b>: elegí la tarjeta (Visa, Mastercard, Amex…) o la app (PedidosYa, Rappi, Mercado Pago/QR, Mercado Delivery, Uber…).</li>
+        <li><b>Monto</b>: lo cobrado en esa operación.</li>
+        <li><b>Referencia</b>: cupón / lote / número (opcional).</li>
+      </ul>
+      <p>Tocás <b>Agregar</b> y la línea queda en la lista. Cargá <b>una por cada cobro</b>. El efectivo no va acá (va en su campo).</p>
+    </div>
+    <div class="fig">
+      <div class="frame narrow" style="background:#e2e8f0">
+        <div class="card" style="padding:0">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid #f1f5f9"><span style="font-weight:600">Agregar ingreso</span><span style="color:var(--muted)">✕</span></div>
+          <div style="padding:12px">
+            <span class="lbl">Medio</span>
+            <div class="inp" style="margin-bottom:10px;display:flex;justify-content:space-between">Visa crédito <span style="color:var(--muted)">▾</span></div>
+            <span class="lbl">Monto</span>
+            <div class="inp num" style="margin-bottom:10px">$30.000</div>
+            <span class="lbl">Referencia (cupón / lote)</span>
+            <div class="inp" style="margin-bottom:14px;color:var(--muted)">Cupón / lote / ref.</div>
+            <div style="display:flex;gap:8px"><div class="btn-wht" style="flex:1">Cancelar</div><div class="btn-blue" style="flex:1">Agregar</div></div>
+          </div>
+        </div>
+      </div>
+      <p class="capnote" style="text-align:center">Ventana “Agregar ingreso”</p>
+    </div>
+  </div>
+</section>
+
+<!-- 5. GASTO -->
+<section>
+  <div class="h-sec"><div class="n">5</div><h2>Agregar un gasto</h2></div>
+  <div class="row2">
+    <div class="txt">
+      <p>Igual que el ingreso, pero para una compra/gasto del local:</p>
+      <ul class="dot">
+        <li><b>Rubro</b>: Librería, Limpieza, Mantenimiento, etc. (o “Otros”).</li>
+        <li><b>Forma de pago</b>: <b>Efectivo</b> (sale de la caja del día), <b>Fondo fijo</b> (sale de la caja chica del local), <b>Cuenta corriente</b> u <b>Otro</b> (lo paga administración).</li>
+        <li><b>Monto</b> y <b>Descripción</b>.</li>
+        <li><b>N° de factura</b> y <b>Total</b> (opcional): para facturas que se pagan en partes.</li>
+        <li><b>Comprobante</b>: sacale una foto o subí el archivo.</li>
+      </ul>
+      <div class="warn"><b>Ojo con la forma de pago.</b> Sólo el gasto en <b>Efectivo</b> baja de la caja del turno. El de <b>Fondo fijo</b> baja del fondo fijo (no de la caja); Cuenta corriente / Otro no tocan la caja.</div>
+    </div>
+    <div class="fig">
+      <div class="frame narrow" style="background:#e2e8f0">
+        <div class="card" style="padding:0">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid #f1f5f9"><span style="font-weight:600">Agregar gasto</span><span style="color:var(--muted)">✕</span></div>
+          <div style="padding:12px">
+            <span class="lbl">Rubro</span>
+            <div class="inp" style="margin-bottom:9px;display:flex;justify-content:space-between">Librería <span style="color:var(--muted)">▾</span></div>
+            <span class="lbl">Forma de pago</span>
+            <div class="inp" style="margin-bottom:9px;display:flex;justify-content:space-between">Efectivo <span style="color:var(--muted)">▾</span></div>
+            <span class="lbl">Monto</span>
+            <div class="inp num" style="margin-bottom:9px">$5.000</div>
+            <span class="lbl">Descripción</span>
+            <div class="inp" style="margin-bottom:9px;color:var(--muted)">Resmas y birome</div>
+            <div style="margin-bottom:12px"><span class="chip wht">📎 Subir comprobante</span></div>
+            <div style="display:flex;gap:8px"><div class="btn-wht" style="flex:1">Cancelar</div><div class="btn-blue" style="flex:1">Agregar</div></div>
+          </div>
+        </div>
+      </div>
+      <p class="capnote" style="text-align:center">Ventana “Agregar gasto”</p>
+    </div>
+  </div>
+</section>
+
+<!-- 6. CERRAR -->
+<section>
+  <div class="h-sec"><div class="n">6</div><h2>Guardar y cerrar</h2></div>
+  <ul class="dot">
+    <li><b>Guardar borrador</b>: guarda lo cargado y podés seguir después (queda en “borrador”).</li>
+    <li><b>Cerrar</b>: da por terminado el turno. Queda en <b>cerrado</b> y ya no se edita.</li>
+    <li>Si necesitás corregir un turno ya cerrado, <b>pedile a administración</b> que lo reabra.</li>
+    <li>Cargá <b>los dos turnos</b> (Mañana y Tarde). Arriba de todo ves la <b>Venta del día</b> sumada.</li>
+  </ul>
+</section>
+
+<!-- USUARIOS -->
+<section>
+  <div class="h-sec"><div class="n">7</div><h2>Usuario de cada local</h2></div>
+  <p class="muted">Cada local entra con su propio correo. La contraseña la entrega administración.</p>
+  <table class="kv">
+    <tr><td>Desembarco San Telmo</td><td class="mono">santelmo@eldesembarco.com</td></tr>
+    <tr><td>Desembarco Caballito</td><td class="mono">caballito@eldesembarco.com</td></tr>
+    <tr><td>Desembarco Nuñez</td><td class="mono">nunez@eldesembarco.com</td></tr>
+    <tr><td>Desembarco Villa Urquiza</td><td class="mono">villaurquiza@eldesembarco.com</td></tr>
+    <tr><td>Desembarco Microcentro</td><td class="mono">microcentro@eldesembarco.com</td></tr>
+    <tr><td>Desembarco Boedo</td><td class="mono">boedo@eldesembarco.com</td></tr>
+    <tr><td>Desembarco Olivos</td><td class="mono">olivos@eldesembarco.com</td></tr>
+    <tr><td>Desembarco Morón</td><td class="mono">moron@eldesembarco.com</td></tr>
+    <tr><td>Desembarco Ramos Mejía</td><td class="mono">ramosmejia@eldesembarco.com</td></tr>
+    <tr><td>Desembarco Pacífico</td><td class="mono">pacifico@eldesembarco.com</td></tr>
+    <tr><td>Desembarco Villa Devoto</td><td class="mono">villadevoto@eldesembarco.com</td></tr>
+  </table>
+</section>
+
+<div class="foot">Grupo Desembarco · App de Cierres · Guía para el local · cierres-seven.vercel.app · Las imágenes son de referencia (representan la pantalla real).</div>
+
+</body>
+</html>
