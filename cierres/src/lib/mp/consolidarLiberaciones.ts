@@ -78,7 +78,10 @@ function canonIndex(header: string): number {
   return -1
 }
 
-type Fila = (string | number | null)[] // longitud 12; numéricas = number|null, resto = string|null
+export type Fila = (string | number | null)[] // longitud 12; numéricas = number|null, resto = string|null
+
+// Índices de columna en una Fila (orden canónico COLUMNAS de arriba).
+export const COL = { LOCAL: 0, ORIGEN: 1, TIPO: 5, ID_PAQUETE: 6, VALOR: 7, COMISIONES: 8, CANAL: 9, NETO: 10 } as const
 
 async function leerFilas(archivo: ArchivoLiberacion): Promise<Fila[]> {
   const { headers, rows } = await readTabular(archivo.buffer)
@@ -108,6 +111,32 @@ async function leerFilas(archivo: ArchivoLiberacion): Promise<Fila[]> {
 
 // Consolida los archivos para un día (YYYY-MM-DD): filtra por FECHA DE ORIGEN, dedup
 // de fila completa, y arma el workbook con las 2 hojas.
+// Operaciones (filas completas) cuya FECHA DE ORIGEN = día objetivo, deduplicadas por
+// fila completa (los settlement se repiten entre archivos y en los pulls "manual"; la
+// fila completa distingue operaciones distintas aunque compartan monto). Reusado por
+// la conciliación operación-por-operación.
+export async function leerOperacionesDia(archivos: ArchivoLiberacion[], fecha: string): Promise<Fila[]> {
+  const seen = new Set<string>()
+  const filas: Fila[] = []
+  for (const a of archivos) {
+    let fs: Fila[]
+    try {
+      fs = await leerFilas(a)
+    } catch {
+      continue
+    }
+    for (const f of fs) {
+      const origen = String(f[COL.ORIGEN] ?? '').slice(0, 10)
+      if (origen !== fecha) continue
+      const key = f.map((c) => (c === null ? '' : String(c))).join('')
+      if (seen.has(key)) continue
+      seen.add(key)
+      filas.push(f)
+    }
+  }
+  return filas
+}
+
 export async function consolidarLiberaciones(
   archivos: ArchivoLiberacion[],
   fecha: string,

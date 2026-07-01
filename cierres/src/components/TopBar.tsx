@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import type { Session } from 'next-auth'
-import { ScrollText, Upload, Scale, BarChart3, Wallet, LogOut } from 'lucide-react'
+import { ScrollText, Upload, Scale, BarChart3, Wallet, GitCompareArrows, LogOut } from 'lucide-react'
 import { esCentral } from '@/lib/auth/rbac'
 import { logout } from '@/app/actions/auth'
 import { LocalActivoSelect } from '@/components/LocalActivoSelect'
@@ -61,6 +61,9 @@ export function TopBar({
               <NavLink href="/control" icon={<Scale size={15} />}>
                 Tablero
               </NavLink>
+              <NavLink href="/conciliacion" icon={<GitCompareArrows size={15} />}>
+                Conciliar MP
+              </NavLink>
               <NavLink href="/informes" icon={<BarChart3 size={15} />}>
                 Informes
               </NavLink>
@@ -107,6 +110,9 @@ export function TopBar({
             </NavLink>
             <NavLink href="/control" icon={<Scale size={15} />} compact>
               Tablero
+            </NavLink>
+            <NavLink href="/conciliacion" icon={<GitCompareArrows size={15} />} compact>
+              Conciliar MP
             </NavLink>
             <NavLink href="/informes" icon={<BarChart3 size={15} />} compact>
               Informes

@@ -23,6 +23,7 @@ export interface MpRawRow {
   bruto: number // valor de la compra / transaction_amount
   neto: number // monto neto / net_received_amount
   devuelto: number // monto devuelto (positivo)
+  canal?: string // CANAL DE VENTA del settlement (Delivery / QR / Presencial…) para la conciliación
 }
 
 export interface MpStoreDay {
@@ -167,17 +168,18 @@ function settlementEstado(tipoLower: string): 'approved' | 'refunded' | 'ignore'
   return 'ignore' // PAYOUTS, Pago de envío, etc.
 }
 
-function matchSettlement(h: string): 'storeName' | 'fecha' | 'tipo' | 'bruto' | 'neto' | null {
+function matchSettlement(h: string): 'storeName' | 'fecha' | 'tipo' | 'bruto' | 'neto' | 'canal' | null {
   if (h.includes('nombre de local')) return 'storeName'
   if (h.includes('fecha de origen')) return 'fecha'
   if (h.includes('tipo de operaci')) return 'tipo'
   if (h.includes('valor de la compra')) return 'bruto'
   if (h.includes('monto neto')) return 'neto'
+  if (h.includes('canal de venta')) return 'canal'
   return null
 }
 
 function interpretSettlement(headers: string[], rows: Record<string, string>[]): MpRawRow[] {
-  const k: Partial<Record<'storeName' | 'fecha' | 'tipo' | 'bruto' | 'neto', string>> = {}
+  const k: Partial<Record<'storeName' | 'fecha' | 'tipo' | 'bruto' | 'neto' | 'canal', string>> = {}
   for (const h of headers) {
     const f = matchSettlement(h.toLowerCase())
     if (f && !k[f]) k[f] = h
@@ -205,6 +207,7 @@ function interpretSettlement(headers: string[], rows: Record<string, string>[]):
       bruto,
       neto,
       devuelto: estado === 'refunded' ? Math.abs(bruto) : 0,
+      canal: k.canal ? (r[k.canal] ?? '').trim() : undefined,
     })
   }
   return out
