@@ -16,8 +16,8 @@ export default auth((req) => {
 })
 
 export const config = {
-  // api/tango/ingest, api/mp/ingest y api/mp/resumen quedan fuera del chequeo de
-  // sesión: los llama n8n sin sesión y se autentican por su propio header
-  // x-ingest-secret (ver routes).
-  matcher: ['/((?!api/auth|api/tango/ingest|api/mp/ingest|api/mp/resumen|_next/static|_next/image|favicon.ico).*)'],
+  // api/tango/ingest, api/mp/ingest, api/mp/ingest-sftp y api/mp/resumen quedan
+  // fuera del chequeo de sesión: los llama n8n sin sesión y se autentican por su
+  // propio header x-ingest-secret (ver routes).
+  matcher: ['/((?!api/auth|api/tango/ingest|api/mp/ingest-sftp|api/mp/ingest|api/mp/resumen|_next/static|_next/image|favicon.ico).*)'],
 }

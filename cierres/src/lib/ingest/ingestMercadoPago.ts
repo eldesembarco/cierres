@@ -7,7 +7,7 @@
 // sin mapear quedan registrados para asignarlos a un local desde la UI.
 import { prisma } from '@/lib/db'
 import { round2 } from '@/lib/money'
-import { parseMpFile, aggregateMp } from '@/lib/ingest/parseMercadoPago'
+import { parseMpFile, aggregateMp, type MpStoreDay } from '@/lib/ingest/parseMercadoPago'
 
 export interface MpIngestArgs {
   fileBuffer: ArrayBuffer | Buffer
@@ -46,13 +46,23 @@ export interface MpIngestResult {
 }
 
 export async function ingestMercadoPago(args: MpIngestArgs): Promise<MpIngestResult> {
-  const plataforma = await prisma.plataforma.findUniqueOrThrow({ where: { codigo: 'MD' } })
-
   const raw = await parseMpFile(args.fileBuffer)
   const grupos = aggregateMp(raw)
   if (grupos.length === 0) {
     throw new Error('No encontré operaciones en el Excel de Mercado Pago.')
   }
+  return persistMpGrupos(grupos, args.archivoNombre, args.subidoPor)
+}
+
+// Persiste grupos ya agregados (local, fecha) → ventas_app (plataforma MD). Lo
+// reusan la ingesta de un archivo (ingestMercadoPago) y la ingesta multi-archivo
+// del SFTP (ingestReportesSftp), que combina y deduplica antes de agregar.
+export async function persistMpGrupos(
+  grupos: MpStoreDay[],
+  archivoNombre: string,
+  subidoPor: number,
+): Promise<MpIngestResult> {
+  const plataforma = await prisma.plataforma.findUniqueOrThrow({ where: { codigo: 'MD' } })
 
   const [mapeos, locales] = await Promise.all([
     prisma.localPlataforma.findMany({ where: { plataformaId: plataforma.id, activo: true } }),
@@ -98,11 +108,11 @@ export async function ingestMercadoPago(args: MpIngestArgs): Promise<MpIngestRes
       data: {
         plataformaId: plataforma.id,
         fechaReporte: new Date(`${fechaReporte}T00:00:00.000Z`),
-        archivoNombre: args.archivoNombre,
+        archivoNombre,
         filasTotal: grupos.length,
         filasMapeadas: grupos.length - sinMapear.length,
         filasSinMapear: sinMapear.length,
-        subidoPor: args.subidoPor,
+        subidoPor,
       },
     })
 
