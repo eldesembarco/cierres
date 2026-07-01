@@ -149,7 +149,9 @@ export async function persistMpGrupos(
     }
 
     return imp.id
-  })
+    // La ingesta multi-archivo del SFTP agrega muchos (local, fecha) → subimos el
+    // timeout de la transacción (default 5s) para que no expire con volumen alto.
+  }, { timeout: 30_000, maxWait: 10_000 })
 
   const totales = grupos.reduce(
     (t, g) => ({
