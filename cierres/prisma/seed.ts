@@ -120,9 +120,10 @@ async function main() {
   })
 
   // slug del email por local (email = <slug>@eldesembarco.com, contraseña = <slug>1234).
+  // Los locales Mr Tasty usan dominio mrtasty.com.ar y slug mrt<local>.
   const encargados: { localId: number; slug: string; email?: string; pass?: string }[] = [
     { localId: 1,  slug: 'santelmo' },
-    { localId: 2,  slug: 'caballito' },
+    { localId: 2,  slug: 'mrtcaballito', email: 'mrtcaballito@mrtasty.com.ar', pass: 'mrtcaballito1234' },
     { localId: 3,  slug: 'nunez' },
     { localId: 4,  slug: 'villaurquiza' },
     { localId: 5,  slug: 'microcentro' },
@@ -138,8 +139,7 @@ async function main() {
     { localId: 15, slug: 'pacheco' },
     { localId: 16, slug: 'quilmes' },
     { localId: 17, slug: 'recoleta' },
-    { localId: 18, slug: 'florida' },
-    // Mr Tasty San Fernando usa el dominio mrtasty.com.ar (no eldesembarco.com).
+    { localId: 18, slug: 'mrtflorida', email: 'mrtflorida@mrtasty.com.ar', pass: 'mrtflorida1234' },
     { localId: 19, slug: 'mrtsanfernando', email: 'mrtsanfernando@mrtasty.com.ar', pass: 'mrtsanfernando1234' },
   ]
   const nombreById = new Map(locales.map((l) => [l.id, l.nombre]))
@@ -154,6 +154,11 @@ async function main() {
       create: { nombre: `Encargado ${nombreById.get(e.localId)}`, email, passwordHash: hash, rol: 'encargado', localId: e.localId },
     })
   }
+
+  // Eliminar usuarios con emails viejos que cambiaron de dominio a mrtasty.com.ar
+  await prisma.usuario.deleteMany({
+    where: { email: { in: ['caballito@eldesembarco.com', 'florida@eldesembarco.com'] } },
+  })
 
   console.log('Seed OK — 19 locales (16 Desembarco + 3 Mr Tasty), 19 encargados + admin')
 }
