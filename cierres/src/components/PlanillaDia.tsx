@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { TurnoCierre } from '@/components/TurnoCierre'
-import type { GastoFactura, CierreAuditoria } from '@/components/TurnoCierre'
+import type { GastoFactura, CierreAuditoria, Proveedor } from '@/components/TurnoCierre'
 import { sumarDia } from '@/lib/cierre/calculations'
 import type { DiaTotales, Turno, TurnoInput, TurnoTotales } from '@/lib/cierre/types'
 import type { TangoParseResult, TangoTurno } from '@/lib/ingest/parseTango'
@@ -39,6 +39,7 @@ export function PlanillaDia({
   esCentral = false,
   puedeImportar = false,
   verDiferencia = false,
+  proveedores = [],
 }: {
   fecha: string
   localId: number
@@ -52,6 +53,7 @@ export function PlanillaDia({
   esCentral?: boolean
   puedeImportar?: boolean
   verDiferencia?: boolean
+  proveedores?: Proveedor[]
 }) {
   const [totales, setTotales] = useState<Record<Turno, TurnoTotales>>({
     manana: TURNO_VACIO,
@@ -262,6 +264,7 @@ export function PlanillaDia({
       estado={estadoManana}
       esCentral={esCentral}
       auditorias={auditoriasManana}
+      proveedores={proveedores}
     />
   )
   const bloqueTarde = (
@@ -278,6 +281,7 @@ export function PlanillaDia({
       estado={estadoTarde}
       esCentral={esCentral}
       auditorias={auditoriasTarde}
+      proveedores={proveedores}
     />
   )
 

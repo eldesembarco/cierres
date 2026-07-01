@@ -27,6 +27,7 @@ export const turnoInputSchema = z.object({
     comprobanteId: z.number().int().nullable().optional(),
     facturaNumero: z.string().nullable().optional(),
     facturaTotal: z.number().nonnegative().nullable().optional(),
+    proveedorId: z.number().int().nullable().optional(),
   })).default([]),
 })
 

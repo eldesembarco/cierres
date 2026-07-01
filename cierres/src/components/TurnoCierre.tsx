@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { calcularTotales } from '@/lib/cierre/calculations'
 import type {
   Canal,
@@ -14,6 +14,9 @@ import type {
 } from '@/lib/cierre/types'
 import { formatMoney } from '@/lib/money'
 import { guardarCierre, reabrirCierre } from '@/app/cierres/actions'
+import { crearProveedor } from '@/app/cuenta-corriente/actions'
+
+export type Proveedor = { id: number; nombre: string }
 import { MoneyInput } from '@/components/MoneyInput'
 import {
   Wallet,
@@ -148,6 +151,7 @@ type GastoRow = {
   comprobanteId: number | null
   facturaNumero: string
   facturaTotal: number | null
+  proveedorId: number | null
   subiendo: boolean
 }
 
@@ -161,6 +165,7 @@ function gastosFromInicial(gastos?: Gasto[]): GastoRow[] {
     comprobanteId: g.comprobanteId ?? null,
     facturaNumero: g.facturaNumero ?? '',
     facturaTotal: g.facturaTotal ?? null,
+    proveedorId: g.proveedorId ?? null,
     subiendo: false,
   }))
 }
@@ -347,10 +352,14 @@ function IngresoModal({
  */
 function GastoModal({
   inicial,
+  proveedores,
+  onCrearProveedor,
   onClose,
   onConfirm,
 }: {
   inicial?: GastoRow
+  proveedores: Proveedor[]
+  onCrearProveedor: (nombre: string) => Promise<Proveedor | null>
   onClose: () => void
   onConfirm: (row: GastoRow) => void
 }) {
@@ -362,7 +371,22 @@ function GastoModal({
   const [comprobanteId, setComprobanteId] = useState<number | null>(inicial?.comprobanteId ?? null)
   const [facturaNumero, setFacturaNumero] = useState<string>(inicial?.facturaNumero ?? '')
   const [facturaTotal, setFacturaTotal] = useState<number | null>(inicial?.facturaTotal ?? null)
+  const [proveedorId, setProveedorId] = useState<number | null>(inicial?.proveedorId ?? null)
+  const [nuevoProv, setNuevoProv] = useState('')
+  const [creandoProv, setCreandoProv] = useState(false)
   const [subiendo, setSubiendo] = useState(false)
+
+  async function agregarProveedor() {
+    const nombre = nuevoProv.trim()
+    if (!nombre) return
+    setCreandoProv(true)
+    const nuevo = await onCrearProveedor(nombre)
+    setCreandoProv(false)
+    if (nuevo) {
+      setProveedorId(nuevo.id)
+      setNuevoProv('')
+    }
+  }
 
   async function subir(file: File) {
     setSubiendo(true)
@@ -405,6 +429,37 @@ function GastoModal({
             ))}
           </select>
         </Campo>
+        {formaPago === 'cuenta_corriente' && (
+          <Campo label="Proveedor (a quién se le debe)">
+            <select
+              value={proveedorId ?? ''}
+              onChange={(e) => setProveedorId(e.target.value ? Number(e.target.value) : null)}
+              className={selectClass}
+            >
+              <option value="">(sin asignar)</option>
+              {proveedores.map((p) => (
+                <option key={p.id} value={p.id}>{p.nombre}</option>
+              ))}
+            </select>
+            <div className="mt-2 flex gap-2">
+              <input
+                type="text"
+                value={nuevoProv}
+                onChange={(e) => setNuevoProv(e.target.value)}
+                placeholder="¿No está? Agregá uno nuevo"
+                className={selectClass}
+              />
+              <button
+                type="button"
+                onClick={agregarProveedor}
+                disabled={creandoProv || !nuevoProv.trim()}
+                className="shrink-0 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+              >
+                {creandoProv ? '…' : 'Agregar'}
+              </button>
+            </div>
+          </Campo>
+        )}
         <Campo label="Monto">
           <MoneyInput value={monto} onChange={setMonto} />
         </Campo>
@@ -489,6 +544,7 @@ function GastoModal({
               comprobanteId,
               facturaNumero: facturaNumero.trim(),
               facturaTotal: facturaTotal && facturaTotal > 0 ? facturaTotal : null,
+              proveedorId: formaPago === 'cuenta_corriente' ? proveedorId : null,
               subiendo: false,
             })
           }
@@ -569,6 +625,7 @@ export function TurnoCierre({
   estado = null,
   esCentral = false,
   auditorias = [],
+  proveedores = [],
 }: {
   fecha: string
   turno: Turno
@@ -582,6 +639,7 @@ export function TurnoCierre({
   estado?: string | null
   esCentral?: boolean
   auditorias?: CierreAuditoria[]
+  proveedores?: Proveedor[]
 }) {
   const [fondoFijo, setFondoFijo] = useState(inicial?.fondoFijo ?? fondoFijoDefault)
   const [montoZ, setMontoZ] = useState(inicial?.montoZ ?? 0)
@@ -592,6 +650,19 @@ export function TurnoCierre({
   const [efectivoVenta, setEfectivoVenta] = useState<number>(() => efectivoFromInicial(inicial?.ventas))
   const [ingresos, setIngresos] = useState<IngresoRow[]>(() => ingresosFromInicial(inicial))
   const [gastos, setGastos] = useState<GastoRow[]>(() => gastosFromInicial(inicial?.gastos))
+  // Catálogo de proveedores para el selector del gasto en cuenta corriente. Se
+  // mantiene en estado para poder sumar los que se crean en el modal sin recargar.
+  const [provs, setProvs] = useState<Proveedor[]>(proveedores)
+  const onCrearProveedor = useCallback(async (nombre: string): Promise<Proveedor | null> => {
+    const res = await crearProveedor(nombre)
+    if (!res.ok) return null
+    setProvs((p) =>
+      p.some((x) => x.id === res.proveedor.id)
+        ? p
+        : [...p, res.proveedor].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')),
+    )
+    return res.proveedor
+  }, [])
 
   const [nota, setNota] = useState(inicial?.nota ?? '')
   const [msg, setMsg] = useState('')
@@ -692,6 +763,7 @@ export function TurnoCierre({
           comprobanteId: g.comprobanteId,
           facturaNumero: g.facturaNumero.trim() || null,
           facturaTotal: g.facturaTotal,
+          proveedorId: g.formaPago === 'cuenta_corriente' ? g.proveedorId : null,
         })),
     }
   }, [fondoFijo, montoZ, efectivoDepositado, notaCredito, cantidadTickets, efectivoVenta, ingresos, gastos])
@@ -1365,6 +1437,8 @@ export function TurnoCierre({
         <GastoModal
           key={`gasto-${gastoModal.index ?? 'new'}`}
           inicial={gastoModal.index != null ? gastos[gastoModal.index] : undefined}
+          proveedores={provs}
+          onCrearProveedor={onCrearProveedor}
           onClose={() => setGastoModal(null)}
           onConfirm={confirmarGasto}
         />

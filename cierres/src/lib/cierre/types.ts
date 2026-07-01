@@ -20,6 +20,8 @@ export interface Gasto {
   comprobanteId?: number | null
   facturaNumero?: string | null
   facturaTotal?: number | null
+  // Proveedor al que se le debe, sólo relevante cuando formaPago === 'cuenta_corriente'.
+  proveedorId?: number | null
 }
 
 export interface TurnoInput {

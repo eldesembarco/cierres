@@ -84,6 +84,7 @@ export async function guardarCierre(
     comprobanteId: g.comprobanteId ?? null,
     facturaNumero: g.facturaNumero ?? null,
     facturaTotal: g.facturaTotal ?? null,
+    proveedorId: g.proveedorId ?? null,
     orden: i,
   }))
 
@@ -125,8 +126,33 @@ export async function guardarCierre(
     })
   }
 
+  // Sincronizar la cuenta corriente de este cierre. Los movimientos ya PAGADOS
+  // no se tocan (son registro histórico); los pendientes se regeneran desde los
+  // gastos actuales en cuenta corriente. Los gastos se borran+recrean en cada
+  // guardado, por eso el libro de cta cte vive en su propia tabla y no en el gasto.
+  const gastosCtaCte = input.gastos.filter((g) => g.formaPago === 'cuenta_corriente')
+  await prisma.$transaction([
+    prisma.movimientoCtaCte.deleteMany({ where: { cierreId: guardado.id, pagado: false } }),
+    ...(gastosCtaCte.length
+      ? [
+          prisma.movimientoCtaCte.createMany({
+            data: gastosCtaCte.map((g) => ({
+              localId,
+              cierreId: guardado.id,
+              proveedorId: g.proveedorId ?? null,
+              fecha: fechaDate,
+              concepto: g.tipo,
+              descripcion: g.descripcion ?? null,
+              monto: g.monto,
+            })),
+          }),
+        ]
+      : []),
+  ])
+
   revalidatePath('/cierres')
   revalidatePath(`/cierres/${fecha}`)
+  revalidatePath('/cuenta-corriente')
   return { ok: true as const, totales }
 }
 

@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import type { Session } from 'next-auth'
-import { ScrollText, Upload, Scale, BarChart3, LogOut } from 'lucide-react'
+import { ScrollText, Upload, Scale, BarChart3, Wallet, LogOut } from 'lucide-react'
 import { esCentral } from '@/lib/auth/rbac'
 import { logout } from '@/app/actions/auth'
 import { LocalActivoSelect } from '@/components/LocalActivoSelect'
@@ -50,6 +50,9 @@ export function TopBar({
           <NavLink href="/cierres" icon={<ScrollText size={15} />}>
             Cierres
           </NavLink>
+          <NavLink href="/cuenta-corriente" icon={<Wallet size={15} />}>
+            Cuenta cte
+          </NavLink>
           {central && (
             <>
               <NavLink href="/importaciones" icon={<Upload size={15} />}>
@@ -90,22 +93,27 @@ export function TopBar({
       </div>
 
       {/* Mobile nav row */}
-      {central && (
-        <div className="flex items-center gap-1 border-t border-slate-100 px-3 py-1.5 sm:hidden">
-          <NavLink href="/cierres" icon={<ScrollText size={15} />} compact>
-            Cierres
-          </NavLink>
-          <NavLink href="/importaciones" icon={<Upload size={15} />} compact>
-            Importar
-          </NavLink>
-          <NavLink href="/control" icon={<Scale size={15} />} compact>
-            Tablero
-          </NavLink>
-          <NavLink href="/informes" icon={<BarChart3 size={15} />} compact>
-            Informes
-          </NavLink>
-        </div>
-      )}
+      <div className="flex items-center gap-1 overflow-x-auto border-t border-slate-100 px-3 py-1.5 sm:hidden">
+        <NavLink href="/cierres" icon={<ScrollText size={15} />} compact>
+          Cierres
+        </NavLink>
+        <NavLink href="/cuenta-corriente" icon={<Wallet size={15} />} compact>
+          Cuenta cte
+        </NavLink>
+        {central && (
+          <>
+            <NavLink href="/importaciones" icon={<Upload size={15} />} compact>
+              Importar
+            </NavLink>
+            <NavLink href="/control" icon={<Scale size={15} />} compact>
+              Tablero
+            </NavLink>
+            <NavLink href="/informes" icon={<BarChart3 size={15} />} compact>
+              Informes
+            </NavLink>
+          </>
+        )}
+      </div>
     </header>
   )
 }

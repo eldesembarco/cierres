@@ -24,7 +24,7 @@ type CierreConHijos = {
   ventas: { canal: string; monto: unknown }[]
   tarjetas: { tipo: string; monto: unknown; lote: string | null }[]
   detalles: { canal: string; referencia: string; importe: unknown }[]
-  gastos: { tipo: string; formaPago: string; monto: unknown; descripcion: string | null; comprobanteId: number | null; facturaNumero: string | null; facturaTotal: unknown }[]
+  gastos: { tipo: string; formaPago: string; monto: unknown; descripcion: string | null; comprobanteId: number | null; facturaNumero: string | null; facturaTotal: unknown; proveedorId: number | null }[]
   auditorias: { usuarioNombre: string; accion: string; observacion: string; creadoEn: Date }[]
 }
 
@@ -57,6 +57,7 @@ function toInicial(c: CierreConHijos | undefined): (Partial<TurnoInput> & { nota
       comprobanteId: g.comprobanteId,
       facturaNumero: g.facturaNumero,
       facturaTotal: g.facturaTotal == null ? null : Number(g.facturaTotal),
+      proveedorId: g.proveedorId,
     })),
     nota: c.nota ?? '',
   }
@@ -84,6 +85,12 @@ export default async function CierreDiaPage({ params }: { params: Promise<{ fech
       gastos: true,
       auditorias: { orderBy: { creadoEn: 'desc' } },
     },
+  })
+
+  const proveedores = await prisma.proveedor.findMany({
+    where: { activo: true },
+    orderBy: { nombre: 'asc' },
+    select: { id: true, nombre: true },
   })
 
   const byTurno = new Map<Turno, (typeof cierres)[number]>()
@@ -129,6 +136,7 @@ export default async function CierreDiaPage({ params }: { params: Promise<{ fech
         esCentral={central}
         puedeImportar={central}
         verDiferencia={central}
+        proveedores={proveedores}
       />
     </main>
   )

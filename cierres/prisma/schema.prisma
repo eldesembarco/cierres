@@ -30,6 +30,7 @@ model Local {
   ventasApp        VentaApp[]
   usuarios         Usuario[]
   cierresTango     CierreTango[]
+  movimientosCtaCte MovimientoCtaCte[]
   @@map("locales")
 }
 
@@ -103,6 +104,7 @@ model Cierre {
   detalles           CierreDetalle[]
   gastos             CierreGasto[]
   auditorias         CierreAuditoria[]
+  movimientosCtaCte  MovimientoCtaCte[]
   @@unique([localId, fecha, turno])
   @@map("cierres")
 }
@@ -199,7 +201,47 @@ model CierreGasto {
   facturaNumero String?    @map("factura_numero")
   facturaTotal  Decimal?   @map("factura_total") @db.Decimal(14, 2)
   orden         Int        @default(0)
+  proveedor     Proveedor? @relation(fields: [proveedorId], references: [id])
+  proveedorId   Int?       @map("proveedor_id")
   @@map("cierre_gasto")
+}
+
+// Catálogo de proveedores/terceros a los que la empresa les compra en cuenta
+// corriente (les paga administración después). Global: un proveedor puede
+// abastecer a varios locales.
+model Proveedor {
+  id          Int                @id @default(autoincrement())
+  nombre      String
+  activo      Boolean            @default(true)
+  creadoEn    DateTime           @default(now()) @map("creado_en")
+  gastos      CierreGasto[]
+  movimientos MovimientoCtaCte[]
+  @@map("proveedores")
+}
+
+// Libro de la cuenta corriente (lo que la empresa DEBE). Cada gasto cargado con
+// forma de pago "cuenta_corriente" genera un movimiento pendiente. Vive en tabla
+// propia (no en cierre_gasto) porque los gastos se borran+recrean al reeditar un
+// cierre: los movimientos PAGADOS nunca se pisan; los pendientes se resincronizan.
+model MovimientoCtaCte {
+  id          Int        @id @default(autoincrement())
+  local       Local      @relation(fields: [localId], references: [id])
+  localId     Int        @map("local_id")
+  proveedor   Proveedor? @relation(fields: [proveedorId], references: [id])
+  proveedorId Int?       @map("proveedor_id")
+  cierre      Cierre?    @relation(fields: [cierreId], references: [id], onDelete: SetNull)
+  cierreId    Int?       @map("cierre_id")
+  fecha       DateTime   @db.Date
+  concepto    String
+  descripcion String?
+  monto       Decimal    @default(0) @db.Decimal(14, 2)
+  pagado      Boolean    @default(false)
+  pagadoEn    DateTime?  @map("pagado_en")
+  pagadoPor   Int?       @map("pagado_por")
+  creadoEn    DateTime   @default(now()) @map("creado_en")
+  @@index([localId, pagado])
+  @@index([cierreId])
+  @@map("movimiento_cta_cte")
 }
 
 // Cierre de turno crudo recibido por correo desde Tango (lo postea n8n, una
