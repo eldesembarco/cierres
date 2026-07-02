@@ -31,6 +31,7 @@ export const CANAL_LABEL: Record<Canal, string> = {
   pedidosya_efectivo: 'PedidosYa (efectivo)',
   mercado_pedidos: 'Mercado Delivery',
   mercadopago: 'Mercado Pago / QR',
+  pvs_qr: 'PVS QR',
   uber: 'Uber',
   delivery_propio: 'Delivery propio',
   varios: 'Varios',
@@ -38,7 +39,7 @@ export const CANAL_LABEL: Record<Canal, string> = {
 
 const ORDEN_CANAL: Canal[] = [
   'efectivo', 'tarjetas', 'rappi', 'pedidosya', 'pedidosya_efectivo', 'mercado_pedidos',
-  'mercadopago', 'uber', 'delivery_propio', 'varios',
+  'mercadopago', 'pvs_qr', 'uber', 'delivery_propio', 'varios',
 ]
 
 export interface KpiResumen {

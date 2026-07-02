@@ -134,6 +134,7 @@ enum Canal {
   pedidosya_efectivo
   mercado_pedidos
   mercadopago
+  pvs_qr
   uber
   delivery_propio
   varios

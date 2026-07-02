@@ -1,6 +1,6 @@
 export type Canal =
   | 'efectivo' | 'tarjetas' | 'rappi' | 'pedidosya' | 'pedidosya_efectivo' | 'mercado_pedidos'
-  | 'mercadopago' | 'uber' | 'delivery_propio' | 'varios'
+  | 'mercadopago' | 'pvs_qr' | 'uber' | 'delivery_propio' | 'varios'
 
 export type Turno = 'manana' | 'tarde'
 export type TipoTarjeta = 'mastercard' | 'maestro' | 'visa_credito' | 'visa_debito' | 'amex'

@@ -39,7 +39,7 @@ import {
 
 const CANALES: Canal[] = [
   'efectivo', 'tarjetas', 'rappi', 'mercado_pedidos', 'pedidosya', 'pedidosya_efectivo',
-  'mercadopago', 'uber', 'delivery_propio', 'varios',
+  'mercadopago', 'pvs_qr', 'uber', 'delivery_propio', 'varios',
 ]
 
 const TIPOS: TipoTarjeta[] = ['mastercard', 'maestro', 'visa_credito', 'visa_debito', 'amex']
@@ -48,18 +48,18 @@ const TIPOS: TipoTarjeta[] = ['mastercard', 'maestro', 'visa_credito', 'visa_deb
 // apps/otros canales. Cada línea de ingreso usa uno de estos medios.
 const MEDIOS_TARJETA: TipoTarjeta[] = ['visa_credito', 'visa_debito', 'mastercard', 'maestro', 'amex']
 // Canales tipo app/otro disponibles como medio de ingreso (todo lo que no es efectivo ni tarjetas).
-type MedioApp = 'pedidosya' | 'pedidosya_efectivo' | 'rappi' | 'mercadopago' | 'mercado_pedidos' | 'uber' | 'delivery_propio' | 'varios'
+type MedioApp = 'pedidosya' | 'pedidosya_efectivo' | 'rappi' | 'mercadopago' | 'pvs_qr' | 'mercado_pedidos' | 'uber' | 'delivery_propio' | 'varios'
 // Conjunto lógico: todo medio que no es tarjeta ni el efectivo (campo único). Se usa
 // para reconstruir/filtrar las líneas guardadas por canal.
 const MEDIOS_APP: MedioApp[] = [
-  'pedidosya', 'pedidosya_efectivo', 'rappi', 'mercadopago', 'mercado_pedidos', 'uber', 'delivery_propio', 'varios',
+  'pedidosya', 'pedidosya_efectivo', 'rappi', 'mercadopago', 'pvs_qr', 'mercado_pedidos', 'uber', 'delivery_propio', 'varios',
 ]
 type Medio = TipoTarjeta | MedioApp
 
 // Agrupación VISUAL del selector (no afecta la lógica):
 //  - "Formas de pago": tarjetas + Mercado Pago / QR (cobro en mostrador).
 //  - "Apps de delivery": PedidosYa (y PedidosYa en efectivo), Rappi, Mercado Delivery, etc.
-const MEDIOS_FORMA_PAGO: Medio[] = [...MEDIOS_TARJETA, 'mercadopago']
+const MEDIOS_FORMA_PAGO: Medio[] = [...MEDIOS_TARJETA, 'mercadopago', 'pvs_qr']
 const MEDIOS_DELIVERY: MedioApp[] = [
   'pedidosya', 'pedidosya_efectivo', 'rappi', 'mercado_pedidos', 'uber', 'delivery_propio', 'varios',
 ]
@@ -74,6 +74,7 @@ const MEDIO_LABEL: Record<Medio, string> = {
   pedidosya_efectivo: 'PedidosYa (efectivo)',
   rappi: 'Rappi',
   mercadopago: 'Mercado Pago / QR',
+  pvs_qr: 'PVS QR',
   mercado_pedidos: 'Mercado Delivery',
   uber: 'Uber',
   delivery_propio: 'Delivery propio',
