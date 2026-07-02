@@ -1,7 +1,6 @@
 'use server'
 
 import { cookies } from 'next/headers'
-import { revalidatePath } from 'next/cache'
 import type { Session } from 'next-auth'
 import { prisma } from '@/lib/db'
 import { esCentral } from '@/lib/auth/rbac'
@@ -58,7 +57,8 @@ export async function setLocalActivo(localId: number) {
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
   })
-  // Único mecanismo de invalidación del lado server (el cliente ya NO hace
-  // router.refresh): re-renderiza el árbol para que toda pantalla re-lea el local.
-  revalidatePath('/', 'layout')
+  // En Next 16, setear una cookie en un Server Action YA re-renderiza la página y
+  // sus layouts automáticamente → no hace falta revalidatePath (que además, con
+  // type 'layout' sobre '/', purgaba todo el cache y re-prefetcheaba las 6 solapas
+  // en cada cambio). Las demás pantallas re-leen el local al navegar (son dinámicas).
 }
