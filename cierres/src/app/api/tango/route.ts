@@ -3,6 +3,8 @@
 // (TangoParseResult: { fecha, turnos: [{ turno, ventas, montoZ, cantidadTickets }] })
 // es la que consume el botón "Importar desde Tango" en la planilla.
 import { prisma } from '@/lib/db'
+import { auth } from '@/lib/auth/auth'
+import { esCentral } from '@/lib/auth/rbac'
 import type { Canal, Turno } from '@/lib/cierre/types'
 
 interface TangoTurnoResponse {
@@ -19,13 +21,23 @@ interface TangoTurnoResponse {
 const ORDEN_TURNO: Turno[] = ['manana', 'tarde']
 
 export async function GET(request: Request) {
+  const session = await auth()
+  if (!session) return Response.json({ error: 'No autenticado' }, { status: 401 })
+
   const { searchParams } = new URL(request.url)
   const fecha = searchParams.get('fecha')
   const localIdRaw = searchParams.get('localId')
 
-  const localId = Number(localIdRaw)
-  if (!fecha || !localIdRaw || !Number.isInteger(localId)) {
+  const pedido = Number(localIdRaw)
+  if (!fecha || !localIdRaw || !Number.isInteger(pedido)) {
     return Response.json({ error: 'Faltan localId o fecha' }, { status: 400 })
+  }
+
+  // Alcance por rol: el encargado SOLO puede leer su local (ignora el query param,
+  // evita la fuga horizontal de datos entre locales); central/admin, cualquiera.
+  const localId = esCentral(session.user.rol) ? pedido : session.user.localId
+  if (localId == null) {
+    return Response.json({ error: 'Usuario sin local asignado' }, { status: 400 })
   }
 
   const rows = await prisma.cierreTango.findMany({

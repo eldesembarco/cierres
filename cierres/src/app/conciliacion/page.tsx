@@ -4,6 +4,7 @@ import { getLocalActivoId } from '@/lib/auth/localActivo'
 import { prisma } from '@/lib/db'
 import { formatMoney } from '@/lib/money'
 import { conciliarLocalDia } from '@/lib/mp/conciliarLocalDia'
+import { ayerAr } from '@/lib/fecha'
 import type { ConciliacionCanal } from '@/lib/mp/conciliacionMp'
 import { GitCompareArrows, Lock, CheckCircle2, AlertTriangle, Inbox } from 'lucide-react'
 
@@ -15,11 +16,6 @@ type SearchParams = Promise<{ localId?: string; fecha?: string }>
 const CANAL_LABEL: Record<string, string> = {
   mercado_pedidos: 'Mercado Delivery',
   mercadopago: 'Mercado Pago / QR',
-}
-
-function ayer(): string {
-  const d = new Date(Date.now() - 24 * 60 * 60 * 1000)
-  return d.toISOString().slice(0, 10)
 }
 
 export default async function ConciliacionPage({ searchParams }: { searchParams: SearchParams }) {
@@ -38,7 +34,7 @@ export default async function ConciliacionPage({ searchParams }: { searchParams:
   const sp = await searchParams
   const localActivoId = await getLocalActivoId(session)
   const localIdSel = sp.localId && /^\d+$/.test(sp.localId) ? Number(sp.localId) : localActivoId
-  const fechaSel = sp.fecha && /^\d{4}-\d{2}-\d{2}$/.test(sp.fecha) ? sp.fecha : ayer()
+  const fechaSel = sp.fecha && /^\d{4}-\d{2}-\d{2}$/.test(sp.fecha) ? sp.fecha : ayerAr()
   const correr = Boolean(sp.localId && sp.fecha)
 
   const locales = await prisma.local.findMany({ where: { activo: true }, orderBy: { nombre: 'asc' } })

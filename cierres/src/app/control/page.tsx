@@ -3,6 +3,7 @@ import { puedeVerControl } from '@/lib/auth/rbac'
 import { getLocalActivoId } from '@/lib/auth/localActivo'
 import { prisma } from '@/lib/db'
 import { getTablero } from '@/lib/control/getTablero'
+import { hoyAr } from '@/lib/fecha'
 import { Tablero } from '@/components/Tablero'
 import { CalendarDays, AlertTriangle, Lock } from 'lucide-react'
 
@@ -19,7 +20,7 @@ export default async function ControlPage({ searchParams }: { searchParams: Prom
     )
   }
   const { fecha } = await searchParams
-  const dia = fecha ?? new Date().toISOString().slice(0, 10)
+  const dia = fecha ?? hoyAr()
   const localId = await getLocalActivoId(session)
   const [local, tablero] = await Promise.all([
     prisma.local.findUnique({ where: { id: localId }, select: { nombre: true } }),

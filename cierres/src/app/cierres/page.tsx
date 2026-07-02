@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth/auth'
 import { prisma } from '@/lib/db'
 import Link from 'next/link'
 import { getLocalActivoId } from '@/lib/auth/localActivo'
+import { hoyAr } from '@/lib/fecha'
 import type { Turno } from '@/lib/cierre/types'
 import { ScrollText, Plus, ChevronRight } from 'lucide-react'
 
@@ -71,7 +72,7 @@ export default async function CierresPage() {
   }
   const dias = [...diasMap.values()] // ya vienen ordenados por fecha desc
 
-  const hoy = new Date().toISOString().slice(0, 10)
+  const hoy = hoyAr()
 
   return (
     <main className="mx-auto w-full max-w-2xl px-4 py-6">

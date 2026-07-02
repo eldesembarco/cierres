@@ -2,6 +2,7 @@
 // `/informes` (render) y el endpoint de Excel `/api/informes/export` para que
 // los números sean SIEMPRE los mismos. Solo lectura: no toca la base.
 import { round2, sumMoney } from '@/lib/money'
+import { hoyAr, primerDiaDelMesAr } from '@/lib/fecha'
 import type { Canal, Turno } from '@/lib/cierre/types'
 
 // Forma mínima de un cierre con sus relaciones, tal cual lo trae el findMany de
@@ -200,13 +201,14 @@ export function construirInforme(cierres: CierreParaInforme[]): Informe {
 // --- Helpers de fechas/filtros compartidos por page y route ---
 
 /** Primer día del mes actual en formato YYYY-MM-DD (zona local del server). */
-export function primerDiaDelMes(now = new Date()): string {
-  const d = new Date(now.getFullYear(), now.getMonth(), 1)
-  return toYmd(d)
+// Sin argumento usan la fecha en hora Argentina (default de producción); con `now`
+// explícito mantienen el cálculo local (lo usan los tests).
+export function primerDiaDelMes(now?: Date): string {
+  return now ? toYmd(new Date(now.getFullYear(), now.getMonth(), 1)) : primerDiaDelMesAr()
 }
 
-export function hoyYmd(now = new Date()): string {
-  return toYmd(now)
+export function hoyYmd(now?: Date): string {
+  return now ? toYmd(now) : hoyAr()
 }
 
 function toYmd(d: Date): string {
