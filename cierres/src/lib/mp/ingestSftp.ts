@@ -26,8 +26,22 @@ export interface IngestSftpResult {
 }
 
 // Firma de una operación para deduplicar filas idénticas repetidas entre archivos.
+// Incluye ID DEL PAQUETE y FECHA DE APROBACIÓN: sin ellos, dos ventas REALES y distintas
+// del mismo local, día y monto (muy común en gastronomía: dos combos iguales) colapsaban
+// en una sola y se sub-contaba la venta. Con estos campos se distinguen (alineado con el
+// dedup por fila completa que usa la conciliación).
 function firma(r: MpRawRow): string {
-  return [r.fecha, r.estado, r.storeId, r.storeName, r.bruto, r.neto, r.devuelto].join('|')
+  return [
+    r.fecha,
+    r.estado,
+    r.storeId,
+    r.storeName,
+    r.bruto,
+    r.neto,
+    r.devuelto,
+    r.idPaquete ?? '',
+    r.fechaAprobacion ?? '',
+  ].join('|')
 }
 
 export async function ingestReportesSftp(opts: IngestSftpOpts = {}): Promise<IngestSftpResult> {

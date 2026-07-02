@@ -126,17 +126,39 @@ export async function guardarCierre(
     })
   }
 
-  // Sincronizar la cuenta corriente de este cierre. Los movimientos ya PAGADOS
-  // no se tocan (son registro histórico); los pendientes se regeneran desde los
-  // gastos actuales en cuenta corriente. Los gastos se borran+recrean en cada
-  // guardado, por eso el libro de cta cte vive en su propia tabla y no en el gasto.
+  // Sincronizar la cuenta corriente de este cierre. Los movimientos ya PAGADOS no se
+  // tocan (son histórico) y NO se recrean: si un gasto en cuenta corriente ya tiene un
+  // movimiento pagado para este cierre, no generamos otro pendiente — de lo contrario,
+  // al reeditar el cierre se duplicaría la deuda (uno pagado + uno pendiente nuevo) y se
+  // le pagaría dos veces al proveedor. Los gastos se borran+recrean en cada guardado, así
+  // que matcheamos por (proveedor, concepto, monto) contra un multiset de lo ya pagado.
   const gastosCtaCte = input.gastos.filter((g) => g.formaPago === 'cuenta_corriente')
+  const pagados = await prisma.movimientoCtaCte.findMany({
+    where: { cierreId: guardado.id, pagado: true },
+    select: { proveedorId: true, concepto: true, monto: true },
+  })
+  const claveMov = (proveedorId: number | null, concepto: string, monto: number) =>
+    `${proveedorId ?? ''}|${concepto}|${monto.toFixed(2)}`
+  const pagadosCount = new Map<string, number>()
+  for (const p of pagados) {
+    const k = claveMov(p.proveedorId, p.concepto, Number(p.monto))
+    pagadosCount.set(k, (pagadosCount.get(k) ?? 0) + 1)
+  }
+  const aRecrear = gastosCtaCte.filter((g) => {
+    const k = claveMov(g.proveedorId ?? null, g.tipo, g.monto)
+    const c = pagadosCount.get(k) ?? 0
+    if (c > 0) {
+      pagadosCount.set(k, c - 1) // ese gasto ya está saldado: no lo recreamos
+      return false
+    }
+    return true
+  })
   await prisma.$transaction([
     prisma.movimientoCtaCte.deleteMany({ where: { cierreId: guardado.id, pagado: false } }),
-    ...(gastosCtaCte.length
+    ...(aRecrear.length
       ? [
           prisma.movimientoCtaCte.createMany({
-            data: gastosCtaCte.map((g) => ({
+            data: aRecrear.map((g) => ({
               localId,
               cierreId: guardado.id,
               proveedorId: g.proveedorId ?? null,

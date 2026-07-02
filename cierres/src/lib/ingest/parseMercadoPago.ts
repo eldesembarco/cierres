@@ -24,6 +24,8 @@ export interface MpRawRow {
   neto: number // monto neto / net_received_amount
   devuelto: number // monto devuelto (positivo)
   canal?: string // CANAL DE VENTA del settlement (Delivery / QR / Presencial…) para la conciliación
+  idPaquete?: string // ID DEL PAQUETE del settlement — distingue operaciones de igual monto en el dedup
+  fechaAprobacion?: string // FECHA DE APROBACIÓN del settlement — idem (dedup fino)
 }
 
 export interface MpStoreDay {
@@ -168,10 +170,14 @@ function settlementEstado(tipoLower: string): 'approved' | 'refunded' | 'ignore'
   return 'ignore' // PAYOUTS, Pago de envío, etc.
 }
 
-function matchSettlement(h: string): 'storeName' | 'fecha' | 'tipo' | 'bruto' | 'neto' | 'canal' | null {
+function matchSettlement(
+  h: string,
+): 'storeName' | 'fecha' | 'tipo' | 'bruto' | 'neto' | 'canal' | 'idPaquete' | 'fechaAprobacion' | null {
   if (h.includes('nombre de local')) return 'storeName'
   if (h.includes('fecha de origen')) return 'fecha'
+  if (h.includes('fecha de aprobaci')) return 'fechaAprobacion'
   if (h.includes('tipo de operaci')) return 'tipo'
+  if (h.includes('id del paquete')) return 'idPaquete'
   if (h.includes('valor de la compra')) return 'bruto'
   if (h.includes('monto neto')) return 'neto'
   if (h.includes('canal de venta')) return 'canal'
@@ -179,7 +185,9 @@ function matchSettlement(h: string): 'storeName' | 'fecha' | 'tipo' | 'bruto' | 
 }
 
 function interpretSettlement(headers: string[], rows: Record<string, string>[]): MpRawRow[] {
-  const k: Partial<Record<'storeName' | 'fecha' | 'tipo' | 'bruto' | 'neto' | 'canal', string>> = {}
+  const k: Partial<
+    Record<'storeName' | 'fecha' | 'tipo' | 'bruto' | 'neto' | 'canal' | 'idPaquete' | 'fechaAprobacion', string>
+  > = {}
   for (const h of headers) {
     const f = matchSettlement(h.toLowerCase())
     if (f && !k[f]) k[f] = h
@@ -208,6 +216,8 @@ function interpretSettlement(headers: string[], rows: Record<string, string>[]):
       neto,
       devuelto: estado === 'refunded' ? Math.abs(bruto) : 0,
       canal: k.canal ? (r[k.canal] ?? '').trim() : undefined,
+      idPaquete: k.idPaquete ? (r[k.idPaquete] ?? '').trim() : undefined,
+      fechaAprobacion: k.fechaAprobacion ? (r[k.fechaAprobacion] ?? '').trim() : undefined,
     })
   }
   return out
