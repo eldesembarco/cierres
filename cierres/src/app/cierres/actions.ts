@@ -6,6 +6,7 @@ import { turnoInputSchema } from '@/lib/cierre/schema'
 import { calcularTotales } from '@/lib/cierre/calculations'
 import { esCentral } from '@/lib/auth/rbac'
 import { getLocalActivoId } from '@/lib/auth/localActivo'
+import { amnistiaReaperturaActiva } from '@/lib/cierre/amnistia'
 import type { Turno } from '@/lib/cierre/types'
 import { revalidatePath } from 'next/cache'
 
@@ -182,7 +183,10 @@ export async function reabrirCierre(fecha: string, turno: Turno, observacion: st
   const session = await auth()
   if (!session) throw new Error('No autenticado')
   const { localId, userId, rol } = await resolverLocalId()
-  if (!esCentral(rol)) {
+  // Normalmente sólo administración reabre. Excepción temporal: por hoy (02/07) el
+  // encargado puede reabrir SU caja de ayer (01/07) para corregir errores. Como
+  // resolverLocalId fuerza el local del encargado, sólo alcanza a su propio local.
+  if (!esCentral(rol) && !amnistiaReaperturaActiva(fecha)) {
     return { ok: false as const, error: 'No autorizado para reabrir cierres.' }
   }
   const obs = (observacion ?? '').trim()

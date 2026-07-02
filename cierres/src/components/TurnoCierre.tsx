@@ -15,6 +15,7 @@ import type {
 import { formatMoney } from '@/lib/money'
 import { guardarCierre, reabrirCierre } from '@/app/cierres/actions'
 import { crearProveedor } from '@/app/cuenta-corriente/actions'
+import { amnistiaReaperturaActiva } from '@/lib/cierre/amnistia'
 
 export type Proveedor = { id: number; nombre: string }
 import { MoneyInput } from '@/components/MoneyInput'
@@ -688,6 +689,8 @@ export function TurnoCierre({
   const cerrado = estado === 'cerrado'
   const esManana = turno === 'manana'
   const bloqueado = !esCentral && cerrado
+  // Amnistía temporal: por hoy el encargado puede reabrir su caja de ayer (01/07).
+  const permiteReabrir = esCentral || amnistiaReaperturaActiva(fecha)
   const existe = estado != null // ya hay un cierre guardado (mañana o tarde)
   // Modal de observación pendiente: para guardar (con `cerrar`) o reabrir.
   const [obsModal, setObsModal] = useState<{ tipo: 'guardar'; cerrar: boolean } | { tipo: 'reabrir' } | null>(null)
@@ -915,7 +918,7 @@ export function TurnoCierre({
               Dif {formatMoney(t.diferenciaCaja)}
             </span>
           )}
-          {esCentral && cerrado && (
+          {permiteReabrir && cerrado && (
             <button
               type="button"
               onClick={() => setObsModal({ tipo: 'reabrir' })}
@@ -932,7 +935,11 @@ export function TurnoCierre({
       {bloqueado && (
         <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-600">
           <Lock size={16} className="shrink-0 text-slate-400" />
-          <span>Turno cerrado. Pedí al administrador que lo reabra para editar.</span>
+          <span>
+            {permiteReabrir
+              ? 'Turno cerrado. Tocá “Reabrir” (arriba a la derecha) para corregir la carga y volvé a cerrarlo.'
+              : 'Turno cerrado. Pedí al administrador que lo reabra para editar.'}
+          </span>
         </div>
       )}
 
