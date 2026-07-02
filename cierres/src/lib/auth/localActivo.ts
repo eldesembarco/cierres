@@ -3,7 +3,7 @@
 import { cookies } from 'next/headers'
 import type { Session } from 'next-auth'
 import { prisma } from '@/lib/db'
-import { esCentral } from '@/lib/auth/rbac'
+import { puedeElegirLocal } from '@/lib/auth/rbac'
 
 const COOKIE = 'localActivo'
 
@@ -11,19 +11,19 @@ const COOKIE = 'localActivo'
  * Local "activo" sobre el que opera la pantalla actual.
  *
  *  - Encargado: SIEMPRE su local asignado (no puede cambiarlo).
- *  - Central / admin: el local elegido en el selector de la TopBar, persistido
- *    en la cookie `localActivo`. Si la cookie no existe o apunta a algo inválido,
- *    cae al primer local activo (orden por id) para no romper nunca.
+ *  - Central / admin / contable: el local elegido en el selector de la TopBar,
+ *    persistido en la cookie `localActivo`. Si la cookie no existe o apunta a algo
+ *    inválido, cae al primer local activo (orden por id) para no romper nunca.
  */
 export async function getLocalActivoId(session: Session): Promise<number> {
   const { rol, localId } = session.user
 
-  if (!esCentral(rol)) {
+  if (!puedeElegirLocal(rol)) {
     if (!localId) throw new Error('Encargado sin local asignado')
     return localId
   }
 
-  // central / admin → cookie (async en Next 16)
+  // central / admin / contable → cookie (async en Next 16)
   const store = await cookies()
   const raw = store.get(COOKIE)?.value
   const parsed = raw && /^\d+$/.test(raw) ? Number(raw) : null
@@ -39,13 +39,13 @@ export async function getLocalActivoId(session: Session): Promise<number> {
 }
 
 /**
- * Fija el "local activo" para central/admin. Llamable desde el selector cliente
- * de la TopBar. Sólo central/admin puede cambiarlo; el encargado nunca.
+ * Fija el "local activo" para central/admin/contable. Llamable desde el selector
+ * cliente de la TopBar. El encargado nunca puede cambiarlo (local fijo).
  */
 export async function setLocalActivo(localId: number) {
   const { auth } = await import('@/lib/auth/auth')
   const session = await auth()
-  if (!session || !esCentral(session.user.rol)) {
+  if (!session || !puedeElegirLocal(session.user.rol)) {
     throw new Error('No autorizado para cambiar el local activo')
   }
   const store = await cookies()

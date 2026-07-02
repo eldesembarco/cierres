@@ -3,7 +3,7 @@
 // Gastos por local y Diferencias de caja. Solo lectura.
 import ExcelJS from 'exceljs'
 import { auth } from '@/lib/auth/auth'
-import { esCentral } from '@/lib/auth/rbac'
+import { puedeVerFinanzas } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db'
 import {
   construirInforme,
@@ -29,7 +29,7 @@ const TOTAL_FONT: Partial<ExcelJS.Font> = { bold: true }
 export async function GET(request: Request) {
   const session = await auth()
   if (!session) return new Response('No autenticado', { status: 401 })
-  if (!esCentral(session.user.rol)) return new Response('Sin permiso', { status: 403 })
+  if (!puedeVerFinanzas(session.user.rol)) return new Response('Sin permiso', { status: 403 })
 
   const { searchParams } = new URL(request.url)
   const desde = normalizarFecha(searchParams.get('desde') ?? undefined, primerDiaDelMes())

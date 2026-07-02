@@ -3,7 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { auth } from "@/lib/auth/auth";
 import { prisma } from "@/lib/db";
-import { esCentral } from "@/lib/auth/rbac";
+import { puedeElegirLocal, esContable } from "@/lib/auth/rbac";
 import { getLocalActivoId } from "@/lib/auth/localActivo";
 import { TopBar } from "@/components/TopBar";
 
@@ -37,7 +37,7 @@ export default async function RootLayout({
   let locales: { id: number; nombre: string }[] | undefined;
   let localActivoId: number | undefined;
   if (session) {
-    if (esCentral(session.user.rol)) {
+    if (puedeElegirLocal(session.user.rol)) {
       const [todos, activoId] = await Promise.all([
         prisma.local.findMany({
           where: { activo: true },
@@ -48,6 +48,7 @@ export default async function RootLayout({
       ]);
       locales = todos;
       localActivoId = activoId;
+      if (esContable(session.user.rol)) titulo = "Contable";
     } else {
       titulo = "Control de caja";
       if (session.user.localId) {

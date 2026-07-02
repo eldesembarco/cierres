@@ -119,6 +119,15 @@ async function main() {
     create: { nombre: 'Admin', email: 'admin@eldesembarco.com', passwordHash: adminHash, rol: 'admin' },
   })
 
+  // Contable: solo lectura de todo lo financiero (reportes MP, informes, tablero,
+  // conciliación, cuenta corriente) + descarga del Excel de todos los locales.
+  const contableHash = await bcrypt.hash('contable1234', 10)
+  await prisma.usuario.upsert({
+    where: { email: 'contable@eldesembarco.com' },
+    update: { rol: 'contable', activo: true }, // no pisa la contraseña si ya la cambió
+    create: { nombre: 'Contable', email: 'contable@eldesembarco.com', passwordHash: contableHash, rol: 'contable' },
+  })
+
   // slug del email por local (email = <slug>@eldesembarco.com, contraseña = <slug>1234).
   // Los locales Mr Tasty usan dominio mrtasty.com.ar y slug mrt<local>.
   const encargados: { localId: number; slug: string; email?: string; pass?: string }[] = [

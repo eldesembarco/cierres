@@ -62,6 +62,7 @@ enum Rol {
   encargado
   central
   admin
+  contable
 }
 
 model Usuario {

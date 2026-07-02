@@ -1,5 +1,5 @@
 import { auth } from '@/lib/auth/auth'
-import { esCentral } from '@/lib/auth/rbac'
+import { puedeVerFinanzas, puedeMarcarPagado } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db'
 import { formatMoney } from '@/lib/money'
 import { CuentaCorrienteTabla, type MovimientoRow } from '@/components/CuentaCorrienteTabla'
@@ -13,14 +13,16 @@ type Estado = 'pendiente' | 'pagado' | 'todos'
 export default async function CuentaCorrientePage({ searchParams }: { searchParams: SearchParams }) {
   const session = await auth()
   if (!session) return null
-  const central = esCentral(session.user.rol)
+  // Ver todos los locales: central/admin/contable. Marcar pagado (editar): sólo central/admin.
+  const verTodos = puedeVerFinanzas(session.user.rol)
+  const puedeMarcar = puedeMarcarPagado(session.user.rol)
 
   const sp = await searchParams
   const estado: Estado = sp.estado === 'pagado' ? 'pagado' : sp.estado === 'todos' ? 'todos' : 'pendiente'
 
-  // Alcance: el encargado ve sólo su local; administración ve todos (o filtra por uno).
+  // Alcance: el encargado ve sólo su local; administración/contable ven todos (o filtran por uno).
   let scopeLocalId: number | null = null
-  if (!central) {
+  if (!verTodos) {
     if (!session.user.localId) {
       return (
         <main className="mx-auto w-full max-w-5xl px-4 py-6">
@@ -44,7 +46,7 @@ export default async function CuentaCorrientePage({ searchParams }: { searchPara
       include: { proveedor: true, local: true },
       orderBy: [{ pagado: 'asc' }, { fecha: 'desc' }, { id: 'desc' }],
     }),
-    central ? prisma.local.findMany({ where: { activo: true }, orderBy: { nombre: 'asc' } }) : Promise.resolve([]),
+    verTodos ? prisma.local.findMany({ where: { activo: true }, orderBy: { nombre: 'asc' } }) : Promise.resolve([]),
   ])
 
   const pendientes = movs.filter((m) => !m.pagado)
@@ -76,7 +78,11 @@ export default async function CuentaCorrientePage({ searchParams }: { searchPara
       </div>
       <p className="mb-5 -mt-3 text-sm text-slate-500">
         Gastos cargados en cuenta corriente (lo que se le debe a proveedores).
-        {central ? ' Marcá cada uno como pagado cuando administración lo abona.' : ' Sólo lectura de tu local.'}
+        {puedeMarcar
+          ? ' Marcá cada uno como pagado cuando administración lo abona.'
+          : verTodos
+            ? ' Sólo lectura.'
+            : ' Sólo lectura de tu local.'}
       </p>
 
       {/* Filtros */}
@@ -89,7 +95,7 @@ export default async function CuentaCorrientePage({ searchParams }: { searchPara
             <option value="todos">Todos</option>
           </select>
         </label>
-        {central && (
+        {verTodos && (
           <label className="flex flex-col gap-1">
             <span className="text-xs font-medium text-slate-500">Local</span>
             <select name="localId" defaultValue={scopeLocalId != null ? String(scopeLocalId) : ''} className="rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500 sm:w-56">
@@ -115,7 +121,7 @@ export default async function CuentaCorrientePage({ searchParams }: { searchPara
       {pendientes.length > 0 && (
         <section className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
           <BreakdownCard titulo="Saldo por proveedor" icon={<Package size={16} />} filas={porProveedor} />
-          {central && porLocal.length > 1 && (
+          {verTodos && porLocal.length > 1 && (
             <BreakdownCard titulo="Saldo por local" icon={<Building2 size={16} />} filas={porLocal} />
           )}
         </section>
@@ -133,7 +139,7 @@ export default async function CuentaCorrientePage({ searchParams }: { searchPara
             <p className="text-xs text-slate-400">Aparecen acá cuando un local carga un gasto con forma de pago “Cuenta corriente”.</p>
           </div>
         ) : (
-          <CuentaCorrienteTabla filas={filas} puedeMarcar={central} />
+          <CuentaCorrienteTabla filas={filas} puedeMarcar={puedeMarcar} />
         )}
       </section>
     </main>

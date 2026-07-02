@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import type { Session } from 'next-auth'
 import { ScrollText, LogOut } from 'lucide-react'
-import { esCentral } from '@/lib/auth/rbac'
+import { puedeElegirLocal } from '@/lib/auth/rbac'
 import { logout } from '@/app/actions/auth'
 import { LocalActivoSelect } from '@/components/LocalActivoSelect'
 import { TopNav } from '@/components/TopNav'
@@ -28,9 +28,8 @@ export function TopBar({
 }) {
   const { rol } = session.user
   const email = session.user.email ?? session.user.rol
-  const central = esCentral(rol)
   const mostrarSelector =
-    central && locales != null && locales.length > 0 && localActivoId != null
+    puedeElegirLocal(rol) && locales != null && locales.length > 0 && localActivoId != null
 
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
@@ -71,7 +70,7 @@ export function TopBar({
 
       {/* Fila 2: navegación con estado activo (su propio espacio, sin apretar) */}
       <div className="mx-auto max-w-6xl border-t border-slate-100">
-        <TopNav central={central} />
+        <TopNav rol={rol} />
       </div>
     </header>
   )

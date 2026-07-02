@@ -1,5 +1,5 @@
 import { auth } from '@/lib/auth/auth'
-import { esCentral } from '@/lib/auth/rbac'
+import { puedeVerFinanzas } from '@/lib/auth/rbac'
 import { getLocalActivoId } from '@/lib/auth/localActivo'
 import { prisma } from '@/lib/db'
 import { formatMoney } from '@/lib/money'
@@ -20,7 +20,7 @@ const CANAL_LABEL: Record<string, string> = {
 
 export default async function ConciliacionPage({ searchParams }: { searchParams: SearchParams }) {
   const session = await auth()
-  if (!session || !esCentral(session.user.rol)) {
+  if (!session || !puedeVerFinanzas(session.user.rol)) {
     return (
       <main className="mx-auto w-full max-w-5xl px-4 py-6">
         <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-5 text-slate-600 shadow-sm">

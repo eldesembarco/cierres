@@ -2,25 +2,28 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { ScrollText, Wallet, Upload, Scale, GitCompareArrows, BarChart3 } from 'lucide-react'
+import type { Rol } from '@prisma/client'
+import { ScrollText, Wallet, Upload, Scale, GitCompareArrows, BarChart3, FileSpreadsheet } from 'lucide-react'
 
-// Ítems de navegación. `central: true` = sólo administración (central/admin).
+// Ítems de navegación con visibilidad por rol. El contable (solo lectura) ve todo
+// lo financiero pero NO Cierres ni Importar.
 const ITEMS = [
-  { href: '/cierres', label: 'Cierres', icon: ScrollText, central: false },
-  { href: '/cuenta-corriente', label: 'Cuenta corriente', icon: Wallet, central: false },
-  { href: '/importaciones', label: 'Importar', icon: Upload, central: true },
-  { href: '/control', label: 'Tablero', icon: Scale, central: true },
-  { href: '/conciliacion', label: 'Conciliar MP', icon: GitCompareArrows, central: true },
-  { href: '/informes', label: 'Informes', icon: BarChart3, central: true },
+  { href: '/cierres', label: 'Cierres', icon: ScrollText, roles: ['encargado', 'central', 'admin'] },
+  { href: '/cuenta-corriente', label: 'Cuenta corriente', icon: Wallet, roles: ['encargado', 'central', 'admin', 'contable'] },
+  { href: '/reportes', label: 'Reportes MP', icon: FileSpreadsheet, roles: ['central', 'admin', 'contable'] },
+  { href: '/importaciones', label: 'Importar', icon: Upload, roles: ['central', 'admin'] },
+  { href: '/control', label: 'Tablero', icon: Scale, roles: ['central', 'admin', 'contable'] },
+  { href: '/conciliacion', label: 'Conciliar MP', icon: GitCompareArrows, roles: ['central', 'admin', 'contable'] },
+  { href: '/informes', label: 'Informes', icon: BarChart3, roles: ['central', 'admin', 'contable'] },
 ] as const
 
 /**
  * Barra de navegación (cliente): resalta la pantalla activa con `usePathname`, así
  * el usuario siempre sabe dónde está. Scrollea horizontal en pantallas chicas.
  */
-export function TopNav({ central }: { central: boolean }) {
+export function TopNav({ rol }: { rol: Rol }) {
   const pathname = usePathname()
-  const items = ITEMS.filter((it) => (it.central ? central : true))
+  const items = ITEMS.filter((it) => (it.roles as readonly string[]).includes(rol))
 
   return (
     <nav className="flex items-center gap-1 overflow-x-auto px-3 py-1.5 sm:px-4">
