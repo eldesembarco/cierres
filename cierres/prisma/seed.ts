@@ -55,6 +55,7 @@ async function main() {
     { id: 17, nombre: 'Desembarco Recoleta',      marcaId: D, ciudad: 'CABA',          direccion: 'Marcelo Torcuato de Alvear 2321' },
     { id: 18, nombre: 'Mr Tasty Florida',         marcaId: T, ciudad: 'Buenos Aires',  direccion: 'Florida 482' },
     { id: 19, nombre: 'Mr Tasty San Fernando',    marcaId: T, ciudad: 'Buenos Aires',  direccion: '' },
+    { id: 20, nombre: 'Mr Tasty Belgrano',        marcaId: T, ciudad: 'CABA',           direccion: '' },
   ]
   for (const l of locales) {
     await prisma.local.upsert({
@@ -150,6 +151,7 @@ async function main() {
     { localId: 17, slug: 'recoleta' },
     { localId: 18, slug: 'mrtflorida', email: 'mrtflorida@mrtasty.com.ar', pass: 'mrtflorida1234' },
     { localId: 19, slug: 'mrtsanfernando', email: 'mrtsanfernando@mrtasty.com.ar', pass: 'mrtsanfernando1234' },
+    { localId: 20, slug: 'mrtbelgrano', email: 'mrtbelgrano@mrtasty.com.ar', pass: 'mrtbelgrano1234' },
   ]
   const nombreById = new Map(locales.map((l) => [l.id, l.nombre]))
   for (const e of encargados) {
@@ -169,7 +171,7 @@ async function main() {
     where: { email: { in: ['caballito@eldesembarco.com', 'florida@eldesembarco.com'] } },
   })
 
-  console.log('Seed OK — 19 locales (16 Desembarco + 3 Mr Tasty), 19 encargados + admin')
+  console.log('Seed OK — 20 locales (16 Desembarco + 4 Mr Tasty), 20 encargados + admin + contable')
 }
 
 main().catch((e) => { console.error(e); process.exit(1) }).finally(() => prisma.$disconnect())
