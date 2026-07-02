@@ -675,6 +675,11 @@ export function TurnoCierre({
   const [msg, setMsg] = useState('')
   const [ok, setOk] = useState<boolean | null>(null)
   const [pending, setPending] = useState(false)
+  // Auto-guardado de borrador (encargado): estado del indicador + firma del último
+  // guardado (para no re-guardar lo mismo).
+  const [autoState, setAutoState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [autoHora, setAutoHora] = useState('')
+  const ultimoGuardadoRef = useRef<string | null>(null)
 
   // Estado de los modales de carga/edición. `null` = cerrado.
   // `index` null = nuevo; número = editar esa fila.
@@ -821,12 +826,43 @@ export function TurnoCierre({
   // cierre existente (lo exige el server y se registra en la auditoría).
   async function persistir(cerrar: boolean, observacion?: string) {
     setPending(true)
-    const res = await guardarCierre(fecha, turno, JSON.stringify({ ...input, nota }), cerrar, observacion)
+    const body = JSON.stringify({ ...input, nota })
+    const res = await guardarCierre(fecha, turno, body, cerrar, observacion)
     setOk(res.ok)
     setMsg(res.ok ? (cerrar ? 'Cerrado correctamente.' : 'Borrador guardado.') : res.error)
+    if (res.ok) ultimoGuardadoRef.current = body // que el auto-guardado no re-guarde lo mismo
     setPending(false)
     return res.ok
   }
+
+  // ── Auto-guardado de borrador ──
+  // Mientras el ENCARGADO carga un turno editable, guardamos solo (borrador) ~2,5s
+  // después de cada cambio, para no perder la carga si se cierra el navegador o se
+  // corta internet. NO aplica a administración (edita manual, con observación) ni a
+  // turnos cerrados. En la primera pasada sembramos la firma de lo ya cargado (no
+  // re-guardamos lo que ya venía). Se cancela si hay un guardado/cierre manual en curso.
+  const payloadStr = JSON.stringify({ ...input, nota })
+  useEffect(() => {
+    if (esCentral || cerrado || pending || resumenModal || obsModal) return
+    if (ultimoGuardadoRef.current === null) {
+      ultimoGuardadoRef.current = payloadStr
+      return
+    }
+    if (payloadStr === ultimoGuardadoRef.current) return
+    const t = setTimeout(async () => {
+      setAutoState('saving')
+      const res = await guardarCierre(fecha, turno, payloadStr, false)
+      if (res.ok) {
+        ultimoGuardadoRef.current = payloadStr
+        setAutoState('saved')
+        setAutoHora(new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }))
+      } else {
+        setAutoState('error')
+      }
+    }, 2500)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [payloadStr, esCentral, cerrado, pending, resumenModal, obsModal])
 
   // Disparador de Guardar/Cerrar.
   //  - Administración editando un cierre EXISTENTE → modal de observación.
@@ -1318,22 +1354,37 @@ export function TurnoCierre({
           </p>
         )}
         {!bloqueado && (
-        <div className="flex gap-2">
-          <button
-            onClick={() => submit(false)}
-            disabled={pending}
-            className="flex-1 rounded-lg border border-slate-300 bg-white px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-          >
-            Guardar borrador
-          </button>
-          <button
-            onClick={() => submit(true)}
-            disabled={pending}
-            className="flex-1 rounded-lg bg-blue-600 px-4 py-2.5 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-          >
-            Cerrar turno {titulo.toLowerCase()}
-          </button>
-        </div>
+        <>
+          {!esCentral && autoState !== 'idle' && (
+            <p className="flex items-center gap-1.5 text-xs text-slate-500">
+              {autoState === 'saving' && (
+                <><Loader2 size={13} className="animate-spin text-slate-400" /> Guardando…</>
+              )}
+              {autoState === 'saved' && (
+                <><CheckCircle2 size={13} className="text-emerald-500" /> Guardado automático {autoHora}</>
+              )}
+              {autoState === 'error' && (
+                <><AlertCircle size={13} className="text-amber-500" /> No se pudo guardar solo — tocá “Guardar borrador”</>
+              )}
+            </p>
+          )}
+          <div className="flex gap-2">
+            <button
+              onClick={() => submit(false)}
+              disabled={pending}
+              className="flex-1 rounded-lg border border-slate-300 bg-white px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            >
+              Guardar borrador
+            </button>
+            <button
+              onClick={() => submit(true)}
+              disabled={pending}
+              className="flex-1 rounded-lg bg-blue-600 px-4 py-2.5 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            >
+              Cerrar turno {titulo.toLowerCase()}
+            </button>
+          </div>
+        </>
         )}
       </div>
 
