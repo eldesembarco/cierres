@@ -1,7 +1,6 @@
 'use client'
 
 import { useTransition } from 'react'
-import { useRouter } from 'next/navigation'
 import { Store, ChevronDown, Loader2 } from 'lucide-react'
 import { setLocalActivo } from '@/lib/auth/localActivo'
 
@@ -19,15 +18,17 @@ export function LocalActivoSelect({
   locales: LocalOpt[]
   localActivoId: number
 }) {
-  const router = useRouter()
   const [pending, startTransition] = useTransition()
 
+  // Un solo mecanismo de invalidación: el Server Action setea la cookie y Next 16
+  // re-renderiza la página + layouts automáticamente. NO usamos router.refresh()
+  // (antes, sumado al revalidate, disparaba una tormenta de refreshes RSC que en
+  // red lenta hacía "volver" el selector al local anterior).
   function onChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const id = Number(e.target.value)
     if (!Number.isFinite(id) || id === localActivoId) return
     startTransition(async () => {
       await setLocalActivo(id)
-      router.refresh()
     })
   }
 

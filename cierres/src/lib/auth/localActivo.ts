@@ -50,7 +50,15 @@ export async function setLocalActivo(localId: number) {
     throw new Error('No autorizado para cambiar el local activo')
   }
   const store = await cookies()
-  store.set(COOKIE, String(localId), { path: '/' })
-  // Todas las pantallas re-leen el local activo: revalidamos el layout completo.
+  // Cookie persistente (1 año) y endurecida: antes era de sesión y se perdía al
+  // cerrar el navegador (el admin volvía al primer local).
+  store.set(COOKIE, String(localId), {
+    path: '/',
+    maxAge: 60 * 60 * 24 * 365,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+  })
+  // Único mecanismo de invalidación del lado server (el cliente ya NO hace
+  // router.refresh): re-renderiza el árbol para que toda pantalla re-lea el local.
   revalidatePath('/', 'layout')
 }
