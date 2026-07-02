@@ -1,5 +1,7 @@
 import { signIn } from '@/lib/auth/auth'
 import { redirect } from 'next/navigation'
+import { prisma } from '@/lib/db'
+import { homeFor } from '@/lib/auth/rbac'
 import { ScrollText, AlertCircle } from 'lucide-react'
 
 export default async function LoginPage({
@@ -11,16 +13,19 @@ export default async function LoginPage({
 
   async function login(formData: FormData) {
     'use server'
+    const email = String(formData.get('email') ?? '')
     try {
       await signIn('credentials', {
-        email: formData.get('email'),
+        email,
         password: formData.get('password'),
         redirect: false,
       })
     } catch {
       redirect('/login?error=1')
     }
-    redirect('/cierres')
+    // Pantalla de inicio según rol (contable → /reportes, resto → /cierres).
+    const u = await prisma.usuario.findUnique({ where: { email }, select: { rol: true } })
+    redirect(u ? homeFor(u.rol) : '/cierres')
   }
 
   return (

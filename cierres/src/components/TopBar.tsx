@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import type { Session } from 'next-auth'
 import { ScrollText, LogOut } from 'lucide-react'
-import { puedeElegirLocal } from '@/lib/auth/rbac'
+import { puedeElegirLocal, homeFor } from '@/lib/auth/rbac'
 import { logout } from '@/app/actions/auth'
 import { LocalActivoSelect } from '@/components/LocalActivoSelect'
 import { TopNav } from '@/components/TopNav'
@@ -35,7 +35,7 @@ export function TopBar({
     <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
       {/* Fila 1: marca + acciones */}
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-3 px-4">
-        <Link href="/cierres" className="flex min-w-0 items-center gap-2.5">
+        <Link href={homeFor(rol)} className="flex min-w-0 items-center gap-2.5">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white">
             <ScrollText size={19} strokeWidth={2.2} />
           </span>

@@ -18,3 +18,6 @@ export const puedeMarcarPagado = (rol: Rol) => esCentral(rol)
 
 // Ver el tablero de control: cualquiera que vea finanzas.
 export const puedeVerControl = (rol: Rol) => puedeVerFinanzas(rol)
+
+// Pantalla de inicio según rol: el contable no opera cierres → arranca en Reportes MP.
+export const homeFor = (rol: Rol): string => (esContable(rol) ? '/reportes' : '/cierres')
