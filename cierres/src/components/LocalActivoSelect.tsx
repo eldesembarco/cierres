@@ -2,7 +2,7 @@
 
 import { useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Store, ChevronDown } from 'lucide-react'
+import { Store, ChevronDown, Loader2 } from 'lucide-react'
 import { setLocalActivo } from '@/lib/auth/localActivo'
 
 type LocalOpt = { id: number; nombre: string }
@@ -38,8 +38,14 @@ export function LocalActivoSelect({
       }`}
       title="Local activo"
     >
-      <Store size={14} className="shrink-0 text-slate-500" />
-      <span className="hidden text-[11px] font-medium text-slate-500 sm:inline">Local:</span>
+      {pending ? (
+        <Loader2 size={14} className="shrink-0 animate-spin text-blue-600" />
+      ) : (
+        <Store size={14} className="shrink-0 text-slate-500" />
+      )}
+      <span className="hidden text-[11px] font-medium text-slate-500 sm:inline">
+        {pending ? 'Cambiando…' : 'Local:'}
+      </span>
       <div className="relative">
         <select
           value={localActivoId}
