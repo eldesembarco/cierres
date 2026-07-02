@@ -124,6 +124,11 @@ export default async function CierreDiaPage({ params }: { params: Promise<{ fech
       </div>
 
       <PlanillaDia
+        // key por local+fecha: PlanillaDia/TurnoCierre cargan sus datos en useState
+        // (una sola vez). Sin esta key, al cambiar de local con el selector el estado
+        // del cliente quedaba con los datos del local anterior. La key fuerza el
+        // re-montado con datos frescos cuando cambia el local o la fecha.
+        key={`${localId}-${fecha}`}
         fecha={fecha}
         localId={localId}
         fondoFijoDefault={Number(local.fondoFijoDefault)}
