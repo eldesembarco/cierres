@@ -1,9 +1,10 @@
 import Link from 'next/link'
 import type { Session } from 'next-auth'
-import { ScrollText, Upload, Scale, BarChart3, Wallet, GitCompareArrows, LogOut } from 'lucide-react'
+import { ScrollText, LogOut } from 'lucide-react'
 import { esCentral } from '@/lib/auth/rbac'
 import { logout } from '@/app/actions/auth'
 import { LocalActivoSelect } from '@/components/LocalActivoSelect'
+import { TopNav } from '@/components/TopNav'
 
 type LocalOpt = { id: number; nombre: string }
 
@@ -33,11 +34,11 @@ export function TopBar({
 
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
-      <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-3 px-4">
-        {/* Brand */}
+      {/* Fila 1: marca + acciones */}
+      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-3 px-4">
         <Link href="/cierres" className="flex min-w-0 items-center gap-2.5">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white">
-            <ScrollText size={18} strokeWidth={2.2} />
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white">
+            <ScrollText size={19} strokeWidth={2.2} />
           </span>
           <span className="min-w-0 leading-tight">
             <span className="block truncate text-sm font-semibold text-slate-900">{titulo}</span>
@@ -45,48 +46,21 @@ export function TopBar({
           </span>
         </Link>
 
-        {/* Nav */}
-        <nav className="hidden items-center gap-1 sm:flex">
-          <NavLink href="/cierres" icon={<ScrollText size={15} />}>
-            Cierres
-          </NavLink>
-          <NavLink href="/cuenta-corriente" icon={<Wallet size={15} />}>
-            Cuenta cte
-          </NavLink>
-          {central && (
-            <>
-              <NavLink href="/importaciones" icon={<Upload size={15} />}>
-                Importar
-              </NavLink>
-              <NavLink href="/control" icon={<Scale size={15} />}>
-                Tablero
-              </NavLink>
-              <NavLink href="/conciliacion" icon={<GitCompareArrows size={15} />}>
-                Conciliar MP
-              </NavLink>
-              <NavLink href="/informes" icon={<BarChart3 size={15} />}>
-                Informes
-              </NavLink>
-            </>
-          )}
-        </nav>
-
-        {/* User + logout */}
         <div className="flex items-center gap-2">
           {mostrarSelector && (
             <LocalActivoSelect locales={locales!} localActivoId={localActivoId!} />
           )}
-          <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 py-1 pl-1 pr-2.5">
+          <div className="hidden items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 py-1 pl-1 pr-2.5 sm:flex">
             <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-900 text-[10px] font-semibold text-white">
               {initials(email)}
             </span>
-            <span className="hidden max-w-[140px] truncate text-xs text-slate-600 sm:block">{email}</span>
+            <span className="max-w-[150px] truncate text-xs text-slate-600">{email}</span>
           </div>
           <form action={logout}>
             <button
               type="submit"
               title="Cerrar sesión"
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+              className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900"
             >
               <LogOut size={16} />
               <span className="sr-only">Cerrar sesión</span>
@@ -95,55 +69,10 @@ export function TopBar({
         </div>
       </div>
 
-      {/* Mobile nav row */}
-      <div className="flex items-center gap-1 overflow-x-auto border-t border-slate-100 px-3 py-1.5 sm:hidden">
-        <NavLink href="/cierres" icon={<ScrollText size={15} />} compact>
-          Cierres
-        </NavLink>
-        <NavLink href="/cuenta-corriente" icon={<Wallet size={15} />} compact>
-          Cuenta cte
-        </NavLink>
-        {central && (
-          <>
-            <NavLink href="/importaciones" icon={<Upload size={15} />} compact>
-              Importar
-            </NavLink>
-            <NavLink href="/control" icon={<Scale size={15} />} compact>
-              Tablero
-            </NavLink>
-            <NavLink href="/conciliacion" icon={<GitCompareArrows size={15} />} compact>
-              Conciliar MP
-            </NavLink>
-            <NavLink href="/informes" icon={<BarChart3 size={15} />} compact>
-              Informes
-            </NavLink>
-          </>
-        )}
+      {/* Fila 2: navegación con estado activo (su propio espacio, sin apretar) */}
+      <div className="mx-auto max-w-6xl border-t border-slate-100">
+        <TopNav central={central} />
       </div>
     </header>
-  )
-}
-
-function NavLink({
-  href,
-  icon,
-  children,
-  compact,
-}: {
-  href: string
-  icon: React.ReactNode
-  children: React.ReactNode
-  compact?: boolean
-}) {
-  return (
-    <Link
-      href={href}
-      className={`flex items-center gap-1.5 rounded-lg font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 ${
-        compact ? 'px-2.5 py-1 text-xs' : 'px-3 py-1.5 text-sm'
-      }`}
-    >
-      <span className="text-slate-500">{icon}</span>
-      {children}
-    </Link>
   )
 }
