@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import Link from 'next/link'
 import { getLocalActivoId } from '@/lib/auth/localActivo'
 import { hoyAr } from '@/lib/fecha'
+import { IrAFecha } from '@/components/IrAFecha'
 import type { Turno } from '@/lib/cierre/types'
 import { ScrollText, Plus, ChevronRight } from 'lucide-react'
 
@@ -83,14 +84,17 @@ export default async function CierresPage() {
             <p className="truncate text-sm text-slate-500">{localActivo.nombre}</p>
           )}
         </div>
-        <Link
-          href={`/cierres/${hoy}`}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700"
-        >
-          <Plus size={18} />
-          <span className="hidden sm:inline">+ Cierre de hoy</span>
-          <span className="sm:hidden">Cierre de hoy</span>
-        </Link>
+        <div className="flex shrink-0 items-center gap-2">
+          <IrAFecha hoy={hoy} />
+          <Link
+            href={`/cierres/${hoy}`}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700"
+          >
+            <Plus size={18} />
+            <span className="hidden sm:inline">Cierre de hoy</span>
+            <span className="sm:hidden">Hoy</span>
+          </Link>
+        </div>
       </div>
 
       {dias.length === 0 ? (

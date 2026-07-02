@@ -80,8 +80,12 @@ export default async function ConciliacionPage({ searchParams }: { searchParams:
             <span>Operaciones MP: <b className="text-slate-800">{conc.operacionesMp}</b></span>
             <span>Líneas del encargado: <b className="text-slate-800">{conc.lineasEncargado}</b></span>
             <span>Archivos leídos: <b className="text-slate-800">{conc.archivosLeidos}</b></span>
-            {!conc.hayCierre && <span className="text-amber-600">⚠️ El encargado todavía no cargó este día</span>}
-            {conc.nombresMp.length === 0 && <span className="text-amber-600">⚠️ Este local no tiene nombre de MP mapeado</span>}
+            {!conc.hayCierre && (
+              <span className="flex items-center gap-1 text-amber-600"><AlertTriangle size={13} /> El encargado todavía no cargó este día</span>
+            )}
+            {conc.nombresMp.length === 0 && (
+              <span className="flex items-center gap-1 text-amber-600"><AlertTriangle size={13} /> Este local no tiene nombre de MP mapeado</span>
+            )}
           </div>
 
           {conc.resultado.porCanal.length === 0 ? (
@@ -133,9 +137,9 @@ function CanalCard({ c }: { c: ConciliacionCanal }) {
         </div>
       )}
       <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-3">
-        <Columna titulo="✅ Coinciden" tono="emerald" filas={c.coincidencias} vacio="—" />
-        <Columna titulo="⚠️ MP cobró, no se cargó" tono="red" filas={c.soloMp} vacio="Nada pendiente" />
-        <Columna titulo="⚠️ Se cargó, MP no lo tiene" tono="amber" filas={c.soloEncargado} vacio="Nada de más" />
+        <Columna titulo="Coinciden" tono="emerald" filas={c.coincidencias} vacio="—" />
+        <Columna titulo="MP cobró, no se cargó" tono="red" filas={c.soloMp} vacio="Nada pendiente" />
+        <Columna titulo="Se cargó, MP no lo tiene" tono="amber" filas={c.soloEncargado} vacio="Nada de más" />
       </div>
     </section>
   )
@@ -148,9 +152,13 @@ const TONO: Record<string, string> = {
 }
 
 function Columna({ titulo, tono, filas, vacio }: { titulo: string; tono: string; filas: { monto: number; cantidad: number }[]; vacio: string }) {
+  const Icon = tono === 'emerald' ? CheckCircle2 : AlertTriangle
   return (
     <div>
-      <p className={`mb-1.5 text-xs font-semibold ${TONO[tono]}`}>{titulo}</p>
+      <p className={`mb-1.5 flex items-center gap-1.5 text-xs font-semibold ${TONO[tono]}`}>
+        <Icon size={14} />
+        {titulo}
+      </p>
       {filas.length === 0 ? (
         <p className="text-xs text-slate-400">{vacio}</p>
       ) : (

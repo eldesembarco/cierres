@@ -24,17 +24,18 @@ export default async function LoginPage({
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-4 py-10">
+    <main className="flex min-h-screen items-center justify-center bg-gradient-to-b from-slate-50 to-slate-100 px-4 py-10">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex flex-col items-center text-center">
-          <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm">
-            <ScrollText size={24} strokeWidth={2.2} />
+          <span className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-md">
+            <ScrollText size={26} strokeWidth={2.2} />
           </span>
-          <h1 className="text-xl font-semibold text-slate-900">Cierres</h1>
-          <p className="mt-1 text-sm text-slate-500">Ingresá a tu panel</p>
+          <h1 className="text-2xl font-semibold text-slate-900">Cierres</h1>
+          <p className="mt-0.5 text-sm font-medium text-slate-600">Grupo Desembarco</p>
+          <p className="mt-1 text-xs text-slate-400">Ingresá con tu email y contraseña</p>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-md sm:p-6">
           <form action={login} className="flex flex-col gap-4">
             {error && (
               <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">

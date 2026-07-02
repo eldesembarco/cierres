@@ -339,7 +339,7 @@ export function PlanillaDia({
             </span>
           )}
           {!importLoading && importError && (
-            <span className="flex items-center gap-1.5 text-sm text-slate-400">
+            <span className="flex items-center gap-1.5 text-sm text-red-600">
               <AlertCircle size={14} />
               {importError}
             </span>

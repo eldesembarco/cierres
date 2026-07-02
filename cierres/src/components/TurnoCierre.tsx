@@ -1412,8 +1412,10 @@ export function TurnoCierre({
               type="button"
               disabled={pending}
               onClick={async () => {
-                await persistir(true)
-                setResumenModal(false)
+                // Sólo cerrar el modal si el guardado salió bien; si falla (red, gate
+                // de nota), lo dejamos abierto para no ocultar el error tras el overlay.
+                const ok = await persistir(true)
+                if (ok) setResumenModal(false)
               }}
               className="flex-1 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
             >
