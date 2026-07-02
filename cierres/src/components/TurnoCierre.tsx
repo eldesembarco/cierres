@@ -375,6 +375,7 @@ function GastoModal({
   const [nuevoProv, setNuevoProv] = useState('')
   const [creandoProv, setCreandoProv] = useState(false)
   const [subiendo, setSubiendo] = useState(false)
+  const [errorComprobante, setErrorComprobante] = useState('')
 
   async function agregarProveedor() {
     const nombre = nuevoProv.trim()
@@ -390,6 +391,7 @@ function GastoModal({
 
   async function subir(file: File) {
     setSubiendo(true)
+    setErrorComprobante('')
     try {
       const fd = new FormData()
       fd.append('archivo', file)
@@ -398,7 +400,7 @@ function GastoModal({
       const { id } = (await res.json()) as { id: number }
       setComprobanteId(id)
     } catch {
-      // dejamos el comprobante como estaba
+      setErrorComprobante('No se pudo subir el comprobante. Probá de nuevo.')
     } finally {
       setSubiendo(false)
     }
@@ -523,6 +525,9 @@ function GastoModal({
               </a>
             )}
           </div>
+          {errorComprobante && (
+            <p className="mt-1.5 text-xs text-red-600">{errorComprobante}</p>
+          )}
         </div>
       </div>
       <div className="mt-5 flex gap-2">
