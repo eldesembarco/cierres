@@ -3,13 +3,14 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import type { Rol } from '@prisma/client'
-import { ScrollText, Wallet, Upload, Scale, GitCompareArrows, BarChart3, FileSpreadsheet } from 'lucide-react'
+import { ScrollText, Wallet, Upload, Scale, GitCompareArrows, BarChart3, FileSpreadsheet, Coins } from 'lucide-react'
 
 // Ítems de navegación con visibilidad por rol. El contable (solo lectura) ve todo
 // lo financiero pero NO Cierres ni Importar.
 const ITEMS = [
   { href: '/cierres', label: 'Cierres', icon: ScrollText, roles: ['encargado', 'central', 'admin'] },
   { href: '/cuenta-corriente', label: 'Cuenta corriente', icon: Wallet, roles: ['encargado', 'central', 'admin', 'contable'] },
+  { href: '/fondo-fijo', label: 'Fondo fijo', icon: Coins, roles: ['encargado', 'central', 'admin', 'contable'] },
   { href: '/reportes', label: 'Reportes MP', icon: FileSpreadsheet, roles: ['central', 'admin', 'contable'] },
   { href: '/importaciones', label: 'Importar', icon: Upload, roles: ['central', 'admin'] },
   { href: '/control', label: 'Tablero', icon: Scale, roles: ['central', 'admin', 'contable'] },

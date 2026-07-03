@@ -31,6 +31,7 @@ model Local {
   usuarios         Usuario[]
   cierresTango     CierreTango[]
   movimientosCtaCte MovimientoCtaCte[]
+  reposicionesFondoFijo ReposicionFondoFijo[]
   @@map("locales")
 }
 
@@ -244,6 +245,23 @@ model MovimientoCtaCte {
   @@index([localId, pagado])
   @@index([cierreId])
   @@map("movimiento_cta_cte")
+}
+
+// Reposiciones del fondo fijo (caja chica) por local. El SALDO CORRIENTE del fondo
+// fijo = fondoFijoDefault del local − Σ(gastos con formaPago='fondo_fijo') + Σ(reposiciones).
+// Se computa SIEMPRE desde la suma actual (nunca acumulando un contador), igual que la
+// cuenta corriente, para que reeditar cierres (que borran+recrean gastos) no doble-cuente.
+model ReposicionFondoFijo {
+  id          Int      @id @default(autoincrement())
+  local       Local    @relation(fields: [localId], references: [id])
+  localId     Int      @map("local_id")
+  fecha       DateTime @db.Date
+  monto       Decimal  @default(0) @db.Decimal(14, 2)
+  descripcion String?
+  creadoPor   Int      @map("creado_por")
+  creadoEn    DateTime @default(now()) @map("creado_en")
+  @@index([localId])
+  @@map("reposicion_fondo_fijo")
 }
 
 // Cierre de turno crudo recibido por correo desde Tango (lo postea n8n, una

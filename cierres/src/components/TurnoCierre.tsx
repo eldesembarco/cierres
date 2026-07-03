@@ -648,7 +648,9 @@ export function TurnoCierre({
   auditorias?: CierreAuditoria[]
   proveedores?: Proveedor[]
 }) {
-  const [fondoFijo, setFondoFijo] = useState(inicial?.fondoFijo ?? fondoFijoDefault)
+  // El fondo fijo ya no se edita por turno (es saldo corriente por local, ver /fondo-fijo).
+  // Se mantiene el valor (base del local) solo para el payload/columna legacy Cierre.fondoFijo.
+  const [fondoFijo] = useState(inicial?.fondoFijo ?? fondoFijoDefault)
   const [montoZ, setMontoZ] = useState(inicial?.montoZ ?? 0)
   const [efectivoDepositado, setEfectivoDepositado] = useState(inicial?.efectivoDepositado ?? 0)
   const [notaCredito, setNC] = useState(inicial?.notaCredito ?? 0)
@@ -1087,18 +1089,18 @@ export function TurnoCierre({
               inline; para el LOCAL quedan bajo "Otros datos" para no recargar la carga. */}
           {(() => {
             const fondoFijoBloque = (
-              <div>
-                <MoneyRow label="Fondo fijo" value={fondoFijo} onChange={setFondoFijo} />
-                {t.gastosFondoFijo > 0 && (
-                  <p className="pb-1.5 text-xs text-slate-500">
-                    Pagado con fondo fijo: <span className="tabular-nums">{formatMoney(t.gastosFondoFijo)}</span>
-                    {' · '}Restante:{' '}
-                    <span className={`font-medium tabular-nums ${t.fondoFijoRestante < 0 ? 'text-red-600' : 'text-slate-700'}`}>
-                      {formatMoney(t.fondoFijoRestante)}
-                    </span>
-                    {' · '}a reponer <span className="tabular-nums">{formatMoney(t.gastosFondoFijo)}</span>
+              <div className="pb-1.5">
+                {t.gastosFondoFijo > 0 ? (
+                  <p className="text-xs text-slate-500">
+                    Pagado con fondo fijo este turno:{' '}
+                    <span className="font-medium tabular-nums text-slate-700">{formatMoney(t.gastosFondoFijo)}</span>
                   </p>
+                ) : (
+                  <p className="text-xs text-slate-400">Sin gastos pagados con fondo fijo este turno.</p>
                 )}
+                <a href="/fondo-fijo" className="mt-0.5 inline-block text-xs font-medium text-blue-600 hover:underline">
+                  Ver saldo del fondo fijo del local →
+                </a>
               </div>
             )
             const notaCreditoRow = <MoneyRow label="Nota de crédito" value={notaCredito} onChange={setNC} />

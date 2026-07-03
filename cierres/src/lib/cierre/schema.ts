@@ -8,7 +8,9 @@ const formaPago = z.enum(['efectivo', 'tarjeta', 'transferencia', 'otro', 'cuent
 const monto = z.number().nonnegative()
 
 export const turnoInputSchema = z.object({
-  fondoFijo: monto,
+  // El fondo fijo pasó a ser saldo corriente por local; en el turno se manda la base
+  // del local (fijo, no editable). Default 0 por si un cliente viejo no lo envía.
+  fondoFijo: monto.default(0),
   montoZ: monto,
   efectivoDepositado: monto.default(0),
   notaCredito: monto,
@@ -32,3 +34,10 @@ export const turnoInputSchema = z.object({
 })
 
 export type TurnoInputParsed = z.infer<typeof turnoInputSchema>
+
+// Reposición del fondo fijo (administración carga plata a la caja chica de un local).
+export const reponerFondoFijoSchema = z.object({
+  localId: z.number().int().positive(),
+  monto: z.number().positive(),
+  descripcion: z.string().optional(),
+})
