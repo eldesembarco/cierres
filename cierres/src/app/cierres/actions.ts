@@ -41,6 +41,12 @@ export async function guardarCierre(
   const nota: string | null = (payload.nota ?? '').trim() || null
   const totales = calcularTotales(input)
   const fechaDate = new Date(fecha)
+  // Candado de fecha: evita guardar un cierre con un año imposible (ej. "0026" por un
+  // typo en el date-picker), que después "desaparece" en una fecha fuera de rango.
+  const anio = fechaDate.getUTCFullYear()
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha) || Number.isNaN(anio) || anio < 2020 || anio > 2100) {
+    return { ok: false as const, error: 'La fecha del cierre es inválida (revisá el año).' }
+  }
 
   // ¿Existe ya un cierre para este turno? Lo necesitamos para tres reglas:
   //  - bloqueo de turno cerrado para el encargado,
