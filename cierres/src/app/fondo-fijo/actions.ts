@@ -31,3 +31,21 @@ export async function reponerFondoFijo(localId: number, monto: number, descripci
   revalidatePath('/cierres', 'layout') // refrescar el saldo mostrado en la planilla
   return { ok: true as const }
 }
+
+// Administración define/edita el objetivo (base) del fondo fijo de un local. Editable
+// desde la app a medida que se averiguan los montos de cada local. Cambia el saldo/a
+// reponer del local (el objetivo es el techo actual de la caja chica).
+export async function setFondoFijoObjetivo(localId: number, monto: number) {
+  const session = await auth()
+  if (!session) throw new Error('No autenticado')
+  if (!puedeMarcarPagado(session.user.rol)) {
+    return { ok: false as const, error: 'Solo administración puede definir el fondo fijo.' }
+  }
+  if (!Number.isInteger(localId) || localId <= 0 || !Number.isFinite(monto) || monto < 0) {
+    return { ok: false as const, error: 'Ingresá un monto válido (0 o más).' }
+  }
+  await prisma.local.update({ where: { id: localId }, data: { fondoFijoDefault: monto } })
+  revalidatePath('/fondo-fijo')
+  revalidatePath('/cierres', 'layout')
+  return { ok: true as const }
+}
