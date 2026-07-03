@@ -104,6 +104,7 @@ export async function getTableroGlobalBatch(fecha: Date): Promise<TableroGlobal>
         fondoFijo: Number(c.fondoFijo),
         montoZ: Number(c.montoZ),
         efectivoDepositado: Number(c.efectivoDepositado),
+        retiroFondoFijo: Number(c.retiroFondoFijo),
         notaCredito: Number(c.notaCredito),
         cantidadTickets: c.cantidadTickets,
         ventas: c.ventas.map((v) => ({ canal: v.canal as Canal, monto: Number(v.monto) })),

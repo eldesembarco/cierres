@@ -25,7 +25,11 @@ export function calcularTotales(t: TurnoInput): TurnoTotales {
   )
   const fondoFijoRestante = round2(t.fondoFijo - gastosFondoFijo)
   const gastosTotal = sumMoney(t.gastos.map((g) => g.monto))
-  const saldoEfectivo = round2(ventaEfectivo - gastosEfectivo)
+  // El efectivo "guardado para el fondo fijo" (recupero) sale de la caja del día igual
+  // que un gasto en efectivo → baja el efectivo esperado a depositar (no es faltante).
+  // Sube el fondo fijo del local aparte (ver getSaldoFondoFijo), no acá.
+  const retiroFondoFijo = round2(t.retiroFondoFijo ?? 0)
+  const saldoEfectivo = round2(ventaEfectivo - gastosEfectivo - retiroFondoFijo)
   // Fórmula validada contra el Excel: diferencia = lo depositado − el saldo de efectivo esperado.
   const diferenciaCaja = round2(t.efectivoDepositado - saldoEfectivo)
   const totalCredito = sumMoney(
@@ -47,6 +51,7 @@ export function calcularTotales(t: TurnoInput): TurnoTotales {
     gastosEfectivo,
     gastosFondoFijo,
     fondoFijoRestante,
+    retiroFondoFijo,
     saldoEfectivo,
     diferenciaCaja,
     totalCredito,

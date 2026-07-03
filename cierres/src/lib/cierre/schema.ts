@@ -13,6 +13,7 @@ export const turnoInputSchema = z.object({
   fondoFijo: monto.default(0),
   montoZ: monto,
   efectivoDepositado: monto.default(0),
+  retiroFondoFijo: monto.default(0),
   notaCredito: monto,
   cantidadTickets: z.number().int().nonnegative().nullable().optional(),
   ventas: z.array(z.object({ canal, monto }))

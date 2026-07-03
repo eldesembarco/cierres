@@ -28,6 +28,9 @@ export interface TurnoInput {
   fondoFijo: number
   montoZ: number
   efectivoDepositado: number
+  // Efectivo guardado para el fondo fijo (recupero): baja el esperado a depositar y
+  // sube el fondo fijo del local. Opcional (default 0) para no romper consumidores viejos.
+  retiroFondoFijo?: number
   notaCredito: number
   cantidadTickets?: number | null
   ventas: { canal: Canal; monto: number }[]
@@ -44,6 +47,7 @@ export interface TurnoTotales {
   gastosEfectivo: number
   gastosFondoFijo: number
   fondoFijoRestante: number
+  retiroFondoFijo: number
   saldoEfectivo: number
   diferenciaCaja: number
   totalCredito: number

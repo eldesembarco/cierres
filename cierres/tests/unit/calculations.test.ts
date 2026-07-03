@@ -121,6 +121,38 @@ describe('calcularTotales (por turno)', () => {
       expect(t.diferenciaCaja).toBe(0) // sigue sin afectar la caja del día
     })
   })
+
+  describe('recupero de fondo fijo (guardado desde la caja)', () => {
+    // Caso Morón: venta efectivo 66700, no deposita, guarda 66700 para el fondo fijo.
+    const moron: TurnoInput = {
+      ...base, efectivoDepositado: 0, retiroFondoFijo: 66700,
+      ventas: [{ canal: 'efectivo', monto: 66700 }], tarjetas: [],
+    }
+    it('el recupero baja el esperado a depositar → no genera faltante', () => {
+      const t = calcularTotales(moron)
+      expect(t.saldoEfectivo).toBe(0) // 66700 - 0 gastos - 66700 recupero
+      expect(t.diferenciaCaja).toBe(0)
+    })
+    it('expone el recupero en los totales', () => {
+      expect(calcularTotales(moron).retiroFondoFijo).toBe(66700)
+    })
+    it('sin recupero, el mismo turno daría faltante', () => {
+      expect(calcularTotales({ ...moron, retiroFondoFijo: 0 }).diferenciaCaja).toBe(-66700)
+    })
+    it('recupero + gasto en efectivo se suman (caso Ramos: coca + recupero)', () => {
+      const t = calcularTotales({
+        ...base, efectivoDepositado: 0, retiroFondoFijo: 44280,
+        ventas: [{ canal: 'efectivo', monto: 74280 }], tarjetas: [],
+        gastos: [{ tipo: 'mercaderia', formaPago: 'efectivo', monto: 30000 }],
+      })
+      expect(t.saldoEfectivo).toBe(0) // 74280 - 30000 - 44280
+      expect(t.diferenciaCaja).toBe(0)
+    })
+    it('el recupero NO cambia el total depositado del día (se cancela algebraicamente)', () => {
+      const t = calcularTotales({ ...base, efectivoDepositado: 30000, retiroFondoFijo: 16200 })
+      expect(sumarDia([t]).totalDepositadoDia).toBe(30000) // = efectivoDepositado
+    })
+  })
 })
 
 describe('sumarDia', () => {

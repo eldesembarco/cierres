@@ -92,6 +92,10 @@ model Cierre {
   fondoFijo          Decimal       @default(0) @map("fondo_fijo") @db.Decimal(14, 2)
   montoZ             Decimal       @default(0) @map("monto_z") @db.Decimal(14, 2)
   efectivoDepositado Decimal       @default(0) @map("efectivo_depositado") @db.Decimal(14, 2)
+  // Efectivo del día que NO se deposita porque queda en la caja chica del local para
+  // recuperar/armar el fondo fijo. Baja el efectivo esperado (no genera falso faltante)
+  // y sube el saldo del fondo fijo del local (aporte auto-financiado).
+  retiroFondoFijo    Decimal       @default(0) @map("retiro_fondo_fijo") @db.Decimal(14, 2)
   notaCredito        Decimal       @default(0) @map("nota_credito") @db.Decimal(14, 2)
   cantidadTickets    Int?          @map("cantidad_tickets")
   estado             EstadoCierre  @default(borrador)

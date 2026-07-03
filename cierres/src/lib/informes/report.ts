@@ -12,6 +12,7 @@ export interface CierreParaInforme {
   fecha: Date
   turno: Turno
   efectivoDepositado: unknown // Prisma.Decimal
+  retiroFondoFijo?: unknown // Prisma.Decimal (recupero de fondo fijo)
   localId: number
   local: { id: number; nombre: string }
   ventas: { canal: Canal; monto: unknown }[]
@@ -104,7 +105,9 @@ function diferenciaCierre(c: CierreParaInforme) {
     c.gastos.filter((g) => g.formaPago === 'efectivo').map((g) => num(g.monto)),
   )
   const efectivoDepositado = num(c.efectivoDepositado)
-  const diferencia = round2(efectivoDepositado - (ventaEfectivo - gastosEfectivo))
+  const retiroFF = num(c.retiroFondoFijo)
+  // El recupero de fondo fijo baja el efectivo esperado igual que un gasto en efectivo.
+  const diferencia = round2(efectivoDepositado - (ventaEfectivo - gastosEfectivo - retiroFF))
   return { ventaEfectivo, gastosEfectivo, efectivoDepositado, diferencia }
 }
 

@@ -653,6 +653,7 @@ export function TurnoCierre({
   const [fondoFijo] = useState(inicial?.fondoFijo ?? fondoFijoDefault)
   const [montoZ, setMontoZ] = useState(inicial?.montoZ ?? 0)
   const [efectivoDepositado, setEfectivoDepositado] = useState(inicial?.efectivoDepositado ?? 0)
+  const [retiroFondoFijo, setRetiroFondoFijo] = useState(inicial?.retiroFondoFijo ?? 0)
   const [notaCredito, setNC] = useState(inicial?.notaCredito ?? 0)
   const [cantidadTickets, setTickets] = useState<number | ''>(inicial?.cantidadTickets ?? '')
 
@@ -764,6 +765,7 @@ export function TurnoCierre({
       fondoFijo,
       montoZ,
       efectivoDepositado,
+      retiroFondoFijo,
       notaCredito,
       cantidadTickets: cantidadTickets === '' ? null : Number(cantidadTickets),
       ventas: CANALES.map((c) => ({ canal: c, monto: ventasPorCanal[c] })),
@@ -782,7 +784,7 @@ export function TurnoCierre({
           proveedorId: g.formaPago === 'cuenta_corriente' ? g.proveedorId : null,
         })),
     }
-  }, [fondoFijo, montoZ, efectivoDepositado, notaCredito, cantidadTickets, efectivoVenta, ingresos, gastos])
+  }, [fondoFijo, montoZ, efectivoDepositado, retiroFondoFijo, notaCredito, cantidadTickets, efectivoVenta, ingresos, gastos])
 
   const t = calcularTotales(input)
 
@@ -1074,6 +1076,12 @@ export function TurnoCierre({
         <div className="divide-y divide-slate-100">
           <MoneyRow label="Cierre Z" value={montoZ} onChange={setMontoZ} />
           <MoneyRow label="Efectivo depositado" value={efectivoDepositado} onChange={setEfectivoDepositado} />
+          <div>
+            <MoneyRow label="Guardado para fondo fijo (recupero)" value={retiroFondoFijo} onChange={setRetiroFondoFijo} />
+            <p className="pb-1.5 text-xs text-slate-500">
+              Efectivo del día que NO depositás porque queda en la caja chica para armar/reponer el fondo fijo. No cuenta como faltante.
+            </p>
+          </div>
           <label className="flex flex-wrap items-center justify-between gap-2 py-1.5">
             <span className="text-sm text-slate-600">Cantidad de tickets</span>
             <input

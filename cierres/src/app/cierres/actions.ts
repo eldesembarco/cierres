@@ -47,6 +47,13 @@ export async function guardarCierre(
   if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha) || Number.isNaN(anio) || anio < 2020 || anio > 2100) {
     return { ok: false as const, error: 'La fecha del cierre es inválida (revisá el año).' }
   }
+  // Candado del recupero de fondo fijo: no se puede "guardar para el fondo fijo" más
+  // efectivo del que realmente entró en el turno (venta efectivo − gastos efectivo).
+  // Evita que se tape un faltante inflando el recupero.
+  const efectivoDisponible = totales.ventaEfectivo - totales.gastosEfectivo
+  if (totales.retiroFondoFijo > efectivoDisponible + 0.01) {
+    return { ok: false as const, error: `No podés guardar para fondo fijo más efectivo del que entró en el turno (máx. $${Math.round(efectivoDisponible).toLocaleString('es-AR')}).` }
+  }
 
   // ¿Existe ya un cierre para este turno? Lo necesitamos para tres reglas:
   //  - bloqueo de turno cerrado para el encargado,
@@ -99,6 +106,7 @@ export async function guardarCierre(
     where: { localId_fecha_turno: { localId, fecha: fechaDate, turno } },
     update: {
       fondoFijo: input.fondoFijo, montoZ: input.montoZ, efectivoDepositado: input.efectivoDepositado,
+      retiroFondoFijo: input.retiroFondoFijo,
       notaCredito: input.notaCredito, cantidadTickets: input.cantidadTickets ?? null, nota,
       estado: cerrar ? 'cerrado' : 'borrador',
       cerradoPor: cerrar ? userId : null, cerradoEn: cerrar ? new Date() : null,
@@ -109,7 +117,8 @@ export async function guardarCierre(
     },
     create: {
       localId, fecha: fechaDate, turno, fondoFijo: input.fondoFijo, montoZ: input.montoZ,
-      efectivoDepositado: input.efectivoDepositado, notaCredito: input.notaCredito,
+      efectivoDepositado: input.efectivoDepositado, retiroFondoFijo: input.retiroFondoFijo,
+      notaCredito: input.notaCredito,
       cantidadTickets: input.cantidadTickets ?? null,
       nota, estado: cerrar ? 'cerrado' : 'borrador',
       creadoPor: userId, cerradoPor: cerrar ? userId : null, cerradoEn: cerrar ? new Date() : null,
