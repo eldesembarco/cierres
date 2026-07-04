@@ -1,0 +1,68 @@
+// Consumidor de VENTAS del bridge de Tango para el BI (/ventas): venta facturada
+// por hora y por artículo (vistas sobre comprobantes de venta, netas de NC).
+// OJO: esto NO es /cobros — los cobros de caja son un universo más chico que la
+// venta facturada y no sirven como fuente del BI (ver docs/2026-07-04-bi-ventas-design.md).
+import { TangoBridgeError } from '@/lib/tango/cobrosBridge'
+
+export interface VentaHoraRow {
+  fecha: string
+  id_sucursal: number
+  hora: number
+  importe: number
+  tickets: number
+}
+
+export interface VentaArticuloRow {
+  fecha: string
+  id_sucursal: number
+  cod_articulo: string
+  descripcion: string
+  rubro?: string | null
+  cantidad: number
+  importe: number
+}
+
+async function fetchBridge<T>(path: string, desde: string, hasta: string): Promise<T[]> {
+  const base = process.env.TANGO_BRIDGE_URL
+  const secret = process.env.TANGO_BRIDGE_SECRET
+  if (!base || !secret) {
+    throw new TangoBridgeError('Faltan TANGO_BRIDGE_URL o TANGO_BRIDGE_SECRET en el entorno.')
+  }
+  const url = `${base.replace(/\/$/, '')}${path}?desde=${encodeURIComponent(desde)}&hasta=${encodeURIComponent(hasta)}`
+
+  const ctrl = new AbortController()
+  const timeout = setTimeout(() => ctrl.abort(), 25_000)
+  let res: Response
+  try {
+    res = await fetch(url, { headers: { 'x-bridge-secret': secret }, signal: ctrl.signal, cache: 'no-store' })
+  } catch (e) {
+    throw new TangoBridgeError(
+      `No pude conectar al bridge de Tango (${e instanceof Error ? e.message : String(e)}). ` +
+        'Puede estar caído o cambió la URL del túnel.',
+    )
+  } finally {
+    clearTimeout(timeout)
+  }
+  if (res.status === 404) {
+    throw new TangoBridgeError(
+      `El bridge todavía no expone ${path} (404). Falta que sistemas aplique docs/tango-bridge-ventas-handoff.md.`,
+    )
+  }
+  if (!res.ok) {
+    const body = await res.text().catch(() => '')
+    throw new TangoBridgeError(`El bridge respondió ${res.status} en ${path}. ${body.slice(0, 200)}`)
+  }
+  const data = (await res.json()) as unknown
+  if (!Array.isArray(data)) throw new TangoBridgeError(`Respuesta inesperada del bridge en ${path} (no es una lista).`)
+  return data as T[]
+}
+
+/** Venta por hora del rango [desde, hasta] (YYYY-MM-DD, inclusive), todas las sucursales. */
+export function fetchVentasHoras(desde: string, hasta: string): Promise<VentaHoraRow[]> {
+  return fetchBridge<VentaHoraRow>('/ventas-horas', desde, hasta)
+}
+
+/** Venta por artículo del rango [desde, hasta] (YYYY-MM-DD, inclusive), todas las sucursales. */
+export function fetchVentasArticulos(desde: string, hasta: string): Promise<VentaArticuloRow[]> {
+  return fetchBridge<VentaArticuloRow>('/ventas-articulos', desde, hasta)
+}

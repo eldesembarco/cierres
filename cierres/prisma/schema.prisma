@@ -35,6 +35,8 @@ model Local {
   cierresTango     CierreTango[]
   movimientosCtaCte MovimientoCtaCte[]
   reposicionesFondoFijo ReposicionFondoFijo[]
+  ventasTangoHora     VentaTangoHora[]
+  ventasTangoArticulo VentaTangoArticulo[]
   @@map("locales")
 }
 
@@ -300,6 +302,47 @@ model Comprobante {
   data     Bytes
   creadoEn DateTime @default(now()) @map("creado_en")
   @@map("comprobantes")
+}
+
+// Agregados de venta REAL de Tango para el BI (/ventas). Se sincronizan desde el
+// bridge (vistas de comprobantes de venta), NO desde /cobros: los cobros de caja
+// son un universo más chico que la venta facturada (ver docs/2026-07-04-bi-ventas-design.md).
+model VentaTangoHora {
+  id      Int      @id @default(autoincrement())
+  local   Local    @relation(fields: [localId], references: [id])
+  localId Int      @map("local_id")
+  fecha   DateTime @db.Date
+  hora    Int
+  monto   Decimal  @default(0) @db.Decimal(14, 2)
+  tickets Int      @default(0)
+  @@unique([localId, fecha, hora])
+  @@index([fecha])
+  @@map("venta_tango_hora")
+}
+
+model VentaTangoArticulo {
+  id          Int      @id @default(autoincrement())
+  local       Local    @relation(fields: [localId], references: [id])
+  localId     Int      @map("local_id")
+  fecha       DateTime @db.Date
+  codigo      String
+  descripcion String
+  rubro       String?
+  cantidad    Decimal  @default(0) @db.Decimal(14, 3)
+  monto       Decimal  @default(0) @db.Decimal(14, 2)
+  @@unique([localId, fecha, codigo])
+  @@index([fecha])
+  @@map("venta_tango_articulo")
+}
+
+// Bitácora de sincronización por fecha: cobertura del BI y detección de días sin datos.
+model VentaTangoSync {
+  id             Int      @id @default(autoincrement())
+  fecha          DateTime @unique @db.Date
+  filasHoras     Int      @default(0) @map("filas_horas")
+  filasArticulos Int      @default(0) @map("filas_articulos")
+  sincronizadoEn DateTime @default(now()) @map("sincronizado_en")
+  @@map("venta_tango_sync")
 }
 
 model VentaApp {
