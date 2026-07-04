@@ -24,6 +24,9 @@ model Local {
   pais             String            @default("AR")
   moneda           String            @default("ARS")
   fondoFijoDefault Decimal           @default(0) @map("fondo_fijo_default") @db.Decimal(14, 2)
+  // Sucursal correspondiente en Tango (ID_SUCURSAL). Sirve para consumir los cobros
+  // reales del bridge (/cobros) y conciliarlos contra lo cargado. Null = sin mapear.
+  tangoSucursalId  Int?              @unique @map("tango_sucursal_id")
   activo           Boolean           @default(true)
   mapeos           LocalPlataforma[]
   cierres          Cierre[]
