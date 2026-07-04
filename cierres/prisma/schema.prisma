@@ -304,9 +304,9 @@ model Comprobante {
   @@map("comprobantes")
 }
 
-// Agregados de venta REAL de Tango para el BI (/ventas). Se sincronizan desde el
-// bridge (vistas de comprobantes de venta), NO desde /cobros: los cobros de caja
-// son un universo más chico que la venta facturada (ver docs/2026-07-04-bi-ventas-design.md).
+// Agregados de venta REAL de Tango. Los CONSUME la app bi-ventas (sistema aparte,
+// misma base); acá solo se declaran porque este proyecto es el dueño de las
+// migraciones del schema compartido (ver bi-ventas/docs/2026-07-04-bi-ventas-design.md).
 model VentaTangoHora {
   id      Int      @id @default(autoincrement())
   local   Local    @relation(fields: [localId], references: [id])

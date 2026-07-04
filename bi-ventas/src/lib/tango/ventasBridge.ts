@@ -2,7 +2,7 @@
 // por hora y por artículo (vistas sobre comprobantes de venta, netas de NC).
 // OJO: esto NO es /cobros — los cobros de caja son un universo más chico que la
 // venta facturada y no sirven como fuente del BI (ver docs/2026-07-04-bi-ventas-design.md).
-import { TangoBridgeError } from '@/lib/tango/cobrosBridge'
+export class TangoBridgeError extends Error {}
 
 export interface VentaHoraRow {
   fecha: string

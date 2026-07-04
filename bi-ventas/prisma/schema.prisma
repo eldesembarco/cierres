@@ -1,0 +1,89 @@
+// IMPORTANTE: esta app NO es dueña del schema de la base. Comparte la Neon DB
+// (schema "cierres") con la app de cierres, que es quien corre las migraciones.
+// Acá solo se declaran los modelos que el BI consume, para generar el cliente.
+// NUNCA correr `prisma migrate` desde este proyecto.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Rol {
+  encargado
+  central
+  admin
+  contable
+}
+
+model Usuario {
+  id           Int     @id @default(autoincrement())
+  nombre       String
+  email        String  @unique
+  passwordHash String  @map("password_hash")
+  rol          Rol
+  localId      Int?    @map("local_id")
+  activo       Boolean @default(true)
+  @@map("usuarios")
+}
+
+model Marca {
+  id      Int     @id @default(autoincrement())
+  nombre  String  @unique
+  activo  Boolean @default(true)
+  locales Local[]
+  @@map("marcas")
+}
+
+model Local {
+  id                  Int                  @id @default(autoincrement())
+  nombre              String
+  marca               Marca                @relation(fields: [marcaId], references: [id])
+  marcaId             Int                  @map("marca_id")
+  tangoSucursalId     Int?                 @unique @map("tango_sucursal_id")
+  activo              Boolean              @default(true)
+  ventasTangoHora     VentaTangoHora[]
+  ventasTangoArticulo VentaTangoArticulo[]
+  @@map("locales")
+}
+
+// Agregados de venta REAL de Tango (facturada, definición Z, neta de NC).
+// Sincronizados desde el bridge; NO desde /cobros (universo más chico).
+model VentaTangoHora {
+  id      Int      @id @default(autoincrement())
+  local   Local    @relation(fields: [localId], references: [id])
+  localId Int      @map("local_id")
+  fecha   DateTime @db.Date
+  hora    Int
+  monto   Decimal  @default(0) @db.Decimal(14, 2)
+  tickets Int      @default(0)
+  @@unique([localId, fecha, hora])
+  @@index([fecha])
+  @@map("venta_tango_hora")
+}
+
+model VentaTangoArticulo {
+  id          Int      @id @default(autoincrement())
+  local       Local    @relation(fields: [localId], references: [id])
+  localId     Int      @map("local_id")
+  fecha       DateTime @db.Date
+  codigo      String
+  descripcion String
+  rubro       String?
+  cantidad    Decimal  @default(0) @db.Decimal(14, 3)
+  monto       Decimal  @default(0) @db.Decimal(14, 2)
+  @@unique([localId, fecha, codigo])
+  @@index([fecha])
+  @@map("venta_tango_articulo")
+}
+
+model VentaTangoSync {
+  id             Int      @id @default(autoincrement())
+  fecha          DateTime @unique @db.Date
+  filasHoras     Int      @default(0) @map("filas_horas")
+  filasArticulos Int      @default(0) @map("filas_articulos")
+  sincronizadoEn DateTime @default(now()) @map("sincronizado_en")
+  @@map("venta_tango_sync")
+}

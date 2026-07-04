@@ -1,11 +1,10 @@
 import { auth } from '@/lib/auth/auth'
-import { puedeVerFinanzas, esCentral } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db'
 import { formatMoney } from '@/lib/money'
 import { hoyAr, ayerAr, primerDiaDelMesAr } from '@/lib/fecha'
-import { resumenBi, type LocalBi, type ArticuloBi } from '@/lib/ventas/bi'
-import { sincronizarVentas } from '@/app/actions/tango'
-import { TrendingUp, TrendingDown, Lock, Inbox, RefreshCw, AlertTriangle, Clock3, Trophy, Minus } from 'lucide-react'
+import { resumenBi, type LocalBi, type ArticuloBi } from '@/lib/bi'
+import { sincronizarVentas } from '@/app/actions/sync'
+import { TrendingUp, TrendingDown, Inbox, RefreshCw, AlertTriangle, Clock3, Trophy, Minus } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -17,17 +16,8 @@ const formatInt = (n: number) => Math.round(n).toLocaleString('es-AR')
 const formatPct = (v: number) => `${v > 0 ? '+' : ''}${(v * 100).toFixed(1)}%`
 
 export default async function VentasPage({ searchParams }: { searchParams: SearchParams }) {
+  // El proxy garantiza sesión, y al BI solo pueden loguearse central/admin/contable.
   const session = await auth()
-  if (!session || !puedeVerFinanzas(session.user.rol)) {
-    return (
-      <main className="mx-auto w-full max-w-6xl px-4 py-6">
-        <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-5 text-slate-600 shadow-sm">
-          <Lock size={18} className="text-slate-400" />
-          <p>No tenés permiso para ver el BI de ventas.</p>
-        </div>
-      </main>
-    )
-  }
 
   const sp = await searchParams
   const desde = sp.desde && YMD.test(sp.desde) ? sp.desde : primerDiaDelMesAr()
@@ -43,7 +33,7 @@ export default async function VentasPage({ searchParams }: { searchParams: Searc
     }),
   ])
   const maxHora = Math.max(1, ...bi.horas.map((h) => h.monto))
-  const puedeSync = esCentral(session.user.rol)
+  const puedeSync = session != null && ['central', 'admin'].includes(session.user.rol)
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-6">

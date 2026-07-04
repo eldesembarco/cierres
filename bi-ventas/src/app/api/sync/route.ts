@@ -1,12 +1,9 @@
-// Sincroniza la venta de Tango (hora + artículo) a nuestra base para el BI.
-// GET: para el cron de Vercel (Authorization: Bearer CRON_SECRET). Default: ayer.
-// POST: manual desde la app (sesión central/admin) o con x-sync-secret
-// (TANGO_INGEST_SECRET, mismo que usa n8n), con ?desde&hasta para backfill.
-import { auth } from '@/lib/auth/auth'
-import { esCentral } from '@/lib/auth/rbac'
+// Sincroniza la venta de Tango (hora + artículo) a nuestra base.
+// GET: cron de Vercel (Authorization: Bearer CRON_SECRET). Default: ayer.
+// POST: manual con x-sync-secret (SYNC_SECRET), con ?desde&hasta para backfill.
 import { ayerAr } from '@/lib/fecha'
 import { syncVentasTango } from '@/lib/tango/syncVentas'
-import { TangoBridgeError } from '@/lib/tango/cobrosBridge'
+import { TangoBridgeError } from '@/lib/tango/ventasBridge'
 
 export const maxDuration = 60
 
@@ -37,13 +34,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const secret = process.env.TANGO_INGEST_SECRET
-  const conSecret = secret != null && request.headers.get('x-sync-secret') === secret
-  if (!conSecret) {
-    const session = await auth()
-    if (!session || !esCentral(session.user.rol)) {
-      return Response.json({ error: 'No autorizado' }, { status: 401 })
-    }
+  const secret = process.env.SYNC_SECRET
+  if (!secret || request.headers.get('x-sync-secret') !== secret) {
+    return Response.json({ error: 'No autorizado' }, { status: 401 })
   }
   const { searchParams } = new URL(request.url)
   const desde = searchParams.get('desde') ?? ayerAr()

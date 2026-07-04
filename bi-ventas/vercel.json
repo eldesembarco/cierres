@@ -1,7 +1,7 @@
 {
   "crons": [
     {
-      "path": "/api/tango/sync-ventas",
+      "path": "/api/sync",
       "schedule": "30 10 * * *"
     }
   ]
