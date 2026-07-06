@@ -14,8 +14,9 @@ import path from 'node:path'
 import sql from 'mssql'
 
 const DIR = path.dirname(fileURLToPath(import.meta.url))
-// El replace saca el BOM que deja PowerShell al escribir UTF-8.
-const cfg = JSON.parse(readFileSync(path.join(DIR, 'config.json'), 'utf8').replace(/^﻿/, ''))
+// El slice saca el BOM que deja PowerShell al escribir UTF-8.
+const _cfgRaw = readFileSync(path.join(DIR, 'config.json'), 'utf8')
+const cfg = JSON.parse(_cfgRaw.charCodeAt(0) === 0xFEFF ? _cfgRaw.slice(1) : _cfgRaw)
 
 const log = (...a) => console.log(new Date().toISOString().replace('T', ' ').slice(0, 19), ...a)
 
