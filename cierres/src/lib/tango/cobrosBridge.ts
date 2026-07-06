@@ -4,6 +4,7 @@
 //
 // La vista ya excluye CAJA FUERTE y SALDO INICIAL y sólo toma DEBE='D', así que
 // cada fila es un cobro real: { fecha, id_sucursal, medio_pago, importe }.
+import { prisma } from '@/lib/db'
 import { round2 } from '@/lib/money'
 import type { Canal } from '@/lib/cierre/types'
 
@@ -54,14 +55,25 @@ export function mediosDesconocidos(rows: CobroTangoRow[]): string[] {
 export class TangoBridgeError extends Error {}
 
 /**
+ * URL viva del bridge: la que el propio bridge registró en la base al levantar su
+ * túnel (POST /api/tango/bridge-url), con el env TANGO_BRIDGE_URL como fallback.
+ * El quick-tunnel cambia de URL en cada arranque del server de Tango, por eso la
+ * base manda sobre el env.
+ */
+export async function getBridgeBaseUrl(): Promise<string | null> {
+  const row = await prisma.tangoBridge.findUnique({ where: { id: 1 } }).catch(() => null)
+  return row?.url ?? process.env.TANGO_BRIDGE_URL ?? null
+}
+
+/**
  * Trae los cobros del bridge para el rango [desde, hasta] (YYYY-MM-DD, inclusive).
- * Lee TANGO_BRIDGE_URL y TANGO_BRIDGE_SECRET del entorno.
+ * URL desde la base (auto-registro) o TANGO_BRIDGE_URL; secreto TANGO_BRIDGE_SECRET.
  */
 export async function fetchCobrosTango(desde: string, hasta: string): Promise<CobroTangoRow[]> {
-  const base = process.env.TANGO_BRIDGE_URL
+  const base = await getBridgeBaseUrl()
   const secret = process.env.TANGO_BRIDGE_SECRET
   if (!base || !secret) {
-    throw new TangoBridgeError('Faltan TANGO_BRIDGE_URL o TANGO_BRIDGE_SECRET en el entorno.')
+    throw new TangoBridgeError('No hay URL del bridge registrada ni TANGO_BRIDGE_URL/TANGO_BRIDGE_SECRET en el entorno.')
   }
   const url = `${base.replace(/\/$/, '')}/cobros?desde=${encodeURIComponent(desde)}&hasta=${encodeURIComponent(hasta)}`
 

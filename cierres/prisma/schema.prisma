@@ -335,6 +335,17 @@ model VentaTangoArticulo {
   @@map("venta_tango_articulo")
 }
 
+// URL viva del bridge de Tango. El bridge (C:\tango-bridge en SRVTANGO) levanta un
+// quick-tunnel de Cloudflare cuya URL cambia en cada arranque, y la registra acá
+// vía POST /api/tango/bridge-url. Los consumidores resuelven la URL desde esta
+// fila (fallback: env TANGO_BRIDGE_URL). Una sola fila (id=1).
+model TangoBridge {
+  id            Int      @id
+  url           String
+  actualizadoEn DateTime @updatedAt @map("actualizado_en")
+  @@map("tango_bridge")
+}
+
 // Bitácora de sincronización por fecha: cobertura del BI y detección de días sin datos.
 model VentaTangoSync {
   id             Int      @id @default(autoincrement())
