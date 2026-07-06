@@ -1,0 +1,17 @@
+{
+  "puerto": 8788,
+  "secreto": "CAMBIAR-secreto-largo-del-bridge",
+  "sql": {
+    "servidor": "localhost\\AXSQLEXPRESS",
+    "base": "CENTRAL_ESTADISTICA",
+    "usuario": "bridge_lectura",
+    "password": "CAMBIAR"
+  },
+  "cloudflared": "C:\\tango-bridge\\cloudflared.exe",
+  "registro": [
+    {
+      "url": "https://cierres-seven.vercel.app/api/tango/bridge-url",
+      "secreto": "CAMBIAR-TANGO_INGEST_SECRET"
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "name": "tango-bridge",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "mssql": "^11.0.1"
+  }
+}
