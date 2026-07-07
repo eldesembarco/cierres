@@ -22,6 +22,11 @@ export interface LocalDashRow {
   faltaImportacion: boolean
   manana: string | null // estado del turno o null si no existe
   tarde: string | null
+  // Control contra la facturación real de Tango (venta_tango_hora, la sincroniza
+  // el BI). Null = el BI todavía no tiene ese día (ej. hoy: el cron corre a la
+  // mañana siguiente) o el local no registró ventas en Tango.
+  ventaTango: number | null
+  difTango: number | null // ventaTotal − ventaTango
 }
 
 export interface DeliveryPlat {
@@ -60,7 +65,7 @@ const ORDEN_TURNO: Turno[] = ['manana', 'tarde']
 // llamar getTablero por local). Reconstruye el TurnoInput como getTablero pero en
 // lote, agrupando por localId en JS.
 export async function getTableroGlobalBatch(fecha: Date): Promise<TableroGlobal> {
-  const [locales, cierres, ventasApp] = await Promise.all([
+  const [locales, cierres, ventasApp, tangoHoras] = await Promise.all([
     prisma.local.findMany({
       where: { activo: true },
       include: { marca: { select: { nombre: true } } },
@@ -71,7 +76,12 @@ export async function getTableroGlobalBatch(fecha: Date): Promise<TableroGlobal>
       include: { ventas: true, tarjetas: true, detalles: true, gastos: true },
     }),
     prisma.ventaApp.findMany({ where: { fecha }, include: { plataforma: { select: { nombre: true } } } }),
+    // Facturación real de Tango del día: base del control "declarado vs Tango".
+    prisma.ventaTangoHora.groupBy({ by: ['localId'], where: { fecha }, _sum: { monto: true } }),
   ])
+
+  const tangoPorLocal = new Map<number, number>()
+  for (const t of tangoHoras) tangoPorLocal.set(t.localId, round2(Number(t._sum.monto ?? 0)))
 
   const cierresPorLocal = new Map<number, typeof cierres>()
   for (const c of cierres) {
@@ -149,6 +159,7 @@ export async function getTableroGlobalBatch(fecha: Date): Promise<TableroGlobal>
       deliveryGlobal.set(r.plataforma, g)
     }
 
+    const ventaTango = tangoPorLocal.get(local.id) ?? null
     return {
       localId: local.id,
       localNombre: local.nombre,
@@ -167,6 +178,8 @@ export async function getTableroGlobalBatch(fecha: Date): Promise<TableroGlobal>
       faltaImportacion: vapp.length === 0,
       manana: mananaEstado,
       tarde: tardeEstado,
+      ventaTango,
+      difTango: ventaTango != null ? round2(dia.ventaTotalDia - ventaTango) : null,
     }
   })
 

@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import type { DashboardData } from '@/lib/dashboard/getDashboard'
+import { estadoTango } from '@/lib/dashboard/controlTango'
 import { formatMoney } from '@/lib/money'
 import {
   TrendingUp, Scale, Truck, Receipt, Wallet, Coins, ClipboardCheck, AlertTriangle,
@@ -103,6 +104,28 @@ function Sparkline({ points }: { points: number[] }) {
         <circle cx={(w).toFixed(1)} cy={(h - (points[points.length - 1] / max) * (h - 6) - 3).toFixed(1)} r="3" fill="#2563eb" />
       )}
     </svg>
+  )
+}
+
+// Chip del control "declarado vs Tango" (facturación real). Sin datos → guion.
+function TangoChip({ ventaTango, difTango, faltaCierre }: { ventaTango: number | null; difTango: number | null; faltaCierre: boolean }) {
+  if (faltaCierre || ventaTango == null || difTango == null || ventaTango <= 0) {
+    return <span className="text-xs text-slate-300" title="Sin datos de Tango para este día (el BI sincroniza a la mañana siguiente)">—</span>
+  }
+  const estado = estadoTango(difTango, ventaTango)
+  const titulo = `Tango facturó ${formatMoney(ventaTango)} · declarado ${formatMoney(ventaTango + difTango)}`
+  if (estado === 'cuadra') {
+    return (
+      <span title={titulo} className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-1.5 py-0.5 text-xs font-medium text-emerald-700">
+        <CheckCircle2 size={12} /> cuadra
+      </span>
+    )
+  }
+  const cls = estado === 'leve' ? 'bg-amber-50 text-amber-700' : 'bg-rose-50 text-rose-700'
+  return (
+    <span title={titulo} className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium tabular-nums ${cls}`}>
+      <AlertTriangle size={12} /> {formatMoney(difTango)}
+    </span>
   )
 }
 
@@ -221,7 +244,8 @@ export function Dashboard({ data, hoy, ayer }: { data: DashboardData; hoy: strin
                   <thead>
                     <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
                       <th className="px-2 py-2 font-medium">Local</th>
-                      <th className="px-2 py-2 font-medium" style={{ width: '30%' }}>Venta</th>
+                      <th className="px-2 py-2 font-medium" style={{ width: '28%' }}>Venta</th>
+                      <th className="px-2 py-2 text-right font-medium" title="Declarado vs facturación real de Tango">vs Tango</th>
                       <th className="px-2 py-2 text-right font-medium">Diferencia</th>
                       <th className="px-2 py-2 text-right font-medium">Delivery neto</th>
                     </tr>
@@ -243,6 +267,9 @@ export function Dashboard({ data, hoy, ayer }: { data: DashboardData; hoy: strin
                               <div className="min-w-[70px] flex-1"><Bar frac={l.ventaTotal / maxVenta} color="#2563eb" /></div>
                               <span className="w-24 shrink-0 text-right tabular-nums text-slate-800">{formatMoney(l.ventaTotal)}</span>
                             </div>
+                          </td>
+                          <td className="px-2 py-2 text-right">
+                            <TangoChip ventaTango={l.ventaTango} difTango={l.difTango} faltaCierre={l.faltaCierre} />
                           </td>
                           <td className="px-2 py-2 text-right">
                             {l.faltaCierre ? <span className="text-xs text-slate-300">—</span> : (

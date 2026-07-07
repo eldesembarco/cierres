@@ -2,6 +2,7 @@ import { prisma } from '@/lib/db'
 import { round2 } from '@/lib/money'
 import { CANAL_LABEL } from '@/lib/informes/report'
 import { getTableroGlobalBatch, type TableroGlobal, type LocalDashRow } from '@/lib/dashboard/getTableroGlobalBatch'
+import { estadoTango } from '@/lib/dashboard/controlTango'
 import { getCuentaCorrienteResumen, type CtaCteResumen } from '@/lib/ctacte/getCuentaCorrienteResumen'
 import { getSaldosFondoFijoTodos, type SaldoFondoFijoLocal } from '@/lib/cierre/getSaldoFondoFijo'
 import type { Canal } from '@/lib/cierre/types'
@@ -99,6 +100,19 @@ export async function getDashboard(fechaStr: string): Promise<DashboardData> {
     }
     if (l.manana === 'borrador' || l.tarde === 'borrador') {
       alertas.push({ tipo: 'Turno sin cerrar', severidad: 'media', localNombre: l.localNombre, detalle: 'Tiene un turno en borrador (sin cerrar)', monto: null, href: `/cierres/${fechaStr}` })
+    }
+    // Control automático contra la facturación real de Tango: gap > 5% = alerta.
+    // (Los gaps leves quedan en ámbar en la columna "vs Tango" del ranking.)
+    if (cargo && l.ventaTango != null && l.difTango != null && l.ventaTango > 0 && estadoTango(l.difTango, l.ventaTango) === 'grave') {
+      const declaroMenos = l.difTango < 0
+      alertas.push({
+        tipo: 'Declarado ≠ Tango',
+        severidad: 'alta',
+        localNombre: l.localNombre,
+        detalle: `Declaró ${fmt(l.ventaTotal)} pero Tango facturó ${fmt(l.ventaTango)} (${declaroMenos ? 'faltan' : 'sobran'} ${fmt(Math.abs(l.difTango))})`,
+        monto: l.difTango,
+        href: `/cierres/${fechaStr}`,
+      })
     }
   }
   // Facturas sospechosas cargadas como "Otros" con monto grande.
