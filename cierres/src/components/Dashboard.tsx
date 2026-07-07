@@ -108,24 +108,28 @@ function Sparkline({ points }: { points: number[] }) {
 }
 
 // Chip del control "declarado vs Tango" (facturación real). Sin datos → guion.
-function TangoChip({ ventaTango, difTango, faltaCierre }: { ventaTango: number | null; difTango: number | null; faltaCierre: boolean }) {
+// Con datos, linkea a la autopsia (/control-tango) del local+día.
+function TangoChip({ ventaTango, difTango, faltaCierre, localId, fecha }: {
+  ventaTango: number | null; difTango: number | null; faltaCierre: boolean; localId: number; fecha: string
+}) {
   if (faltaCierre || ventaTango == null || difTango == null || ventaTango <= 0) {
     return <span className="text-xs text-slate-300" title="Sin datos de Tango para este día (el BI sincroniza a la mañana siguiente)">—</span>
   }
   const estado = estadoTango(difTango, ventaTango)
-  const titulo = `Tango facturó ${formatMoney(ventaTango)} · declarado ${formatMoney(ventaTango + difTango)}`
+  const titulo = `Tango facturó ${formatMoney(ventaTango)} · declarado ${formatMoney(ventaTango + difTango)} — click para ver el detalle`
+  const href = `/control-tango?localId=${localId}&fecha=${fecha}`
   if (estado === 'cuadra') {
     return (
-      <span title={titulo} className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-1.5 py-0.5 text-xs font-medium text-emerald-700">
+      <Link href={href} title={titulo} className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-1.5 py-0.5 text-xs font-medium text-emerald-700 hover:ring-1 hover:ring-emerald-300">
         <CheckCircle2 size={12} /> cuadra
-      </span>
+      </Link>
     )
   }
-  const cls = estado === 'leve' ? 'bg-amber-50 text-amber-700' : 'bg-rose-50 text-rose-700'
+  const cls = estado === 'leve' ? 'bg-amber-50 text-amber-700 hover:ring-amber-300' : 'bg-rose-50 text-rose-700 hover:ring-rose-300'
   return (
-    <span title={titulo} className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium tabular-nums ${cls}`}>
+    <Link href={href} title={titulo} className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium tabular-nums hover:ring-1 ${cls}`}>
       <AlertTriangle size={12} /> {formatMoney(difTango)}
-    </span>
+    </Link>
   )
 }
 
@@ -269,7 +273,7 @@ export function Dashboard({ data, hoy, ayer }: { data: DashboardData; hoy: strin
                             </div>
                           </td>
                           <td className="px-2 py-2 text-right">
-                            <TangoChip ventaTango={l.ventaTango} difTango={l.difTango} faltaCierre={l.faltaCierre} />
+                            <TangoChip ventaTango={l.ventaTango} difTango={l.difTango} faltaCierre={l.faltaCierre} localId={l.localId} fecha={data.fecha} />
                           </td>
                           <td className="px-2 py-2 text-right">
                             {l.faltaCierre ? <span className="text-xs text-slate-300">—</span> : (

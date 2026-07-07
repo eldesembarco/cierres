@@ -111,7 +111,7 @@ export async function getDashboard(fechaStr: string): Promise<DashboardData> {
         localNombre: l.localNombre,
         detalle: `Declaró ${fmt(l.ventaTotal)} pero Tango facturó ${fmt(l.ventaTango)} (${declaroMenos ? 'faltan' : 'sobran'} ${fmt(Math.abs(l.difTango))})`,
         monto: l.difTango,
-        href: `/cierres/${fechaStr}`,
+        href: `/control-tango?localId=${l.localId}&fecha=${fechaStr}`,
       })
     }
   }
