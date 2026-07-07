@@ -2,7 +2,19 @@
 // por hora y por artículo (vistas sobre comprobantes de venta, netas de NC).
 // OJO: esto NO es /cobros — los cobros de caja son un universo más chico que la
 // venta facturada y no sirven como fuente del BI (ver docs/2026-07-04-bi-ventas-design.md).
+import { prisma } from '@/lib/db'
+
 export class TangoBridgeError extends Error {}
+
+/**
+ * URL viva del bridge: la que el bridge registró en la base al levantar su túnel
+ * (tabla tango_bridge, la escribe la app cierres), con env TANGO_BRIDGE_URL como
+ * fallback. El quick-tunnel cambia de URL en cada arranque del server de Tango.
+ */
+async function getBridgeBaseUrl(): Promise<string | null> {
+  const row = await prisma.tangoBridge.findUnique({ where: { id: 1 } }).catch(() => null)
+  return row?.url ?? process.env.TANGO_BRIDGE_URL ?? null
+}
 
 export interface VentaHoraRow {
   fecha: string
@@ -23,10 +35,10 @@ export interface VentaArticuloRow {
 }
 
 async function fetchBridge<T>(path: string, desde: string, hasta: string): Promise<T[]> {
-  const base = process.env.TANGO_BRIDGE_URL
+  const base = await getBridgeBaseUrl()
   const secret = process.env.TANGO_BRIDGE_SECRET
   if (!base || !secret) {
-    throw new TangoBridgeError('Faltan TANGO_BRIDGE_URL o TANGO_BRIDGE_SECRET en el entorno.')
+    throw new TangoBridgeError('No hay URL del bridge registrada ni TANGO_BRIDGE_URL/TANGO_BRIDGE_SECRET en el entorno.')
   }
   const url = `${base.replace(/\/$/, '')}${path}?desde=${encodeURIComponent(desde)}&hasta=${encodeURIComponent(hasta)}`
 
@@ -44,9 +56,7 @@ async function fetchBridge<T>(path: string, desde: string, hasta: string): Promi
     clearTimeout(timeout)
   }
   if (res.status === 404) {
-    throw new TangoBridgeError(
-      `El bridge todavía no expone ${path} (404). Falta que sistemas aplique docs/tango-bridge-ventas-handoff.md.`,
-    )
+    throw new TangoBridgeError(`El bridge no expone ${path} (404). ¿Versión vieja del tango-bridge.mjs en el server?`)
   }
   if (!res.ok) {
     const body = await res.text().catch(() => '')

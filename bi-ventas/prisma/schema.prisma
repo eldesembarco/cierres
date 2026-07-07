@@ -49,6 +49,16 @@ model Local {
   @@map("locales")
 }
 
+// URL viva del bridge de Tango: la registra el propio bridge al levantar su túnel
+// (POST /api/tango/bridge-url de la app cierres). Tabla migrada por cierres; acá
+// solo se lee para resolver dónde está el bridge ahora.
+model TangoBridge {
+  id            Int      @id
+  url           String
+  actualizadoEn DateTime @updatedAt @map("actualizado_en")
+  @@map("tango_bridge")
+}
+
 // Agregados de venta REAL de Tango (facturada, definición Z, neta de NC).
 // Sincronizados desde el bridge; NO desde /cobros (universo más chico).
 model VentaTangoHora {
