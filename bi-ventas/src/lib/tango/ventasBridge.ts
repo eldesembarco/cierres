@@ -42,8 +42,10 @@ async function fetchBridge<T>(path: string, desde: string, hasta: string): Promi
   }
   const url = `${base.replace(/\/$/, '')}${path}?desde=${encodeURIComponent(desde)}&hasta=${encodeURIComponent(hasta)}`
 
+  // 55s: el camino Vercel -> quick-tunnel puede tardar >20s en frío; el route
+  // tiene maxDuration 60, así que abortamos justo antes de ese límite.
   const ctrl = new AbortController()
-  const timeout = setTimeout(() => ctrl.abort(), 25_000)
+  const timeout = setTimeout(() => ctrl.abort(), 55_000)
   let res: Response
   try {
     res = await fetch(url, { headers: { 'x-bridge-secret': secret }, signal: ctrl.signal, cache: 'no-store' })
