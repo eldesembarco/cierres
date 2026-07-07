@@ -89,3 +89,70 @@ describe('conciliarMp', () => {
     expect(canalDeVenta('Link de pago')).toBe('mercadopago')
   })
 })
+
+// El cliente paga producto + envío pero el settlement de MP liquida SOLO el
+// producto. Valores reales del 04-06/07: envíos de $590/$780/$1.130/$1.300...
+describe('conciliarMp — pares producto + envío (Mercado Delivery)', () => {
+  it('empareja enc=15.100 con mp=13.970 como envío de $1.130', () => {
+    const r = conciliarMp([md(13970)], [eMd(15100)])
+    const c = r.porCanal[0]
+    expect(c.conEnvio).toEqual([{ montoEncargado: 15100, montoMp: 13970, envio: 1130, cantidad: 1 }])
+    expect(c.soloMp).toEqual([])
+    expect(c.soloEncargado).toEqual([])
+    expect(c.cuadra).toBe(true)
+    expect(c.totalEnvios).toBe(1130)
+    expect(c.diferenciaSinEnvios).toBe(0)
+  })
+
+  it('los matches exactos tienen prioridad sobre el envío', () => {
+    const r = conciliarMp([md(13970), md(13970)], [eMd(13970)])
+    const c = r.porCanal[0]
+    expect(c.coincidencias).toEqual([{ monto: 13970, cantidad: 1 }])
+    expect(c.conEnvio).toEqual([])
+    expect(c.soloMp).toEqual([{ monto: 13970, cantidad: 1 }])
+  })
+
+  it('caso Recoleta real: exactos + envíos + una op MP realmente sin cargar', () => {
+    const r = conciliarMp(
+      [md(27940), md(13970), md(13970), md(4600)],
+      [eMd(27940), eMd(15100), eMd(14750)],
+    )
+    const c = r.porCanal[0]
+    expect(c.coincidencias).toEqual([{ monto: 27940, cantidad: 1 }])
+    expect(c.conEnvio).toHaveLength(2) // 15.100→13.970 ($1.130) y 14.750→13.970 ($780)
+    expect(c.soloMp).toEqual([{ monto: 4600, cantidad: 1 }])
+    expect(c.totalEnvios).toBe(1910)
+    expect(c.diferenciaSinEnvios).toBe(-4600) // lo que falta de verdad
+  })
+
+  it('NO empareja diferencias fuera del rango de envío', () => {
+    // dif $5.000 supera el máximo; dif $100 no llega al mínimo.
+    const r = conciliarMp([md(10000), md(20000)], [eMd(15000), eMd(20100)])
+    const c = r.porCanal[0]
+    expect(c.conEnvio).toEqual([])
+    expect(c.soloMp).toHaveLength(2)
+    expect(c.soloEncargado).toHaveLength(2)
+  })
+
+  it('NO empareja envíos cuando la dif supera el 25% del producto', () => {
+    // dif $2.000 está en rango absoluto pero es el 50% del producto de $4.000.
+    const r = conciliarMp([md(4000)], [eMd(6000)])
+    const c = r.porCanal[0]
+    expect(c.conEnvio).toEqual([])
+  })
+
+  it('NO empareja envíos en el canal QR de mostrador', () => {
+    const r = conciliarMp([qr(13970)], [eQr(15100)])
+    const c = r.porCanal.find((x) => x.canal === 'mercadopago')!
+    expect(c.conEnvio).toEqual([])
+    expect(c.soloMp).toHaveLength(1)
+    expect(c.soloEncargado).toHaveLength(1)
+  })
+
+  it('agrupa pares repetidos (mismo producto + mismo envío)', () => {
+    const r = conciliarMp([md(13970), md(13970)], [eMd(14750), eMd(14750)])
+    const c = r.porCanal[0]
+    expect(c.conEnvio).toEqual([{ montoEncargado: 14750, montoMp: 13970, envio: 780, cantidad: 2 }])
+    expect(c.cuadra).toBe(true)
+  })
+})

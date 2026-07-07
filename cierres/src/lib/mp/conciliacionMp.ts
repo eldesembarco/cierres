@@ -31,16 +31,30 @@ export interface ParMatch {
   cantidad: number
 }
 
+// Par "producto + envío" de Mercado Delivery: el encargado declara lo que pagó el
+// cliente (producto + envío) pero el settlement de MP liquida SOLO el producto —
+// el envío va al repartidor, nunca es ingreso del local. Detectado empíricamente:
+// difs fijas escalonadas ($590/$780/$1.130/$1.300...) repetidas en todos los locales.
+export interface ParEnvio {
+  montoEncargado: number // lo declarado (producto + envío)
+  montoMp: number // VALOR DE LA COMPRA del settlement (solo producto)
+  envio: number // la diferencia = costo de envío estimado
+  cantidad: number
+}
+
 export interface ConciliacionCanal {
   canal: CanalMp
   coincidencias: ParMatch[] // montos que aparecen en ambos (cantidad = pares emparejados)
+  conEnvio: ParEnvio[] // pares emparejados como producto+envío (solo mercado_pedidos)
   soloMp: ParMatch[] // MP lo cobró y el encargado NO lo cargó
   soloEncargado: ParMatch[] // el encargado lo cargó y MP no lo tiene
   totalMp: number
   totalEncargado: number
+  totalEnvios: number // suma de envíos detectados (no son ingreso del local)
   diferencia: number // totalEncargado - totalMp (positivo = cargó de más)
-  cuadra: boolean // el DETALLE empareja perfecto (nada suelto de ningún lado)
-  totalCuadra: boolean // el TOTAL coincide aunque el detalle no empareje
+  diferenciaSinEnvios: number // diferencia - totalEnvios: la diferencia REAL a revisar
+  cuadra: boolean // el DETALLE empareja perfecto (nada suelto; los pares con envío cuentan como matcheados)
+  totalCuadra: boolean // el TOTAL (sin envíos) coincide aunque el detalle no empareje
   // El encargado parece haber cargado EL TOTAL del día en vez de cada venta: cargó
   // pocas líneas y una ≈ la suma de varias operaciones de MP sin emparejar.
   probableTotalCargado: boolean
@@ -55,14 +69,31 @@ function multiset(items: { monto: number }[]): Map<number, number> {
   return m
 }
 
+// Rango plausible del costo de envío de Mercado Delivery (tiers reales observados:
+// $590 / $780 / $1.130 / $1.300 / $1.720 / $1.860). Solo emparejamos como
+// "producto + envío" si la dif cae acá Y es < 25% del producto: acota falsos pares.
+const ENVIO_MIN = 200
+const ENVIO_MAX = 3500
+
+function expandir(pares: ParMatch[]): number[] {
+  const out: number[] = []
+  for (const p of pares) for (let i = 0; i < p.cantidad; i++) out.push(p.monto)
+  return out.sort((a, b) => b - a)
+}
+
+function comprimir(montos: number[]): ParMatch[] {
+  const m = multiset(montos.map((x) => ({ monto: x })))
+  return [...m.entries()].sort((a, b) => b[0] - a[0]).map(([monto, cantidad]) => ({ monto, cantidad }))
+}
+
 function conciliarUnCanal(canal: CanalMp, mp: OperacionMp[], enc: LineaEncargado[]): ConciliacionCanal {
   const msMp = multiset(mp)
   const msEnc = multiset(enc)
   const montos = new Set<number>([...msMp.keys(), ...msEnc.keys()])
 
   const coincidencias: ParMatch[] = []
-  const soloMp: ParMatch[] = []
-  const soloEncargado: ParMatch[] = []
+  let soloMp: ParMatch[] = []
+  let soloEncargado: ParMatch[] = []
 
   for (const monto of [...montos].sort((a, b) => b - a)) {
     const cMp = msMp.get(monto) ?? 0
@@ -73,11 +104,42 @@ function conciliarUnCanal(canal: CanalMp, mp: OperacionMp[], enc: LineaEncargado
     if (cEnc > cMp) soloEncargado.push({ monto, cantidad: cEnc - cMp })
   }
 
+  // Segunda pasada (solo Mercado Delivery): emparejar "producto + envío". Para cada
+  // línea del encargado sin par exacto, buscar la operación MP más cercana POR DEBAJO
+  // cuya dif caiga en el rango de envío. Greedy de mayor a menor.
+  const conEnvio: ParEnvio[] = []
+  if (canal === 'mercado_pedidos' && soloEncargado.length && soloMp.length) {
+    const encSueltos = expandir(soloEncargado)
+    const mpSueltos = expandir(soloMp)
+    const encRestantes: number[] = []
+    for (const e of encSueltos) {
+      let best = -1
+      let bestDif = Infinity
+      mpSueltos.forEach((m, i) => {
+        const dif = round2(e - m)
+        if (dif < ENVIO_MIN || dif > ENVIO_MAX || dif > m * 0.25) return
+        if (dif < bestDif) { bestDif = dif; best = i }
+      })
+      if (best >= 0) {
+        const m = mpSueltos.splice(best, 1)[0]
+        const previo = conEnvio.find((p) => p.montoEncargado === e && p.montoMp === m)
+        if (previo) previo.cantidad += 1
+        else conEnvio.push({ montoEncargado: e, montoMp: m, envio: round2(e - m), cantidad: 1 })
+      } else {
+        encRestantes.push(e)
+      }
+    }
+    soloEncargado = comprimir(encRestantes)
+    soloMp = comprimir(mpSueltos)
+  }
+
   const totalMp = round2(mp.reduce((s, o) => s + o.monto, 0))
   const totalEncargado = round2(enc.reduce((s, o) => s + o.monto, 0))
+  const totalEnvios = round2(conEnvio.reduce((s, p) => s + p.envio * p.cantidad, 0))
   const diferencia = round2(totalEncargado - totalMp)
+  const diferenciaSinEnvios = round2(diferencia - totalEnvios)
   const cuadra = soloMp.length === 0 && soloEncargado.length === 0
-  const totalCuadra = Math.abs(diferencia) <= Math.max(1, round2(totalMp * 0.005))
+  const totalCuadra = Math.abs(diferenciaSinEnvios) <= Math.max(1, round2(totalMp * 0.005))
 
   // "Cargó el total": el encargado cargó pocas líneas y una de ellas ≈ la suma de
   // varias operaciones de MP sin emparejar → cargó el total del día, no cada venta.
@@ -92,11 +154,14 @@ function conciliarUnCanal(canal: CanalMp, mp: OperacionMp[], enc: LineaEncargado
   return {
     canal,
     coincidencias,
+    conEnvio,
     soloMp,
     soloEncargado,
     totalMp,
     totalEncargado,
+    totalEnvios,
     diferencia,
+    diferenciaSinEnvios,
     cuadra,
     totalCuadra,
     probableTotalCargado,

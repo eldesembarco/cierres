@@ -6,7 +6,7 @@ import { formatMoney } from '@/lib/money'
 import { conciliarLocalDia } from '@/lib/mp/conciliarLocalDia'
 import { ayerAr } from '@/lib/fecha'
 import type { ConciliacionCanal } from '@/lib/mp/conciliacionMp'
-import { GitCompareArrows, Lock, CheckCircle2, AlertTriangle, Inbox } from 'lucide-react'
+import { GitCompareArrows, Lock, CheckCircle2, AlertTriangle, Inbox, Truck } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -122,11 +122,22 @@ function CanalCard({ c }: { c: ConciliacionCanal }) {
         </div>
         <div className="text-right text-xs">
           <div className="text-slate-500">MP {formatMoney(c.totalMp)} · Encargado {formatMoney(c.totalEncargado)}</div>
-          <div className={`font-semibold tabular-nums ${c.diferencia === 0 ? 'text-emerald-700' : cfg.dif}`}>
-            Diferencia {formatMoney(c.diferencia)}
+          <div className={`font-semibold tabular-nums ${c.diferenciaSinEnvios === 0 ? 'text-emerald-700' : cfg.dif}`}>
+            Diferencia {formatMoney(c.diferenciaSinEnvios)}
+            {c.totalEnvios > 0 && <span className="ml-1 font-normal text-slate-500">(+{formatMoney(c.totalEnvios)} de envíos)</span>}
           </div>
         </div>
       </div>
+      {c.totalEnvios > 0 && (
+        <div className="flex items-start gap-2 border-b border-sky-100 bg-sky-50/60 px-4 py-2.5 text-xs text-sky-800">
+          <Truck size={15} className="mt-0.5 shrink-0 text-sky-600" />
+          <span>
+            <b>{c.conEnvio.reduce((s, p) => s + p.cantidad, 0)} pedido{c.conEnvio.reduce((s, p) => s + p.cantidad, 0) === 1 ? '' : 's'} con costo de envío</b> ({formatMoney(c.totalEnvios)} en total):
+            el encargado declara lo que pagó el cliente (producto + envío) pero MP liquida solo el producto.
+            El envío no es ingreso del local — no cuenta como diferencia.
+          </span>
+        </div>
+      )}
       {c.probableTotalCargado && (
         <div className="flex items-start gap-2 border-b border-amber-200 bg-amber-50/60 px-4 py-2.5 text-xs text-amber-800">
           <AlertTriangle size={15} className="mt-0.5 shrink-0 text-amber-600" />
@@ -137,7 +148,19 @@ function CanalCard({ c }: { c: ConciliacionCanal }) {
         </div>
       )}
       <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-3">
-        <Columna titulo="Coinciden" tono="emerald" filas={c.coincidencias} vacio="—" />
+        <div>
+          <Columna titulo="Coinciden" tono="emerald" filas={c.coincidencias} vacio={c.conEnvio.length ? '' : '—'} />
+          {c.conEnvio.length > 0 && (
+            <ul className="mt-1 flex flex-col gap-1">
+              {c.conEnvio.map((p, i) => (
+                <li key={i} className="flex items-center justify-between rounded-md bg-sky-50 px-2 py-1 text-sm tabular-nums" title={`MP liquidó ${formatMoney(p.montoMp)} + envío ${formatMoney(p.envio)}`}>
+                  <span className="text-slate-800">{formatMoney(p.montoEncargado)}</span>
+                  <span className="text-xs text-sky-600">envío {formatMoney(p.envio)}{p.cantidad > 1 ? ` ×${p.cantidad}` : ''}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
         <Columna titulo="MP cobró, no se cargó" tono="red" filas={c.soloMp} vacio="Nada pendiente" />
         <Columna titulo="Se cargó, MP no lo tiene" tono="amber" filas={c.soloEncargado} vacio="Nada de más" />
       </div>
