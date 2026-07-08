@@ -65,6 +65,20 @@ const QUERIES = {
     FROM dbo.vw_VentasPorArticulo
     WHERE FECHA BETWEEN @desde AND @hasta
     ORDER BY FECHA, ID_SUCURSAL, COD_ARTICULO;`,
+  '/consumo-insumos': `
+    SELECT CONVERT(varchar(10), FECHA, 23) AS fecha, ID_SUCURSAL AS id_sucursal,
+           COD_ARTICULO AS cod_articulo, DESCRIPCION AS descripcion, RUBRO AS rubro,
+           UNIDAD AS unidad, CANTIDAD AS cantidad
+    FROM dbo.vw_ConsumoInsumos
+    WHERE FECHA BETWEEN @desde AND @hasta
+    ORDER BY FECHA, ID_SUCURSAL, COD_ARTICULO;`,
+  '/comandas-anuladas': `
+    SELECT CONVERT(varchar(10), FECHA, 23) AS fecha, ID_SUCURSAL AS id_sucursal,
+           CONVERT(varchar(19), FECHA_HORA, 120) AS fecha_hora,
+           IMPORTE AS importe, TIPO_PEDIDO AS tipo_pedido, CUBIERTOS AS cubiertos
+    FROM dbo.vw_ComandasAnuladas
+    WHERE FECHA BETWEEN @desde AND @hasta
+    ORDER BY FECHA, ID_SUCURSAL, FECHA_HORA;`,
 }
 
 const isFecha = (s) => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s)
