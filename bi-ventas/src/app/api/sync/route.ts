@@ -1,9 +1,19 @@
 // Sincroniza la venta de Tango (hora + artículo) a nuestra base.
-// GET: cron de Vercel (Authorization: Bearer CRON_SECRET). Default: ayer.
+// GET: cron de Vercel (Authorization: Bearer CRON_SECRET). Default: los últimos
+// 3 días — no solo ayer — porque el sincronizador propio de Tango (locales →
+// server central) a veces se atrasa y repone datos tarde; re-traer la ventanita
+// hace que esos días se completen solos (el sync es idempotente por fecha).
 // POST: manual con x-sync-secret (SYNC_SECRET), con ?desde&hasta para backfill.
 import { ayerAr } from '@/lib/fecha'
 import { syncVentasTango } from '@/lib/tango/syncVentas'
 import { TangoBridgeError } from '@/lib/tango/ventasBridge'
+
+const DIAS_VENTANA = 3
+
+function haceDias(n: number): string {
+  const ayer = new Date(`${ayerAr()}T00:00:00.000Z`)
+  return new Date(ayer.getTime() - n * 86_400_000).toISOString().slice(0, 10)
+}
 
 export const maxDuration = 60
 
@@ -29,8 +39,9 @@ export async function GET(request: Request) {
     return Response.json({ error: 'No autorizado' }, { status: 401 })
   }
   const { searchParams } = new URL(request.url)
-  const fecha = searchParams.get('fecha') ?? ayerAr()
-  return correr(fecha, fecha)
+  const fecha = searchParams.get('fecha')
+  if (fecha) return correr(fecha, fecha)
+  return correr(haceDias(DIAS_VENTANA - 1), ayerAr())
 }
 
 export async function POST(request: Request) {
