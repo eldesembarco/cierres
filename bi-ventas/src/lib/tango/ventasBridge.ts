@@ -34,6 +34,16 @@ export interface VentaArticuloRow {
   importe: number
 }
 
+export interface ConsumoInsumoRow {
+  fecha: string
+  id_sucursal: number
+  cod_articulo: string
+  descripcion: string
+  rubro?: string | null
+  unidad?: string | null
+  cantidad: number
+}
+
 async function fetchBridge<T>(path: string, desde: string, hasta: string): Promise<T[]> {
   const base = await getBridgeBaseUrl()
   const secret = process.env.TANGO_BRIDGE_SECRET
@@ -77,4 +87,9 @@ export function fetchVentasHoras(desde: string, hasta: string): Promise<VentaHor
 /** Venta por artículo del rango [desde, hasta] (YYYY-MM-DD, inclusive), todas las sucursales. */
 export function fetchVentasArticulos(desde: string, hasta: string): Promise<VentaArticuloRow[]> {
   return fetchBridge<VentaArticuloRow>('/ventas-articulos', desde, hasta)
+}
+
+/** Consumo de insumos por local del rango [desde, hasta] (vw_ConsumoInsumos). */
+export function fetchConsumoInsumos(desde: string, hasta: string): Promise<ConsumoInsumoRow[]> {
+  return fetchBridge<ConsumoInsumoRow>('/consumo-insumos', desde, hasta)
 }

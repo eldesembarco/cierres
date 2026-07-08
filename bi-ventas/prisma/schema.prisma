@@ -46,6 +46,7 @@ model Local {
   activo              Boolean              @default(true)
   ventasTangoHora     VentaTangoHora[]
   ventasTangoArticulo VentaTangoArticulo[]
+  consumosInsumoTango ConsumoInsumoTango[]
   @@map("locales")
 }
 
@@ -89,11 +90,28 @@ model VentaTangoArticulo {
   @@map("venta_tango_articulo")
 }
 
+// Consumo de insumos (materia prima/empaque) por local/fecha, desde vw_ConsumoInsumos.
+model ConsumoInsumoTango {
+  id          Int      @id @default(autoincrement())
+  local       Local    @relation(fields: [localId], references: [id])
+  localId     Int      @map("local_id")
+  fecha       DateTime @db.Date
+  codigo      String
+  descripcion String
+  rubro       String?
+  unidad      String?
+  cantidad    Decimal  @default(0) @db.Decimal(14, 3)
+  @@unique([localId, fecha, codigo])
+  @@index([fecha])
+  @@map("consumo_insumo_tango")
+}
+
 model VentaTangoSync {
   id             Int      @id @default(autoincrement())
   fecha          DateTime @unique @db.Date
   filasHoras     Int      @default(0) @map("filas_horas")
   filasArticulos Int      @default(0) @map("filas_articulos")
+  filasInsumos   Int      @default(0) @map("filas_insumos")
   sincronizadoEn DateTime @default(now()) @map("sincronizado_en")
   @@map("venta_tango_sync")
 }

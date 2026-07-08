@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from 'next/font/google'
 import './globals.css'
 import { auth, signOut } from '@/lib/auth/auth'
 import { TrendingUp, LogOut } from 'lucide-react'
+import { Nav } from '@/components/Nav'
 
 const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] })
 const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] })
@@ -32,6 +33,9 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
               <div>
                 <div className="text-sm font-semibold leading-tight text-slate-900">BI Ventas</div>
                 <div className="text-xs leading-tight text-slate-500">Grupo Desembarco</div>
+              </div>
+              <div className="ml-3">
+                <Nav />
               </div>
               <div className="ml-auto flex items-center gap-3">
                 <span className="hidden text-sm text-slate-500 sm:block">{session.user.name}</span>

@@ -1,93 +1,57 @@
-# Handoff para sistemas: ventas por hora y por artículo en el bridge de Tango
+# Bridge de Tango (SRVTANGO): estado y pendiente de insumos
 
-Para el BI de ventas de los locales necesitamos que el bridge (`tango-bridge.mjs`,
-el mismo que hoy expone `/cobros` sobre `vw_CobrosDiarios`) sume **dos endpoints**
-que lean **dos vistas nuevas**. Además seguimos necesitando el **hostname fijo**
-del túnel de Cloudflare (el quick-tunnel `trycloudflare.com` se cae cada vez que
-se reinicia la máquina; hoy 04/07 está caído de nuevo).
+> Actualizado 2026-07-08. El plan original de este doc (pedirle los endpoints a
+> sistemas) quedó obsoleto: el bridge ahora es **nuestro** (`C:\tango-bridge` en
+> SRVTANGO, copia de referencia en `cierres/scripts/tango-bridge/`), con túnel
+> Cloudflare y auto-registro de URL. Los updates al server se hacen pegando
+> bloques de PowerShell/SQL en el server (RDP), como en la instalación.
 
-## Endpoint 1: `GET /ventas-horas?desde=YYYY-MM-DD&hasta=YYYY-MM-DD`
+## Ya funcionando
 
-Mismo esquema de auth que `/cobros` (header `x-bridge-secret`). Devuelve JSON:
+- `/cobros` (vw_CobrosDiarios), `/ventas-horas` (vw_VentasPorHora, hora por
+  `DATEPART(hour, e.FECHA)` + `FECHA_COMERCIAL`), `/ventas-articulos`
+  (vw_VentasPorArticulo, importe prorrateado = Z exacto).
+- BI backfilleado desde 2026-06-01 y sync diario.
 
-```json
-[
-  { "fecha": "2026-07-02", "id_sucursal": 4, "hora": 12, "importe": 152340.50, "tickets": 18 }
-]
-```
+## Pendiente: `/consumo-insumos` (informe de insumos por local)
 
-- Una fila por (fecha, sucursal, hora) con la **venta facturada** de esa hora
-  (misma definición que el Z: comprobantes de venta, netos de anulaciones) y la
-  cantidad de tickets/comprobantes.
-- `hora`: 0–23, hora local de emisión del comprobante.
-- Todas las sucursales está bien (nosotros filtramos las propias por `id_sucursal`).
+El endpoint ya está agregado a la copia de referencia del bridge
+(`tango-bridge.mjs`, query sobre `dbo.vw_ConsumoInsumos`) y la app ya tiene
+tabla, sync tolerante y pantalla `/insumos`. Faltan dos pasos en el server:
 
-## Endpoint 2: `GET /ventas-articulos?desde=YYYY-MM-DD&hasta=YYYY-MM-DD`
+### 1. Crear la vista `vw_ConsumoInsumos` en CENTRAL_ESTADISTICA
 
-```json
-[
-  { "fecha": "2026-07-02", "id_sucursal": 4, "cod_articulo": "030009", "descripcion": "CIABATTA", "rubro": "PANES", "cantidad": 42.0, "importe": 98700.00 }
-]
-```
+Contrato que espera el bridge (columnas exactas):
 
-- Una fila por (fecha, sucursal, artículo): cantidad vendida e importe facturado
-  (renglones de los comprobantes de venta, netos de anulaciones/NC).
-- `rubro` es opcional pero muy útil (agrupar burgers vs extras vs bebidas): si el
-  artículo tiene rubro/familia en Tango, mandarlo; si no, `null`.
+| columna       | tipo         | contenido                                  |
+| ------------- | ------------ | ------------------------------------------ |
+| FECHA         | date         | día del consumo                            |
+| ID_SUCURSAL   | int          | sucursal Tango                             |
+| COD_ARTICULO  | varchar      | código del insumo                          |
+| DESCRIPCION   | varchar      | descripción del insumo                     |
+| RUBRO         | varchar/null | rubro/familia (materia prima, empaque, …)  |
+| UNIDAD        | varchar/null | unidad de stock (KG/LT/UN)                 |
+| CANTIDAD      | numeric      | cantidad consumida ese día en esa sucursal |
 
-## Vistas sugeridas (borrador — VALIDAR contra el esquema real)
+La fuente depende de cómo esté armado Tango (a definir mirando el esquema):
 
-Ustedes conocen el esquema real (armaron `vw_CobrosDiarios` en
-`CENTRAL_ESTADISTICA`); esto es orientativo sobre tablas estándar de Tango
-(cabecera y renglones de comprobantes de ventas + maestro de artículos):
+1. **Si los artículos de venta tienen fórmula/composición** y el stock descuenta
+   insumos por venta → movimientos de stock de egreso por venta. Opción ideal.
+2. **Si no hay fórmulas** → egresos/remitos del CDP hacia cada sucursal
+   (lo enviado ≈ lo consumido, con desfase de días). Aproximación aceptable.
 
-```sql
--- vw_VentasPorHora: venta e importe por sucursal/fecha/hora.
--- Cabecera de comprobantes de venta (facturas/tickets, excluir anulados;
--- las NC restan). Si la cabecera no guarda hora de emisión, usar el campo
--- de hora del POS/Tiendas.
-CREATE VIEW vw_VentasPorHora AS
-SELECT
-  CAST(c.FECHA_EMIS AS date)        AS fecha,
-  c.ID_SUCURSAL                     AS id_sucursal,
-  DATEPART(hour, c.HORA_EMIS)       AS hora,          -- VALIDAR nombre del campo
-  SUM(c.IMPORTE_TOTAL * CASE WHEN c.TIPO = 'NC' THEN -1 ELSE 1 END) AS importe,
-  COUNT(*)                          AS tickets
-FROM <comprobantes_venta_cabecera> c
-WHERE c.ANULADO = 0
-GROUP BY CAST(c.FECHA_EMIS AS date), c.ID_SUCURSAL, DATEPART(hour, c.HORA_EMIS);
+Para decidir entre 1 y 2 hay que explorar el esquema real:
+`docs/sql/exploracion-insumos.sql` (se corre en SSMS del server, o directo desde
+la máquina de Pablo si autoriza la consulta de lectura al SQL de SRVTANGO).
 
--- vw_VentasPorArticulo: cantidad e importe por sucursal/fecha/artículo.
-CREATE VIEW vw_VentasPorArticulo AS
-SELECT
-  CAST(c.FECHA_EMIS AS date)  AS fecha,
-  c.ID_SUCURSAL               AS id_sucursal,
-  r.COD_ARTICU                AS cod_articulo,
-  a.DESCRIPCIO                AS descripcion,
-  a.RUBRO                     AS rubro,               -- o NULL si no manejan rubro
-  SUM(r.CANTIDAD * CASE WHEN c.TIPO = 'NC' THEN -1 ELSE 1 END) AS cantidad,
-  SUM(r.IMPORTE  * CASE WHEN c.TIPO = 'NC' THEN -1 ELSE 1 END) AS importe
-FROM <comprobantes_venta_renglones> r
-JOIN <comprobantes_venta_cabecera> c ON c.ID_COMPROBANTE = r.ID_COMPROBANTE
-JOIN <maestro_articulos> a ON a.COD_ARTICU = r.COD_ARTICU
-WHERE c.ANULADO = 0
-GROUP BY CAST(c.FECHA_EMIS AS date), c.ID_SUCURSAL, r.COD_ARTICU, a.DESCRIPCIO, a.RUBRO;
-```
+### 2. Actualizar el bridge en el server
 
-**Criterio clave:** la suma diaria de cualquiera de las dos vistas para una
-sucursal tiene que dar (aprox.) el **Z del día** de esa sucursal — así validamos
-que la fuente es venta y no cobros. Ejemplo de control: Microcentro 02/07 debe dar
-≈ $1.610.516 (no $720.916 como da `/cobros`).
+Copiar el `tango-bridge.mjs` actualizado a `C:\tango-bridge\` y reiniciar la
+tarea programada TangoBridge (o el proceso node). El endpoint nuevo responde 404
+hasta ese momento y el sync de la app lo tolera (sincroniza ventas igual y avisa).
 
-## En el bridge (`tango-bridge.mjs`)
+## Otros pendientes
 
-Duplicar el handler de `/cobros` cambiando la vista y los parámetros; mismos
-`desde`/`hasta`, mismo `x-bridge-secret`, mismo formato de error. Nada más.
-
-## Checklist
-
-- [ ] Vista `vw_VentasPorHora` (validada contra el Z de un día conocido)
-- [ ] Vista `vw_VentasPorArticulo` (misma validación de total)
-- [ ] Endpoints `/ventas-horas` y `/ventas-articulos` en el bridge
-- [ ] Hostname fijo del túnel (named tunnel de Cloudflare, no quick-tunnel)
-- [ ] Pasarnos la URL nueva para actualizar `TANGO_BRIDGE_URL`
+- [ ] `TANGO_BRIDGE_SECRET` en los env de Vercel (bi-ventas y cierres) — sin eso
+      el cron diario no autentica contra el bridge (el sync manual local sí).
+- [ ] Hostname fijo del túnel (named tunnel) — mitigado por el auto-registro.

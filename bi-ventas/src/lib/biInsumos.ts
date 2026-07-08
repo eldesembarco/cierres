@@ -1,0 +1,156 @@
+// Consultas del informe de insumos (/insumos): cuánto insumo consume cada local,
+// sobre los agregados sincronizados de Tango (consumo_insumo_tango). El detalle
+// por local se normaliza por facturación (venta_tango_hora) para poder comparar
+// locales de distinto tamaño.
+import { prisma } from '@/lib/db'
+import { round2 } from '@/lib/money'
+
+export interface FiltroInsumos {
+  desde: string // YYYY-MM-DD inclusive
+  hasta: string
+  localId?: number // undefined = todos
+  rubro?: string
+  q?: string // búsqueda por descripción
+}
+
+export interface InsumoBi {
+  codigo: string
+  descripcion: string
+  rubro: string | null
+  unidad: string | null
+  cantidad: number
+}
+
+export interface InsumoLocalBi {
+  localId: number
+  nombre: string
+  marca: string
+  cantidad: number
+  facturacion: number
+  /** Cantidad de insumo por cada $1.000.000 facturados (null si no hay venta sincronizada). */
+  porMillon: number | null
+}
+
+export interface DetalleInsumo {
+  codigo: string
+  descripcion: string
+  unidad: string | null
+  totalCantidad: number
+  locales: InsumoLocalBi[]
+}
+
+export interface ResumenInsumos {
+  insumos: InsumoBi[]
+  rubros: string[]
+  detalle: DetalleInsumo | null
+  ultimaSyncInsumos: string | null // última fecha con filas de insumos
+  diasSinInsumos: number // días del rango sin datos de insumos
+  sinDatos: boolean // no hay NINGÚN dato de insumos en la base
+}
+
+const fechaDb = (ymd: string) => new Date(`${ymd}T00:00:00.000Z`)
+const ymd = (d: Date) => d.toISOString().slice(0, 10)
+
+function whereRango(f: FiltroInsumos) {
+  return {
+    fecha: { gte: fechaDb(f.desde), lte: fechaDb(f.hasta) },
+    ...(f.localId != null ? { localId: f.localId } : {}),
+    ...(f.rubro ? { rubro: f.rubro } : {}),
+    ...(f.q ? { descripcion: { contains: f.q, mode: 'insensitive' as const } } : {}),
+  }
+}
+
+export async function resumenInsumos(f: FiltroInsumos, insumoDetalle?: string): Promise<ResumenInsumos> {
+  const [porInsumo, rubrosRaw, ultimaConInsumos, syncsRango, totalFilas] = await Promise.all([
+    prisma.consumoInsumoTango.groupBy({
+      by: ['codigo'],
+      where: whereRango(f),
+      _sum: { cantidad: true },
+      _max: { descripcion: true, rubro: true, unidad: true },
+    }),
+    prisma.consumoInsumoTango.findMany({
+      where: { rubro: { not: null } },
+      select: { rubro: true },
+      distinct: ['rubro'],
+      orderBy: { rubro: 'asc' },
+    }),
+    prisma.ventaTangoSync.findFirst({ where: { filasInsumos: { gt: 0 } }, orderBy: { fecha: 'desc' } }),
+    prisma.ventaTangoSync.count({
+      where: { fecha: { gte: fechaDb(f.desde), lte: fechaDb(f.hasta) }, filasInsumos: { gt: 0 } },
+    }),
+    prisma.consumoInsumoTango.count(),
+  ])
+
+  const insumos: InsumoBi[] = porInsumo
+    .map((r) => ({
+      codigo: r.codigo,
+      descripcion: r._max.descripcion ?? r.codigo,
+      rubro: r._max.rubro ?? null,
+      unidad: r._max.unidad ?? null,
+      cantidad: Number(r._sum.cantidad ?? 0),
+    }))
+    .sort((a, b) => a.descripcion.localeCompare(b.descripcion, 'es'))
+
+  const diasRango = Math.round((fechaDb(f.hasta).getTime() - fechaDb(f.desde).getTime()) / 86_400_000) + 1
+
+  let detalle: DetalleInsumo | null = null
+  if (insumoDetalle) {
+    const [porLocal, ventaPorLocal, locales] = await Promise.all([
+      prisma.consumoInsumoTango.groupBy({
+        by: ['localId'],
+        where: {
+          fecha: { gte: fechaDb(f.desde), lte: fechaDb(f.hasta) },
+          codigo: insumoDetalle,
+        },
+        _sum: { cantidad: true },
+        _max: { descripcion: true, unidad: true },
+      }),
+      prisma.ventaTangoHora.groupBy({
+        by: ['localId'],
+        where: { fecha: { gte: fechaDb(f.desde), lte: fechaDb(f.hasta) } },
+        _sum: { monto: true },
+      }),
+      prisma.local.findMany({
+        where: { tangoSucursalId: { not: null } },
+        select: { id: true, nombre: true, marca: { select: { nombre: true } } },
+      }),
+    ])
+    const nombrePorLocal = new Map(locales.map((l) => [l.id, { nombre: l.nombre, marca: l.marca.nombre }]))
+    const ventaLocal = new Map(ventaPorLocal.map((r) => [r.localId, Number(r._sum.monto ?? 0)]))
+
+    const localesBi: InsumoLocalBi[] = porLocal
+      .map((r) => {
+        const cantidad = Number(r._sum.cantidad ?? 0)
+        const facturacion = round2(ventaLocal.get(r.localId) ?? 0)
+        const info = nombrePorLocal.get(r.localId)
+        return {
+          localId: r.localId,
+          nombre: info?.nombre ?? `Local ${r.localId}`,
+          marca: info?.marca ?? '',
+          cantidad,
+          facturacion,
+          porMillon: facturacion > 0 ? cantidad / (facturacion / 1_000_000) : null,
+        }
+      })
+      .sort((a, b) => b.cantidad - a.cantidad)
+
+    if (porLocal.length > 0) {
+      detalle = {
+        codigo: insumoDetalle,
+        descripcion: porLocal[0]._max.descripcion ?? insumoDetalle,
+        unidad: porLocal[0]._max.unidad ?? null,
+        totalCantidad: localesBi.reduce((s, l) => s + l.cantidad, 0),
+        locales: localesBi,
+      }
+    }
+  }
+
+  return {
+    insumos,
+    rubros: rubrosRaw.map((r) => r.rubro as string),
+    detalle,
+    ultimaSyncInsumos: ultimaConInsumos ? ymd(ultimaConInsumos.fecha) : null,
+    diasSinInsumos: Math.max(0, diasRango - syncsRango),
+    sinDatos: totalFilas === 0,
+  }
+}
