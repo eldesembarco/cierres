@@ -1,9 +1,10 @@
+import { auth } from '@/lib/auth/auth'
+import { puedeVerFinanzas } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db'
 import { formatMoney } from '@/lib/money'
 import { hoyAr, primerDiaDelMesAr } from '@/lib/fecha'
-import { resumenAnuladas } from '@/lib/biAnuladas'
-import { BiTabs } from '@/components/BiTabs'
-import { Ban, Inbox, AlertTriangle, Store, Bike } from 'lucide-react'
+import { resumenAnuladas } from '@/lib/tango/anuladas'
+import { Ban, Lock, Inbox, AlertTriangle, Store, Bike } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -13,7 +14,19 @@ type SearchParams = Promise<{ desde?: string; hasta?: string; localId?: string }
 const YMD = /^\d{4}-\d{2}-\d{2}$/
 const formatInt = (n: number) => Math.round(n).toLocaleString('es-AR')
 
-export default async function AnuladasPage({ searchParams }: { searchParams: SearchParams }) {
+export default async function AnulacionesPage({ searchParams }: { searchParams: SearchParams }) {
+  const session = await auth()
+  if (!session || !puedeVerFinanzas(session.user.rol)) {
+    return (
+      <main className="mx-auto w-full max-w-6xl px-4 py-6">
+        <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-5 text-slate-600 shadow-sm">
+          <Lock size={18} className="text-slate-400" />
+          <p>No tenés permiso para ver el informe de anulaciones.</p>
+        </div>
+      </main>
+    )
+  }
+
   const sp = await searchParams
   const desde = sp.desde && YMD.test(sp.desde) ? sp.desde : primerDiaDelMesAr()
   const hasta = sp.hasta && YMD.test(sp.hasta) && sp.hasta >= desde ? sp.hasta : hoyAr()
@@ -30,15 +43,14 @@ export default async function AnuladasPage({ searchParams }: { searchParams: Sea
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-6">
-      <BiTabs actual="/anuladas" />
       <div className="mb-1 flex items-center gap-2">
         <Ban size={20} className="text-slate-500" />
-        <h1 className="text-xl font-semibold text-slate-900">Comandas anuladas</h1>
+        <h1 className="text-xl font-semibold text-slate-900">Anulaciones — comandas anuladas en Tango</h1>
       </div>
       <p className="mb-5 text-sm text-slate-500">
-        Comandas <b>anuladas en Tango</b> por local. Las anuladas <b>con importe</b> son las que hay que auditar
-        (una venta que estuvo cargada y se borró); las de $0 son mesas/pedidos cancelados antes de cobrar.
-        {r.ultimaSync && <> Última sincronización con datos: <b>{r.ultimaSync}</b>.</>}
+        Cada comanda <b>anulada en Tango</b>, por local. Las anuladas <b>con importe</b> son las auditables (una
+        venta que estuvo cargada y se borró); las de $0 son mesas/pedidos cancelados antes de cobrar.
+        {r.ultimaSync && <> Datos hasta el <b>{r.ultimaSync}</b> (se sincroniza cada mañana).</>}
       </p>
 
       {/* Filtros */}
@@ -69,7 +81,6 @@ export default async function AnuladasPage({ searchParams }: { searchParams: Sea
         <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-slate-300 bg-white px-4 py-12 text-center shadow-sm">
           <Inbox size={32} className="text-slate-300" />
           <p className="text-sm text-slate-600">Todavía no hay anulaciones sincronizadas.</p>
-          <p className="text-xs text-slate-400">El sync diario las trae solo; también podés sincronizar desde la pestaña Ventas.</p>
         </div>
       ) : (
         <>

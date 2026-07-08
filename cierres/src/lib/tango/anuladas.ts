@@ -1,7 +1,7 @@
-// Consultas del informe de anulaciones (/anuladas): comandas anuladas en Tango
-// (ESTADO='X') por local, sobre los agregados sincronizados (comanda_anulada_tango).
-// El indicador clave es el % anulado sobre la facturación del mismo período: una
-// anulación con importe es plata que estuvo cobrada/cargada y se borró.
+// Informe de anulaciones (/anulaciones): comandas anuladas en Tango (ESTADO='X')
+// por local, sobre la tabla sincronizada por el BI (comanda_anulada_tango, base
+// compartida). Es CONTROL DE CAJA: una anulación con importe es una venta que
+// estuvo cargada y se borró; el indicador clave es el % sobre la facturación.
 import { prisma } from '@/lib/db'
 import { round2 } from '@/lib/money'
 
@@ -11,15 +11,15 @@ export interface FiltroAnuladas {
   localId?: number // undefined = todos
 }
 
-export interface AnuladasLocalBi {
+export interface AnuladasLocal {
   localId: number
   nombre: string
   marca: string
   cantidad: number
-  conImporte: number // anuladas con importe > 0 (las que hay que mirar)
+  conImporte: number // anuladas con importe > 0 (las auditables)
   importe: number
-  salon: number // cantidad tipo 'R'
-  delivery: number // cantidad tipo 'D'
+  salon: number // tipo 'R'
+  delivery: number // tipo 'D'
   facturacion: number
   /** % del importe anulado sobre la facturación del período (null sin venta). */
   pctVenta: number | null
@@ -41,7 +41,7 @@ export interface ResumenAnuladas {
   totalImporte: number
   facturacion: number
   pctVenta: number | null
-  porLocal: AnuladasLocalBi[]
+  porLocal: AnuladasLocal[]
   detalle: AnuladaDetalle[] // anuladas con importe, más recientes primero (cap)
   detalleRecortado: boolean
   ultimaSync: string | null
@@ -76,7 +76,7 @@ export async function resumenAnuladas(f: FiltroAnuladas): Promise<ResumenAnulada
   const nombrePorLocal = new Map(locales.map((l) => [l.id, { nombre: l.nombre, marca: l.marca.nombre }]))
   const ventaLocal = new Map(ventaPorLocal.map((r) => [r.localId, round2(Number(r._sum.monto ?? 0))]))
 
-  const acc = new Map<number, AnuladasLocalBi>()
+  const acc = new Map<number, AnuladasLocal>()
   for (const r of filas) {
     const info = nombrePorLocal.get(r.localId)
     const e = acc.get(r.localId) ?? {

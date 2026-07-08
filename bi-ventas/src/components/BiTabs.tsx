@@ -1,11 +1,10 @@
 import Link from 'next/link'
-import { TrendingUp, Package, Ban } from 'lucide-react'
+import { TrendingUp, Package } from 'lucide-react'
 
 // Pestañas del BI. `actual` = pathname de la página que la renderiza.
 const TABS = [
   { href: '/', label: 'Ventas', icon: TrendingUp },
   { href: '/insumos', label: 'Insumos', icon: Package },
-  { href: '/anuladas', label: 'Anulaciones', icon: Ban },
 ] as const
 
 export function BiTabs({ actual }: { actual: string }) {
