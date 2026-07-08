@@ -5,6 +5,21 @@
 import { prisma } from '@/lib/db'
 import { round2 } from '@/lib/money'
 
+// Motivos que puede elegir el local al justificar una anulación.
+export const MOTIVOS_ANULACION = [
+  ['error_carga', 'Error de carga / se rehízo la comanda'],
+  ['cliente_cancelo', 'El cliente canceló'],
+  ['demora', 'Demora / el pedido no salió'],
+  ['reclamo', 'Reclamo o devolución'],
+  ['prueba', 'Prueba / capacitación'],
+  ['otro', 'Otro (detallar)'],
+] as const
+export const MOTIVO_LABEL: Record<string, string> = Object.fromEntries(MOTIVOS_ANULACION)
+
+// Clave natural que sobrevive a los resyncs (la fila de la anulada se recrea).
+export const claveAnulada = (localId: number, fechaHora: Date, importe: number) =>
+  `${localId}|${fechaHora.getTime()}|${importe.toFixed(2)}`
+
 export interface FiltroAnuladas {
   desde: string // YYYY-MM-DD inclusive
   hasta: string
@@ -23,6 +38,13 @@ export interface AnuladasLocal {
   facturacion: number
   /** % del importe anulado sobre la facturación del período (null sin venta). */
   pctVenta: number | null
+  sinJustificar: number // anuladas con importe que el local todavía no justificó
+}
+
+export interface JustificacionInfo {
+  motivo: string
+  detalle: string | null
+  porNombre: string
 }
 
 export interface AnuladaDetalle {
@@ -30,15 +52,18 @@ export interface AnuladaDetalle {
   nombre: string
   fecha: string
   hora: string // HH:mm
+  fechaHoraIso: string // clave para justificar (sobrevive resyncs)
   importe: number
   tipoPedido: string | null
   cubiertos: number
+  justificacion: JustificacionInfo | null
 }
 
 export interface ResumenAnuladas {
   totalCantidad: number
   totalConImporte: number
   totalImporte: number
+  totalSinJustificar: number
   facturacion: number
   pctVenta: number | null
   porLocal: AnuladasLocal[]
@@ -58,7 +83,7 @@ export async function resumenAnuladas(f: FiltroAnuladas): Promise<ResumenAnulada
     ...(f.localId != null ? { localId: f.localId } : {}),
   }
 
-  const [filas, ventaPorLocal, locales, ultimaConAnuladas, totalFilas] = await Promise.all([
+  const [filas, ventaPorLocal, locales, ultimaConAnuladas, totalFilas, justificaciones] = await Promise.all([
     prisma.comandaAnuladaTango.findMany({ where: whereRango }),
     prisma.ventaTangoHora.groupBy({
       by: ['localId'],
@@ -71,10 +96,24 @@ export async function resumenAnuladas(f: FiltroAnuladas): Promise<ResumenAnulada
     }),
     prisma.ventaTangoSync.findFirst({ where: { filasAnuladas: { gt: 0 } }, orderBy: { fecha: 'desc' } }),
     prisma.comandaAnuladaTango.count(),
+    // La fechaHora de la comanda puede caer hasta la madrugada siguiente al día
+    // comercial "hasta": margen de 2 días para no perder justificaciones del borde.
+    prisma.anulacionJustificacion.findMany({
+      where: {
+        fechaHora: { gte: fechaDb(f.desde), lt: new Date(fechaDb(f.hasta).getTime() + 2 * 86_400_000) },
+        ...(f.localId != null ? { localId: f.localId } : {}),
+      },
+    }),
   ])
 
   const nombrePorLocal = new Map(locales.map((l) => [l.id, { nombre: l.nombre, marca: l.marca.nombre }]))
   const ventaLocal = new Map(ventaPorLocal.map((r) => [r.localId, round2(Number(r._sum.monto ?? 0))]))
+  const justPorClave = new Map(
+    justificaciones.map((j) => [
+      claveAnulada(j.localId, j.fechaHora, Number(j.importe)),
+      { motivo: j.motivo, detalle: j.detalle, porNombre: j.creadoPorNombre },
+    ]),
+  )
 
   const acc = new Map<number, AnuladasLocal>()
   for (const r of filas) {
@@ -90,12 +129,14 @@ export async function resumenAnuladas(f: FiltroAnuladas): Promise<ResumenAnulada
       delivery: 0,
       facturacion: ventaLocal.get(r.localId) ?? 0,
       pctVenta: null,
+      sinJustificar: 0,
     }
     const importe = Number(r.importe)
     e.cantidad += 1
     if (importe > 0) {
       e.conImporte += 1
       e.importe = round2(e.importe + importe)
+      if (!justPorClave.has(claveAnulada(r.localId, r.fechaHora, importe))) e.sinJustificar += 1
     }
     if (r.tipoPedido === 'R') e.salon += 1
     else if (r.tipoPedido === 'D') e.delivery += 1
@@ -113,9 +154,11 @@ export async function resumenAnuladas(f: FiltroAnuladas): Promise<ResumenAnulada
     nombre: nombrePorLocal.get(r.localId)?.nombre ?? `Local ${r.localId}`,
     fecha: ymd(r.fecha),
     hora: r.fechaHora.toISOString().slice(11, 16),
+    fechaHoraIso: r.fechaHora.toISOString(),
     importe: round2(Number(r.importe)),
     tipoPedido: r.tipoPedido,
     cubiertos: r.cubiertos,
+    justificacion: justPorClave.get(claveAnulada(r.localId, r.fechaHora, Number(r.importe))) ?? null,
   }))
 
   const totalImporte = round2(porLocal.reduce((s, l) => s + l.importe, 0))
@@ -127,6 +170,7 @@ export async function resumenAnuladas(f: FiltroAnuladas): Promise<ResumenAnulada
     totalCantidad: filas.length,
     totalConImporte: conImporteFilas.length,
     totalImporte,
+    totalSinJustificar: porLocal.reduce((s, l) => s + l.sinJustificar, 0),
     facturacion,
     pctVenta: facturacion > 0 ? round2((totalImporte / facturacion) * 100) : null,
     porLocal,

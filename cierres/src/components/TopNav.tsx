@@ -17,7 +17,7 @@ const ITEMS = [
   { href: '/control', label: 'Tablero', icon: Scale, roles: ['central', 'admin', 'contable'] },
   { href: '/conciliacion', label: 'Conciliar MP', icon: GitCompareArrows, roles: ['central', 'admin', 'contable'] },
   { href: '/conciliacion-cobros', label: 'Cobros Tango', icon: Landmark, roles: ['central', 'admin', 'contable'] },
-  { href: '/anulaciones', label: 'Anulaciones', icon: Ban, roles: ['central', 'admin', 'contable'] },
+  { href: '/anulaciones', label: 'Anulaciones', icon: Ban, roles: ['encargado', 'central', 'admin', 'contable'] },
   { href: '/informes', label: 'Informes', icon: BarChart3, roles: ['central', 'admin', 'contable'] },
 ] as const
 
