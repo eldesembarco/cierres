@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { prisma } from '@/lib/db'
+import { BiTabs } from '@/components/BiTabs'
 import { hoyAr, primerDiaDelMesAr } from '@/lib/fecha'
 import { formatMoney } from '@/lib/money'
 import { resumenInsumos, type InsumoBi, type DetalleInsumo } from '@/lib/biInsumos'
@@ -50,6 +51,7 @@ export default async function InsumosPage({ searchParams }: { searchParams: Sear
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-6">
+      <BiTabs actual="/insumos" />
       <div className="mb-1 flex items-center gap-2">
         <Package size={20} className="text-slate-500" />
         <h1 className="text-xl font-semibold text-slate-900">Insumos por local</h1>

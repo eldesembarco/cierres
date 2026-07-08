@@ -13,13 +13,20 @@ import {
   fetchVentasHoras,
   fetchVentasArticulos,
   fetchConsumoInsumos,
+  fetchComandasAnuladas,
   TangoBridgeError,
 } from '@/lib/tango/ventasBridge'
 
 export interface SyncVentasResult {
   desde: string
   hasta: string
-  dias: { fecha: string; filasHoras: number | null; filasArticulos: number | null; filasInsumos: number | null }[]
+  dias: {
+    fecha: string
+    filasHoras: number | null
+    filasArticulos: number | null
+    filasInsumos: number | null
+    filasAnuladas: number | null
+  }[]
   avisos: string[]
 }
 
@@ -41,7 +48,7 @@ const delDia = <T extends { fecha: string; id_sucursal: number }>(
 ) => rows.filter((r) => r.fecha.slice(0, 10) === fecha && localPorSucursal.has(r.id_sucursal))
 
 export async function syncVentasTango(desde: string, hasta: string): Promise<SyncVentasResult> {
-  const [horasR, articulosR, insumosR, locales] = await Promise.all([
+  const [horasR, articulosR, insumosR, anuladasR, locales] = await Promise.all([
     fetchVentasHoras(desde, hasta).then(
       (v) => ({ ok: true as const, v }),
       (e) => ({ ok: false as const, e }),
@@ -54,19 +61,24 @@ export async function syncVentasTango(desde: string, hasta: string): Promise<Syn
       (v) => ({ ok: true as const, v }),
       (e) => ({ ok: false as const, e }),
     ),
+    fetchComandasAnuladas(desde, hasta).then(
+      (v) => ({ ok: true as const, v }),
+      (e) => ({ ok: false as const, e }),
+    ),
     prisma.local.findMany({ where: { tangoSucursalId: { not: null } }, select: { id: true, tangoSucursalId: true } }),
   ])
 
   // Si no vino NINGÚN dataset, el bridge está caído de verdad: error para arriba.
-  if (!horasR.ok && !articulosR.ok && !insumosR.ok) {
+  if (!horasR.ok && !articulosR.ok && !insumosR.ok && !anuladasR.ok) {
     throw horasR.e instanceof Error ? horasR.e : new TangoBridgeError(String(horasR.e))
   }
 
   const avisos: string[] = []
-  const nombreDataset = { horas: 'venta por hora', articulos: 'venta por artículo', insumos: 'consumo de insumos' }
+  const nombreDataset = { horas: 'venta por hora', articulos: 'venta por artículo', insumos: 'consumo de insumos', anuladas: 'comandas anuladas' }
   if (!horasR.ok) avisos.push(`No se sincronizó ${nombreDataset.horas}: ${horasR.e instanceof Error ? horasR.e.message : horasR.e}`)
   if (!articulosR.ok) avisos.push(`No se sincronizó ${nombreDataset.articulos}: ${articulosR.e instanceof Error ? articulosR.e.message : articulosR.e}`)
   if (!insumosR.ok) avisos.push(`No se sincronizó ${nombreDataset.insumos}: ${insumosR.e instanceof Error ? insumosR.e.message : insumosR.e}`)
+  if (!anuladasR.ok) avisos.push(`No se sincronizó ${nombreDataset.anuladas}: ${anuladasR.e instanceof Error ? anuladasR.e.message : anuladasR.e}`)
 
   const localPorSucursal = new Map(locales.map((l) => [l.tangoSucursalId as number, l.id]))
 
@@ -103,6 +115,17 @@ export async function syncVentasTango(desde: string, hasta: string): Promise<Syn
           cantidad: Number(r.cantidad),
         }))
       : null
+    const filasAnuladas = anuladasR.ok
+      ? delDia(anuladasR.v, fecha, localPorSucursal).map((r) => ({
+          localId: localPorSucursal.get(r.id_sucursal) as number,
+          fecha: fechaDb(fecha),
+          // El bridge manda "YYYY-MM-DD HH:mm:ss" (hora local del ticket).
+          fechaHora: new Date(r.fecha_hora.replace(' ', 'T') + 'Z'),
+          importe: round2(Number(r.importe) || 0),
+          tipoPedido: r.tipo_pedido ?? null,
+          cubiertos: Number(r.cubiertos) || 0,
+        }))
+      : null
 
     // Cada dataset que SÍ vino se reemplaza entero para la fecha; los que no
     // vinieron quedan como estaban (y su contador del log no se toca).
@@ -125,6 +148,12 @@ export async function syncVentasTango(desde: string, hasta: string): Promise<Syn
             prisma.consumoInsumoTango.createMany({ data: filasInsumos }),
           ]
         : []),
+      ...(filasAnuladas
+        ? [
+            prisma.comandaAnuladaTango.deleteMany({ where: { fecha: fechaDb(fecha) } }),
+            prisma.comandaAnuladaTango.createMany({ data: filasAnuladas }),
+          ]
+        : []),
       prisma.ventaTangoSync.upsert({
         where: { fecha: fechaDb(fecha) },
         create: {
@@ -132,11 +161,13 @@ export async function syncVentasTango(desde: string, hasta: string): Promise<Syn
           filasHoras: filasHoras?.length ?? 0,
           filasArticulos: filasArticulos?.length ?? 0,
           filasInsumos: filasInsumos?.length ?? 0,
+          filasAnuladas: filasAnuladas?.length ?? 0,
         },
         update: {
           ...(filasHoras ? { filasHoras: filasHoras.length } : {}),
           ...(filasArticulos ? { filasArticulos: filasArticulos.length } : {}),
           ...(filasInsumos ? { filasInsumos: filasInsumos.length } : {}),
+          ...(filasAnuladas ? { filasAnuladas: filasAnuladas.length } : {}),
           sincronizadoEn: new Date(),
         },
       }),
@@ -146,6 +177,7 @@ export async function syncVentasTango(desde: string, hasta: string): Promise<Syn
       filasHoras: filasHoras?.length ?? null,
       filasArticulos: filasArticulos?.length ?? null,
       filasInsumos: filasInsumos?.length ?? null,
+      filasAnuladas: filasAnuladas?.length ?? null,
     })
   }
   return { desde, hasta, dias, avisos }

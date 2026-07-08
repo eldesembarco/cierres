@@ -1,5 +1,6 @@
 import { auth } from '@/lib/auth/auth'
 import { prisma } from '@/lib/db'
+import { BiTabs } from '@/components/BiTabs'
 import { formatMoney } from '@/lib/money'
 import { hoyAr, ayerAr, primerDiaDelMesAr } from '@/lib/fecha'
 import { resumenBi, type LocalBi, type ArticuloBi } from '@/lib/bi'
@@ -37,6 +38,7 @@ export default async function VentasPage({ searchParams }: { searchParams: Searc
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-6">
+      <BiTabs actual="/" />
       <div className="mb-1 flex items-center gap-2">
         <TrendingUp size={20} className="text-slate-500" />
         <h1 className="text-xl font-semibold text-slate-900">Ventas (BI)</h1>

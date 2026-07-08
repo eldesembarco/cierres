@@ -38,6 +38,7 @@ model Local {
   ventasTangoHora     VentaTangoHora[]
   ventasTangoArticulo VentaTangoArticulo[]
   consumosInsumoTango ConsumoInsumoTango[]
+  comandasAnuladasTango ComandaAnuladaTango[]
   @@map("locales")
 }
 
@@ -364,6 +365,22 @@ model ConsumoInsumoTango {
   @@map("consumo_insumo_tango")
 }
 
+// Comandas anuladas en Tango (ESTADO='X'), para la auditoría de anulaciones del
+// BI. Sin clave natural: el resync borra y reinserta por fecha.
+model ComandaAnuladaTango {
+  id         Int      @id @default(autoincrement())
+  local      Local    @relation(fields: [localId], references: [id])
+  localId    Int      @map("local_id")
+  fecha      DateTime @db.Date
+  fechaHora  DateTime @map("fecha_hora")
+  importe    Decimal  @default(0) @db.Decimal(14, 2)
+  tipoPedido String?  @map("tipo_pedido")
+  cubiertos  Int      @default(0)
+  @@index([fecha])
+  @@index([localId, fecha])
+  @@map("comanda_anulada_tango")
+}
+
 // Bitácora de sincronización por fecha: cobertura del BI y detección de días sin datos.
 model VentaTangoSync {
   id             Int      @id @default(autoincrement())
@@ -371,6 +388,7 @@ model VentaTangoSync {
   filasHoras     Int      @default(0) @map("filas_horas")
   filasArticulos Int      @default(0) @map("filas_articulos")
   filasInsumos   Int      @default(0) @map("filas_insumos")
+  filasAnuladas  Int      @default(0) @map("filas_anuladas")
   sincronizadoEn DateTime @default(now()) @map("sincronizado_en")
   @@map("venta_tango_sync")
 }
