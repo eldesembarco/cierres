@@ -68,7 +68,8 @@ const QUERIES = {
   '/consumo-insumos': `
     SELECT CONVERT(varchar(10), FECHA, 23) AS fecha, ID_SUCURSAL AS id_sucursal,
            COD_ARTICULO AS cod_articulo, DESCRIPCION AS descripcion, RUBRO AS rubro,
-           UNIDAD AS unidad, CANTIDAD AS cantidad
+           UNIDAD AS unidad, CANTIDAD AS cantidad,
+           COSTO_UNITARIO AS costo_unitario, COSTO_TOTAL AS costo_total
     FROM dbo.vw_ConsumoInsumos
     WHERE FECHA BETWEEN @desde AND @hasta
     ORDER BY FECHA, ID_SUCURSAL, COD_ARTICULO;`,

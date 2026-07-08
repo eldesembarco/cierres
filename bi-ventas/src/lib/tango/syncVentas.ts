@@ -113,6 +113,8 @@ export async function syncVentasTango(desde: string, hasta: string): Promise<Syn
           rubro: r.rubro ?? null,
           unidad: r.unidad ?? null,
           cantidad: Number(r.cantidad),
+          costoUnitario: r.costo_unitario != null ? Number(r.costo_unitario) : null,
+          costoTotal: r.costo_total != null ? round2(Number(r.costo_total)) : null,
         }))
       : null
     const filasAnuladas = anuladasR.ok

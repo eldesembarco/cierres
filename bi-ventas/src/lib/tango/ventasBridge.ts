@@ -42,6 +42,10 @@ export interface ConsumoInsumoRow {
   rubro?: string | null
   unidad?: string | null
   cantidad: number
+  // Valorización al precio de reposición (null si el insumo no tiene costo cargado
+  // en Tango, o si el bridge del server todavía no manda estas columnas).
+  costo_unitario?: number | null
+  costo_total?: number | null
 }
 
 export interface ComandaAnuladaRow {

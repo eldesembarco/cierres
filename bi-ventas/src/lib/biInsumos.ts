@@ -19,6 +19,8 @@ export interface InsumoBi {
   rubro: string | null
   unidad: string | null
   cantidad: number
+  /** Costo de reposición total del período (null si el insumo no tiene costo en Tango). */
+  costoTotal: number | null
 }
 
 export interface InsumoLocalBi {
@@ -26,6 +28,7 @@ export interface InsumoLocalBi {
   nombre: string
   marca: string
   cantidad: number
+  costoTotal: number | null
   facturacion: number
   /** Cantidad de insumo por cada $1.000.000 facturados (null si no hay venta sincronizada). */
   porMillon: number | null
@@ -36,6 +39,7 @@ export interface DetalleInsumo {
   descripcion: string
   unidad: string | null
   totalCantidad: number
+  totalCosto: number | null
   locales: InsumoLocalBi[]
 }
 
@@ -43,6 +47,10 @@ export interface ResumenInsumos {
   insumos: InsumoBi[]
   rubros: string[]
   detalle: DetalleInsumo | null
+  /** Costo de reposición total del período con los filtros activos. */
+  costoTotal: number
+  /** Cuántos insumos del listado tienen costo cargado (para avisar cobertura). */
+  insumosConCosto: number
   ultimaSyncInsumos: string | null // última fecha con filas de insumos
   diasSinInsumos: number // días del rango sin datos de insumos
   sinDatos: boolean // no hay NINGÚN dato de insumos en la base
@@ -65,7 +73,7 @@ export async function resumenInsumos(f: FiltroInsumos, insumoDetalle?: string): 
     prisma.consumoInsumoTango.groupBy({
       by: ['codigo'],
       where: whereRango(f),
-      _sum: { cantidad: true },
+      _sum: { cantidad: true, costoTotal: true },
       _max: { descripcion: true, rubro: true, unidad: true },
     }),
     prisma.consumoInsumoTango.findMany({
@@ -88,8 +96,10 @@ export async function resumenInsumos(f: FiltroInsumos, insumoDetalle?: string): 
       rubro: r._max.rubro ?? null,
       unidad: r._max.unidad ?? null,
       cantidad: Number(r._sum.cantidad ?? 0),
+      costoTotal: r._sum.costoTotal != null ? round2(Number(r._sum.costoTotal)) : null,
     }))
-    .sort((a, b) => a.descripcion.localeCompare(b.descripcion, 'es'))
+    // Primero por costo (los que mueven plata arriba), después alfabético.
+    .sort((a, b) => (b.costoTotal ?? -1) - (a.costoTotal ?? -1) || a.descripcion.localeCompare(b.descripcion, 'es'))
 
   const diasRango = Math.round((fechaDb(f.hasta).getTime() - fechaDb(f.desde).getTime()) / 86_400_000) + 1
 
@@ -102,7 +112,7 @@ export async function resumenInsumos(f: FiltroInsumos, insumoDetalle?: string): 
           fecha: { gte: fechaDb(f.desde), lte: fechaDb(f.hasta) },
           codigo: insumoDetalle,
         },
-        _sum: { cantidad: true },
+        _sum: { cantidad: true, costoTotal: true },
         _max: { descripcion: true, unidad: true },
       }),
       prisma.ventaTangoHora.groupBy({
@@ -128,6 +138,7 @@ export async function resumenInsumos(f: FiltroInsumos, insumoDetalle?: string): 
           nombre: info?.nombre ?? `Local ${r.localId}`,
           marca: info?.marca ?? '',
           cantidad,
+          costoTotal: r._sum.costoTotal != null ? round2(Number(r._sum.costoTotal)) : null,
           facturacion,
           porMillon: facturacion > 0 ? cantidad / (facturacion / 1_000_000) : null,
         }
@@ -135,11 +146,13 @@ export async function resumenInsumos(f: FiltroInsumos, insumoDetalle?: string): 
       .sort((a, b) => b.cantidad - a.cantidad)
 
     if (porLocal.length > 0) {
+      const costos = localesBi.filter((l) => l.costoTotal != null)
       detalle = {
         codigo: insumoDetalle,
         descripcion: porLocal[0]._max.descripcion ?? insumoDetalle,
         unidad: porLocal[0]._max.unidad ?? null,
         totalCantidad: localesBi.reduce((s, l) => s + l.cantidad, 0),
+        totalCosto: costos.length > 0 ? round2(costos.reduce((s, l) => s + (l.costoTotal as number), 0)) : null,
         locales: localesBi,
       }
     }
@@ -149,6 +162,8 @@ export async function resumenInsumos(f: FiltroInsumos, insumoDetalle?: string): 
     insumos,
     rubros: rubrosRaw.map((r) => r.rubro as string),
     detalle,
+    costoTotal: round2(insumos.reduce((s, i) => s + (i.costoTotal ?? 0), 0)),
+    insumosConCosto: insumos.filter((i) => i.costoTotal != null).length,
     ultimaSyncInsumos: ultimaConInsumos ? ymd(ultimaConInsumos.fecha) : null,
     diasSinInsumos: Math.max(0, diasRango - syncsRango),
     sinDatos: totalFilas === 0,

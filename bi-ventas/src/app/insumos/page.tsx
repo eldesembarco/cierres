@@ -135,6 +135,14 @@ export default async function InsumosPage({ searchParams }: { searchParams: Sear
               <h2 className="text-sm font-semibold text-slate-900">
                 Consumo por insumo {localId ? `· ${locales.find((l) => l.id === localId)?.nombre}` : '· todos los locales'}
               </h2>
+              {r.costoTotal > 0 && (
+                <span
+                  className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700"
+                  title={`Valorizado al precio de reposición de Tango (${r.insumosConCosto} de ${r.insumos.length} insumos con costo cargado)`}
+                >
+                  costo reposición {formatMoney(r.costoTotal)}
+                </span>
+              )}
               <span className="ml-auto text-xs text-slate-400">período {desde} a {hasta}</span>
             </div>
             {r.insumos.length === 0 ? (
@@ -148,6 +156,7 @@ export default async function InsumosPage({ searchParams }: { searchParams: Sear
                       <th className="py-2 font-medium">Rubro</th>
                       <th className="py-2 text-right font-medium">Cantidad</th>
                       <th className="py-2 pl-2 font-medium">Unidad</th>
+                      <th className="py-2 text-right font-medium" title="Cantidad x precio de reposición de Tango">Costo repo.</th>
                       <th className="px-4 py-2 text-right font-medium">Por local</th>
                     </tr>
                   </thead>
@@ -177,6 +186,7 @@ function FilaInsumo({ i, qsBase, activo }: { i: InsumoBi; qsBase: URLSearchParam
       </td>
       <td className="py-1.5 text-right font-semibold text-slate-800">{formatCant(i.cantidad)}</td>
       <td className="py-1.5 pl-2 text-slate-500">{i.unidad ?? '—'}</td>
+      <td className="py-1.5 text-right text-slate-700">{i.costoTotal != null ? formatMoney(i.costoTotal) : '—'}</td>
       <td className="px-4 py-1.5 text-right">
         <Link href={`/insumos?${qs}`} className="text-xs font-medium text-indigo-600 hover:text-indigo-800">
           ver por local →
@@ -198,6 +208,7 @@ function DetalleCard({ detalle, qsBase }: { detalle: DetalleInsumo; qsBase: URLS
           {detalle.descripcion}
           <span className="ml-2 text-xs font-normal text-slate-500">
             total {formatCant(detalle.totalCantidad)} {detalle.unidad ?? ''}
+            {detalle.totalCosto != null && ` · ${formatMoney(detalle.totalCosto)} a reposición`}
           </span>
         </h2>
         <Link href={`/insumos?${qsBase}`} className="ml-auto flex items-center gap-1 text-xs text-slate-500 hover:text-slate-800">
@@ -212,6 +223,7 @@ function DetalleCard({ detalle, qsBase }: { detalle: DetalleInsumo; qsBase: URLS
               <th className="py-2 font-medium">Local</th>
               <th className="py-2 text-right font-medium">Cantidad</th>
               <th className="hidden py-2 pl-4 font-medium sm:table-cell"></th>
+              <th className="py-2 text-right font-medium" title="Cantidad x precio de reposición de Tango">Costo repo.</th>
               <th className="py-2 text-right font-medium">Facturación</th>
               <th className="px-4 py-2 text-right font-medium" title="Cantidad por cada $1M facturado: sirve para comparar locales de distinto tamaño">
                 x $1M venta
@@ -237,6 +249,7 @@ function DetalleCard({ detalle, qsBase }: { detalle: DetalleInsumo; qsBase: URLS
                       <div className="h-full rounded-full bg-indigo-500" style={{ width: `${Math.round((l.cantidad / maxCant) * 100)}%` }} />
                     </div>
                   </td>
+                  <td className="py-1.5 text-right text-slate-700">{l.costoTotal != null ? formatMoney(l.costoTotal) : '—'}</td>
                   <td className="py-1.5 text-right text-slate-600">{l.facturacion > 0 ? formatMoney(l.facturacion) : '—'}</td>
                   <td className={`px-4 py-1.5 text-right font-medium ${desvio != null && desvio > 0.25 ? 'text-red-600' : desvio != null && desvio < -0.25 ? 'text-emerald-700' : 'text-slate-600'}`}>
                     {l.porMillon != null ? formatCant(l.porMillon) : '—'}

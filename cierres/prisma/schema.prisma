@@ -351,15 +351,18 @@ model TangoBridge {
 // Consumo de insumos (materia prima/empaque) por local/fecha, desde el bridge
 // (vw_ConsumoInsumos). Consumido por bi-ventas, igual que venta_tango_*.
 model ConsumoInsumoTango {
-  id          Int      @id @default(autoincrement())
-  local       Local    @relation(fields: [localId], references: [id])
-  localId     Int      @map("local_id")
-  fecha       DateTime @db.Date
-  codigo      String
-  descripcion String
-  rubro       String?
-  unidad      String?
-  cantidad    Decimal  @default(0) @db.Decimal(14, 3)
+  id            Int      @id @default(autoincrement())
+  local         Local    @relation(fields: [localId], references: [id])
+  localId       Int      @map("local_id")
+  fecha         DateTime @db.Date
+  codigo        String
+  descripcion   String
+  rubro         String?
+  unidad        String?
+  cantidad      Decimal  @default(0) @db.Decimal(14, 3)
+  // Valorización al precio de reposición de Tango (STA12); null = sin costo cargado.
+  costoUnitario Decimal? @map("costo_unitario") @db.Decimal(14, 4)
+  costoTotal    Decimal? @map("costo_total") @db.Decimal(14, 2)
   @@unique([localId, fecha, codigo])
   @@index([fecha])
   @@map("consumo_insumo_tango")
@@ -379,6 +382,23 @@ model ComandaAnuladaTango {
   @@index([fecha])
   @@index([localId, fecha])
   @@map("comanda_anulada_tango")
+}
+
+// Justificación de una comanda anulada, cargada por el local. Vive en tabla propia
+// porque comanda_anulada_tango se borra/reinserta en cada resync: la clave natural
+// (localId, fechaHora, importe) re-vincula la justificación tras cada resync.
+model AnulacionJustificacion {
+  id              Int      @id @default(autoincrement())
+  localId         Int      @map("local_id")
+  fechaHora       DateTime @map("fecha_hora")
+  importe         Decimal  @db.Decimal(14, 2)
+  motivo          String
+  detalle         String?
+  creadoPor       Int      @map("creado_por")
+  creadoPorNombre String   @map("creado_por_nombre")
+  creadoEn        DateTime @default(now()) @map("creado_en")
+  @@unique([localId, fechaHora, importe])
+  @@map("anulacion_justificacion")
 }
 
 // Bitácora de sincronización por fecha: cobertura del BI y detección de días sin datos.
