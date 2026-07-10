@@ -39,6 +39,8 @@ export interface AnuladasLocal {
   /** % del importe anulado sobre la facturación del período (null sin venta). */
   pctVenta: number | null
   sinJustificar: number // anuladas con importe que el local todavía no justificó
+  /** Última fecha con venta sincronizada de este local ("hasta cuándo llegó su info"). */
+  datosHasta: string | null
 }
 
 export interface JustificacionInfo {
@@ -69,7 +71,8 @@ export interface ResumenAnuladas {
   porLocal: AnuladasLocal[]
   detalle: AnuladaDetalle[] // anuladas con importe, más recientes primero (cap)
   detalleRecortado: boolean
-  ultimaSync: string | null
+  ultimaSync: string | null // última fecha con datos de anuladas
+  sincronizadoEn: string | null // ISO: cuándo corrió la última sincronización
   sinDatos: boolean
 }
 
@@ -83,7 +86,7 @@ export async function resumenAnuladas(f: FiltroAnuladas): Promise<ResumenAnulada
     ...(f.localId != null ? { localId: f.localId } : {}),
   }
 
-  const [filas, ventaPorLocal, locales, ultimaConAnuladas, totalFilas, justificaciones] = await Promise.all([
+  const [filas, ventaPorLocal, locales, ultimaConAnuladas, totalFilas, ultimaCorrida, datosPorLocal, justificaciones] = await Promise.all([
     prisma.comandaAnuladaTango.findMany({ where: whereRango }),
     prisma.ventaTangoHora.groupBy({
       by: ['localId'],
@@ -96,6 +99,10 @@ export async function resumenAnuladas(f: FiltroAnuladas): Promise<ResumenAnulada
     }),
     prisma.ventaTangoSync.findFirst({ where: { filasAnuladas: { gt: 0 } }, orderBy: { fecha: 'desc' } }),
     prisma.comandaAnuladaTango.count(),
+    // Cuándo corrió la última sincronización (la corrida más reciente, cualquier fecha).
+    prisma.ventaTangoSync.findFirst({ orderBy: { sincronizadoEn: 'desc' }, select: { sincronizadoEn: true } }),
+    // Hasta qué fecha llegó la info de CADA local (última venta sincronizada).
+    prisma.ventaTangoHora.groupBy({ by: ['localId'], _max: { fecha: true } }),
     // La fechaHora de la comanda puede caer hasta la madrugada siguiente al día
     // comercial "hasta": margen de 2 días para no perder justificaciones del borde.
     prisma.anulacionJustificacion.findMany({
@@ -108,6 +115,7 @@ export async function resumenAnuladas(f: FiltroAnuladas): Promise<ResumenAnulada
 
   const nombrePorLocal = new Map(locales.map((l) => [l.id, { nombre: l.nombre, marca: l.marca.nombre }]))
   const ventaLocal = new Map(ventaPorLocal.map((r) => [r.localId, round2(Number(r._sum.monto ?? 0))]))
+  const datosLocal = new Map(datosPorLocal.map((r) => [r.localId, r._max.fecha ? ymd(r._max.fecha) : null]))
   const justPorClave = new Map(
     justificaciones.map((j) => [
       claveAnulada(j.localId, j.fechaHora, Number(j.importe)),
@@ -130,6 +138,7 @@ export async function resumenAnuladas(f: FiltroAnuladas): Promise<ResumenAnulada
       facturacion: ventaLocal.get(r.localId) ?? 0,
       pctVenta: null,
       sinJustificar: 0,
+      datosHasta: datosLocal.get(r.localId) ?? null,
     }
     const importe = Number(r.importe)
     e.cantidad += 1
@@ -177,6 +186,7 @@ export async function resumenAnuladas(f: FiltroAnuladas): Promise<ResumenAnulada
     detalle,
     detalleRecortado: conImporteFilas.length > DETALLE_MAX,
     ultimaSync: ultimaConAnuladas ? ymd(ultimaConAnuladas.fecha) : null,
+    sincronizadoEn: ultimaCorrida?.sincronizadoEn.toISOString() ?? null,
     sinDatos: totalFilas === 0,
   }
 }

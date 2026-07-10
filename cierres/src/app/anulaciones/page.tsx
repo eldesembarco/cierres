@@ -5,7 +5,7 @@ import { formatMoney } from '@/lib/money'
 import { hoyAr, primerDiaDelMesAr } from '@/lib/fecha'
 import { resumenAnuladas, MOTIVOS_ANULACION, MOTIVO_LABEL, type AnuladaDetalle } from '@/lib/tango/anuladas'
 import { justificarAnulacion } from './actions'
-import { Ban, Lock, Inbox, AlertTriangle, Store, Bike, CheckCircle2, MessageSquareText } from 'lucide-react'
+import { Ban, Lock, Inbox, AlertTriangle, Store, Bike, CheckCircle2, MessageSquareText, RefreshCw, Info } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -14,6 +14,17 @@ type SearchParams = Promise<{ desde?: string; hasta?: string; localId?: string }
 
 const YMD = /^\d{4}-\d{2}-\d{2}$/
 const formatInt = (n: number) => Math.round(n).toLocaleString('es-AR')
+
+// "dd/mm HH:mm" en hora argentina (UTC−3) a partir de un ISO UTC.
+function fechaHoraAr(iso: string): string {
+  const d = new Date(new Date(iso).getTime() - 3 * 3600 * 1000)
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${p(d.getUTCDate())}/${p(d.getUTCMonth() + 1)} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())} hs`
+}
+
+function restarDias(ymd: string, n: number): string {
+  return new Date(new Date(`${ymd}T00:00:00Z`).getTime() - n * 86_400_000).toISOString().slice(0, 10)
+}
 
 export default async function AnulacionesPage({ searchParams }: { searchParams: SearchParams }) {
   const session = await auth()
@@ -93,6 +104,18 @@ export default async function AnulacionesPage({ searchParams }: { searchParams: 
         </button>
       </form>
 
+      {/* Aviso de días "frescos": Tango puede seguir reponiendo datos de los últimos días. */}
+      {hasta >= restarDias(hoyAr(), 2) && (
+        <div className="mb-4 flex items-start gap-2 rounded-xl border border-sky-200 bg-sky-50 px-4 py-2.5 text-sm text-sky-800">
+          <Info size={16} className="mt-0.5 shrink-0 text-sky-600" />
+          <span>
+            El rango incluye días recientes: <b>los últimos 2-3 días pueden seguir completándose</b> a medida que
+            Tango termina de replicar desde los locales (el sistema los re-trae solo cada mañana). Los días
+            anteriores ya son definitivos.
+          </span>
+        </div>
+      )}
+
       {r.sinDatos ? (
         <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-slate-300 bg-white px-4 py-12 text-center shadow-sm">
           <Inbox size={32} className="text-slate-300" />
@@ -101,14 +124,20 @@ export default async function AnulacionesPage({ searchParams }: { searchParams: 
       ) : (
         <>
           {/* KPIs */}
-          <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-5">
+            <Kpi label="Última sincronización" icon={<RefreshCw size={13} />}
+              value={r.sincronizadoEn ? fechaHoraAr(r.sincronizadoEn) : '—'}
+              tone="slate"
+              sub={r.ultimaSync ? `con datos hasta el ${r.ultimaSync.slice(8)}/${r.ultimaSync.slice(5, 7)}` : ''} />
             <Kpi label="Sin justificar" value={formatInt(r.totalSinJustificar)}
               tone={r.totalSinJustificar > 0 ? 'rose' : 'emerald'}
               sub={r.totalSinJustificar > 0 ? 'pendientes de motivo' : 'todo justificado 👏'} />
-            <Kpi label="Importe anulado" value={formatMoney(r.totalImporte)} tone={r.totalImporte > 0 ? 'amber' : 'emerald'} />
-            <Kpi label="% sobre facturación" value={r.pctVenta != null ? `${r.pctVenta.toLocaleString('es-AR')}%` : '—'}
-              tone={r.pctVenta != null && r.pctVenta >= 1 ? 'rose' : 'slate'} sub={`facturación ${formatMoney(r.facturacion)}`} />
-            <Kpi label="Anuladas (con importe / total)" value={`${formatInt(r.totalConImporte)} / ${formatInt(r.totalCantidad)}`} tone="slate" sub="las de $0 no requieren justificar" />
+            <Kpi label="Importe anulado" value={formatMoney(r.totalImporte)} tone={r.totalImporte > 0 ? 'amber' : 'emerald'}
+              sub={r.pctVenta != null ? `${r.pctVenta.toLocaleString('es-AR')}% de la facturación` : ''} />
+            <Kpi label="Con importe" value={formatInt(r.totalConImporte)} tone={r.totalConImporte > 0 ? 'rose' : 'emerald'}
+              sub="ventas borradas: se justifican" />
+            <Kpi label="En $0" value={formatInt(r.totalCantidad - r.totalConImporte)} tone="slate"
+              sub="canceladas antes de cobrar: normal" />
           </div>
 
           <div className={`grid grid-cols-1 gap-4 ${esEncargado ? '' : 'lg:grid-cols-5'}`}>
@@ -124,9 +153,12 @@ export default async function AnulacionesPage({ searchParams }: { searchParams: 
                       <thead>
                         <tr className="text-left text-[11px] uppercase tracking-wide text-slate-400">
                           <th className="px-4 py-2 font-medium">Local</th>
+                          <th className="px-2 py-2 text-right font-medium" title="Ventas borradas después de cargadas: requieren justificación">c/importe</th>
+                          <th className="px-2 py-2 text-right font-medium" title="Canceladas antes de cobrar: no requieren justificación">en $0</th>
                           <th className="px-2 py-2 text-right font-medium">Importe</th>
                           <th className="px-2 py-2 text-right font-medium">% venta</th>
-                          <th className="px-4 py-2 text-right font-medium" title="Anuladas con importe sin justificar">deben</th>
+                          <th className="px-2 py-2 text-right font-medium" title="Anuladas con importe sin justificar">deben</th>
+                          <th className="px-4 py-2 text-right font-medium" title="Hasta qué fecha llegó la información de este local">datos hasta</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -135,22 +167,36 @@ export default async function AnulacionesPage({ searchParams }: { searchParams: 
                           return (
                             <tr key={l.localId} className="border-t border-slate-100">
                               <td className="px-4 py-1.5 text-slate-700">{l.nombre}</td>
+                              <td className="px-2 py-1.5 text-right">
+                                {l.conImporte > 0
+                                  ? <span className="rounded-md bg-rose-50 px-1.5 py-0.5 text-xs font-semibold text-rose-700">{l.conImporte}</span>
+                                  : <span className="text-slate-300">—</span>}
+                              </td>
+                              <td className="px-2 py-1.5 text-right text-slate-400">{l.cantidad - l.conImporte > 0 ? l.cantidad - l.conImporte : '—'}</td>
                               <td className="px-2 py-1.5 text-right font-medium text-slate-800">{l.importe > 0 ? formatMoney(l.importe) : <span className="text-slate-300">—</span>}</td>
                               <td className={`px-2 py-1.5 text-right font-medium ${alto ? 'text-rose-600' : 'text-slate-500'}`}>
                                 {l.pctVenta != null ? `${l.pctVenta.toLocaleString('es-AR')}%` : '—'}
                               </td>
-                              <td className="px-4 py-1.5 text-right">
+                              <td className="px-2 py-1.5 text-right">
                                 {l.sinJustificar > 0
                                   ? <span className="rounded-md bg-rose-50 px-1.5 py-0.5 text-xs font-semibold text-rose-600">{l.sinJustificar}</span>
                                   : l.conImporte > 0
                                     ? <CheckCircle2 size={14} className="ml-auto inline text-emerald-500" />
                                     : <span className="text-slate-300">—</span>}
                               </td>
+                              <td className="px-4 py-1.5 text-right text-xs tabular-nums text-slate-500">
+                                {l.datosHasta ? `${l.datosHasta.slice(8)}/${l.datosHasta.slice(5, 7)}` : '—'}
+                              </td>
                             </tr>
                           )
                         })}
                       </tbody>
                     </table>
+                    <p className="border-t border-slate-100 px-4 py-2 text-[11px] text-slate-400">
+                      <b className="text-rose-600">c/importe</b> = venta que estuvo cargada y se borró (se audita y justifica) ·{' '}
+                      <b>en $0</b> = mesa/pedido cancelado antes de cobrar (operación normal) ·{' '}
+                      <b>datos hasta</b> = última fecha con información del local.
+                    </p>
                   </div>
                 )}
               </section>
@@ -220,11 +266,13 @@ function FilaAnulada({ d, mostrarLocal, puedeJustificar }: { d: AnuladaDetalle; 
   )
 }
 
-function Kpi({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone: 'slate' | 'emerald' | 'rose' | 'amber' }) {
+function Kpi({ label, value, sub, tone, icon }: {
+  label: string; value: string; sub?: string; tone: 'slate' | 'emerald' | 'rose' | 'amber'; icon?: React.ReactNode
+}) {
   const toneCls = { slate: 'text-slate-900', emerald: 'text-emerald-700', rose: 'text-rose-600', amber: 'text-amber-600' }[tone]
   return (
     <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-      <div className="text-xs font-medium text-slate-500">{label}</div>
+      <div className="flex items-center gap-1 text-xs font-medium text-slate-500">{icon}{label}</div>
       <div className={`mt-0.5 text-lg font-semibold tabular-nums ${toneCls}`}>{value}</div>
       {sub && <div className="text-xs text-slate-400">{sub}</div>}
     </div>
