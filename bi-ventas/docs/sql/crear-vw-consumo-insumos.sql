@@ -5,11 +5,9 @@
 -- Idempotente (CREATE OR ALTER).
 --
 -- REGLA DE MAESTROS (definida con Pablo el 10/07): "todo nace de MAESTRO".
---   * Recetas: para sucursales Tasty se usa la de MAESTRO_TASTY si existe
---     (adaptaciones de marca, p.ej. otro pan) y si no, la de MAESTRO.
---     Para Desembarco, MAESTRO directo. Con esto los baldes/promos Tasty
---     (508063, 508047, 138xxx...) explotan con su receta de MAESTRO:
---     validado 10/07 → CMV Tasty pasa de 15,4% (roto) a 39,8% (real).
+--   * Recetas: SIEMPRE las de MAESTRO Desembarco para todas las marcas
+--     (regla de Pablo: "de ahí se toma la información"; MAESTRO_TASTY es una
+--     copia desactualizada y no pisa). CMV Tasty validado 39,8%.
 --   * Costos: MAESTRO es la fuente (es el panel que mantiene administración);
 --     MAESTRO_TASTY solo aporta si el artículo no tiene costo en MAESTRO.
 --   * Lo vendido sin receta (gaseosas, latas) cuenta 1:1 como sí mismo.
@@ -29,20 +27,15 @@ WITH Sucur AS (
               THEN 'T' ELSE 'D' END AS MARCA
   FROM dbo.SUCURSAL
 ),
-RecetasT AS (
-  -- Tasty: su maestro pisa; lo que no tenga, cae a MAESTRO (todo nace ahí).
-  SELECT COD_ARTICU, COD_INSUMO, CAST(CANTIDAD AS decimal(18,6)) AS CANTIDAD
-  FROM MAESTRO_TASTY.dbo.STA03
-  UNION ALL
-  SELECT m.COD_ARTICU, m.COD_INSUMO, CAST(m.CANTIDAD AS decimal(18,6))
-  FROM MAESTRO.dbo.STA03 m
-  WHERE NOT EXISTS (SELECT 1 FROM MAESTRO_TASTY.dbo.STA03 t WHERE t.COD_ARTICU = m.COD_ARTICU)
-),
 Recetas AS (
+  -- REGLA (Pablo 10/07): las recetas se leen SIEMPRE de MAESTRO Desembarco,
+  -- para TODAS las marcas ("de ahí se toma la información"). MAESTRO_TASTY es
+  -- una copia desactualizada (149 de sus 315 recetas difieren) y NO pisa.
   SELECT 'D' AS MARCA, COD_ARTICU, COD_INSUMO, CAST(CANTIDAD AS decimal(18,6)) AS CANTIDAD
   FROM MAESTRO.dbo.STA03
   UNION ALL
-  SELECT 'T', COD_ARTICU, COD_INSUMO, CANTIDAD FROM RecetasT
+  SELECT 'T', COD_ARTICU, COD_INSUMO, CAST(CANTIDAD AS decimal(18,6))
+  FROM MAESTRO.dbo.STA03
 ),
 Explosion AS (
   SELECT v.FECHA, v.ID_SUCURSAL, s.MARCA, v.COD_ARTICULO AS COD_ARTICU,
