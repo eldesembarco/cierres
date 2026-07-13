@@ -448,7 +448,12 @@
 <footer>Mr. Tasty &nbsp;·&nbsp; Stock Aniversario Grupo El Desembarco</footer>
 
 <script>
-const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTBK1Zo3HAFY9U4SuTnFEy7zqq6MBPIe_QeEyufp8lBu7ZTIJ9kJiQc4A7LEo5aflDts8D2mLjU-h6S/pub?output=csv';
+// Primero el proxy propio (cacheado en CDN, inmune a adblockers/CORS/rate limits de Google);
+// si falla, va directo al CSV publicado de Google. Cada fuente se intenta 2 veces.
+const CSV_SOURCES = [
+    '/api/stock',
+    'https://docs.google.com/spreadsheets/d/e/2PACX-1vTBK1Zo3HAFY9U4SuTnFEy7zqq6MBPIe_QeEyufp8lBu7ZTIJ9kJiQc4A7LEo5aflDts8D2mLjU-h6S/pub?output=csv',
+];
 
 const TARGET_COLS = [
     'LOCAL',
@@ -595,16 +600,32 @@ function showError(msg) {
     el.style.display = 'block';
 }
 
+async function fetchCSV() {
+    let lastErr;
+    for (const src of CSV_SOURCES) {
+        for (let intento = 0; intento < 2; intento++) {
+            try {
+                const sep = src.includes('?') ? '&' : '?';
+                const res = await fetch(src + sep + 't=' + Date.now(), { cache: 'no-store' });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                return await res.text();
+            } catch (e) {
+                lastErr = e;
+                await new Promise(r => setTimeout(r, 800));
+            }
+        }
+    }
+    throw lastErr;
+}
+
 (async () => {
     try {
-        const res = await fetch(CSV_URL + '&t=' + Date.now(), { cache: 'no-store' });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const text = await res.text();
+        const text = await fetchCSV();
         const rows = parseCSV(text);
         if (rows.length < 2) throw new Error('La planilla no tiene datos.');
         render(rows);
     } catch (e) {
-        showError(`No se pudo cargar la planilla.\nVerificá que esté publicada como CSV.\n\n${e.message}`);
+        showError(`No se pudo cargar la planilla.\nProbá recargando la página.\n\n${e.message}`);
     }
 })();
 </script>
