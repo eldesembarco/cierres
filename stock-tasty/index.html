@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mr. Tasty — Stock Aniversario Grupo El Desembarco</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --orange: #F5A800;
+            --bg:     #181818;
+            --surf:   #1E1E1E;
+            --text:   #FFFFFF;
+            --muted:  rgba(255,255,255,0.55);
+            --line:   rgba(255,255,255,0.07);
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Barlow', system-ui, sans-serif;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ── HERO ── */
+        .hero {
+            position: relative;
+            text-align: center;
+            padding: 3.5rem 2rem 3.5rem;
+            overflow: hidden;
+            background: #181818;
+        }
+
+        .rays {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        /* Logo */
+        .logo-wrap {
+            position: relative;
+            display: block;
+            width: 130px;
+            margin: 0 auto 2rem;
+        }
+        .logo-wrap svg {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        /* Título */
+        .hero-title {
+            position: relative;
+            font-family: 'Anton', Impact, sans-serif;
+            font-size: clamp(2.2rem, 6.5vw, 5rem);
+            line-height: 1;
+            text-transform: uppercase;
+            letter-spacing: 0.01em;
+        }
+        .title-white {
+            color: #FFFFFF;
+            display: block;
+            margin-bottom: 0.55rem;
+        }
+        .title-orange {
+            color: var(--orange);
+            display: block;
+            white-space: nowrap;
+            font-size: clamp(2rem, 6vw, 4.6rem);
+        }
+
+        .hero-rule {
+            width: 80px;
+            height: 3px;
+            background: var(--orange);
+            border-radius: 2px;
+            margin: 1.6rem auto 1.8rem;
+        }
+
+        .hero-sub {
+            position: relative;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: clamp(0.78rem, 1.8vw, 0.95rem);
+            font-weight: 700;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--text);
+            max-width: 680px;
+            margin: 0 auto;
+            line-height: 1.8;
+        }
+
+        /* ── CONTENIDO ── */
+        .content {
+            max-width: 1440px;
+            margin: 0 auto;
+            padding: 0 1.5rem 5rem;
+        }
+
+        /* ── BUSCADOR ── */
+        .search-wrap {
+            display: none;
+            position: relative;
+            max-width: 420px;
+            margin: 0 0 1.5rem;
+        }
+        .search-wrap.visible { display: block; }
+        .search-wrap svg {
+            position: absolute;
+            left: 1rem; top: 50%;
+            transform: translateY(-50%);
+            width: 18px; height: 18px;
+            color: var(--muted);
+            pointer-events: none;
+        }
+        #search-input {
+            width: 100%;
+            padding: .78rem 1rem .78rem 2.7rem;
+            background: var(--surf);
+            border: 1px solid var(--line);
+            border-radius: 24px;
+            color: var(--text);
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: .92rem;
+            font-weight: 500;
+            outline: none;
+            transition: border-color .15s, box-shadow .15s;
+        }
+        #search-input::placeholder { color: var(--muted); }
+        #search-input:focus {
+            border-color: var(--orange);
+            box-shadow: 0 0 0 3px rgba(245,168,0,0.15);
+        }
+        .search-empty {
+            display: none;
+            text-align: center;
+            padding: 2.5rem 1rem;
+            color: var(--muted);
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: .95rem;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+        }
+        .search-empty.visible { display: block; }
+        .state-loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            padding: 5rem 2rem;
+            color: var(--muted);
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 0.85rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+        }
+        .spinner {
+            width: 30px; height: 30px;
+            border: 2px solid rgba(255,255,255,0.08);
+            border-top-color: var(--orange);
+            border-radius: 50%;
+            animation: spin .75s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── ERROR ── */
+        .state-error {
+            display: none;
+            margin: 2rem auto;
+            max-width: 580px;
+            padding: 1.25rem 1.5rem;
+            background: rgba(200,40,40,.07);
+            border: 1px solid rgba(200,40,40,.2);
+            border-radius: 6px;
+            color: #FF8080;
+            font-size: .875rem;
+            white-space: pre-line;
+        }
+
+        /* ── TABLA DESKTOP ── */
+        .table-shell { display: none; border-radius: 6px; overflow: hidden; }
+        .table-scroll { overflow-x: auto; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--surf);
+        }
+
+        thead th {
+            background: var(--orange);
+            padding: 1rem 1.5rem;
+            text-align: left;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.22em;
+            text-transform: uppercase;
+            color: #111111;
+            white-space: nowrap;
+        }
+
+        tbody tr { border-bottom: 1px solid var(--line); transition: background .12s; }
+        tbody tr:last-child { border-bottom: none; }
+        tbody tr:hover { background: rgba(245,168,0,0.05); }
+
+        tbody td {
+            padding: .9rem 1.5rem;
+            font-size: .9rem;
+            color: var(--text);
+            vertical-align: middle;
+        }
+        tbody td.col-local {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-weight: 700;
+            font-size: 1rem;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+        }
+
+        a { color: var(--orange); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        td.col-phone a { color: var(--muted); }
+        td.col-phone a:hover { color: var(--orange); }
+        .val-empty { color: rgba(255,255,255,0.18); }
+
+        /* Stock badges */
+        .badge {
+            display: inline-block;
+            padding: .25rem .65rem;
+            border-radius: 4px;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: .72rem;
+            font-weight: 700;
+            letter-spacing: .1em;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+        .badge-yes { background: rgba(34,197,94,.15); color: #4ade80; border: 1px solid rgba(34,197,94,.35); }
+        .badge-no  { background: rgba(239,68,68,.15);  color: #f87171; border: 1px solid rgba(239,68,68,.35); }
+
+        /* ── TARJETAS MOBILE ── */
+        .cards-wrap { display: none; flex-direction: column; gap: .9rem; }
+
+        .card { background: var(--surf); border-radius: 6px; overflow: hidden; }
+        .card-head { background: var(--orange); padding: .7rem 1.2rem; }
+        .card-local {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 1.05rem;
+            font-weight: 700;
+            letter-spacing: .1em;
+            text-transform: uppercase;
+            color: #111;
+        }
+        .card-body { padding: .6rem 1.2rem .9rem; }
+        .card-field { display: flex; flex-direction: column; padding: .45rem 0; border-bottom: 1px solid var(--line); }
+        .card-field:last-child { border-bottom: none; }
+        .card-lbl {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: .6rem; font-weight: 700;
+            letter-spacing: .18em; text-transform: uppercase;
+            color: var(--orange); margin-bottom: .1rem;
+        }
+        .card-val { font-size: .9rem; color: var(--text); }
+
+        /* ── RESPONSIVE ── */
+        @media (max-width: 768px) {
+            .table-shell.visible { display: none !important; }
+            .cards-wrap.visible  { display: flex; }
+            .content { padding-left: 1rem; padding-right: 1rem; }
+            .logo-wrap { width: 100px; }
+        }
+        @media (min-width: 769px) {
+            .table-shell.visible { display: block; }
+            .cards-wrap.visible  { display: none !important; }
+        }
+
+        /* ── FOOTER ── */
+        footer {
+            text-align: center;
+            padding: 1.25rem 2rem;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: .65rem;
+            font-weight: 600;
+            letter-spacing: .16em;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.18);
+            border-top: 1px solid var(--line);
+        }
+    </style>
+</head>
+<body>
+
+<section class="hero">
+
+    <svg class="rays" viewBox="0 0 1440 560" preserveAspectRatio="xMidYMid slice"
+         xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs>
+            <radialGradient id="glowG" cx="50%" cy="14%" r="50%">
+                <stop offset="0%"   stop-color="rgba(245,168,0,0.055)"/>
+                <stop offset="100%" stop-color="rgba(0,0,0,0)"/>
+            </radialGradient>
+        </defs>
+        <path d="M 720.0 80.0 L 720.0 -1320.0 L 993.1 -1293.1 Z M 720.0 80.0 L 1255.8 -1213.4 L 1497.8 -1084.1 Z M 720.0 80.0 L 1709.9 -909.9 L 1884.1 -697.8 Z M 720.0 80.0 L 2013.4 -455.8 L 2093.1 -193.1 Z M 720.0 80.0 L 2120.0 80.0 L 2093.1 353.1 Z M 720.0 80.0 L 2013.4 615.8 L 1884.1 857.8 Z M 720.0 80.0 L 1709.9 1069.9 L 1497.8 1244.1 Z M 720.0 80.0 L 1255.8 1373.4 L 993.1 1453.1 Z M 720.0 80.0 L 720.0 1480.0 L 446.9 1453.1 Z M 720.0 80.0 L 184.2 1373.4 L -57.8 1244.1 Z M 720.0 80.0 L -269.9 1069.9 L -444.1 857.8 Z M 720.0 80.0 L -573.4 615.8 L -653.1 353.1 Z M 720.0 80.0 L -680.0 80.0 L -653.1 -193.1 Z M 720.0 80.0 L -573.4 -455.8 L -444.1 -697.8 Z M 720.0 80.0 L -269.9 -909.9 L -57.8 -1084.1 Z M 720.0 80.0 L 184.2 -1213.4 L 446.9 -1293.1 Z" fill="#141414"/>
+        <path d="M 720.0 80.0 L 993.1 -1293.1 L 1255.8 -1213.4 Z M 720.0 80.0 L 1497.8 -1084.1 L 1709.9 -909.9 Z M 720.0 80.0 L 1884.1 -697.8 L 2013.4 -455.8 Z M 720.0 80.0 L 2093.1 -193.1 L 2120.0 80.0 Z M 720.0 80.0 L 2093.1 353.1 L 2013.4 615.8 Z M 720.0 80.0 L 1884.1 857.8 L 1709.9 1069.9 Z M 720.0 80.0 L 1497.8 1244.1 L 1255.8 1373.4 Z M 720.0 80.0 L 993.1 1453.1 L 720.0 1480.0 Z M 720.0 80.0 L 446.9 1453.1 L 184.2 1373.4 Z M 720.0 80.0 L -57.8 1244.1 L -269.9 1069.9 Z M 720.0 80.0 L -444.1 857.8 L -573.4 615.8 Z M 720.0 80.0 L -653.1 353.1 L -680.0 80.0 Z M 720.0 80.0 L -653.1 -193.1 L -573.4 -455.8 Z M 720.0 80.0 L -444.1 -697.8 L -269.9 -909.9 Z M 720.0 80.0 L -57.8 -1084.1 L 184.2 -1213.4 Z M 720.0 80.0 L 446.9 -1293.1 L 720.0 -1320.0 Z" fill="#1d1d1d"/>
+        <rect x="0" y="0" width="1440" height="560" fill="url(#glowG)"/>
+    </svg>
+
+    <!-- Logo Mr. Tasty SVG inline -->
+    <span class="logo-wrap" aria-label="Mr. Tasty">
+        <svg width="811" height="378" viewBox="0 0 811 378" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M178.561 133.881L177.624 132.944C163.243 130.132 147.295 146.388 112.587 145.136C77.879 143.884 61.001 126.376 35.9805 127.943C10.9673 129.51 -22.1737 169.527 20.6621 194.855C26.9154 198.604 48.4871 198.296 71.9406 197.044C63.3661 237.617 51.7382 326.262 73.9689 343.535C78.0255 347.489 77.4982 346.823 79.2043 348.602C81.0569 350.528 82.968 352.498 85.3771 353.655C87.2882 354.57 89.419 354.921 91.5279 355.156C95.7382 355.624 100.271 355.58 103.837 353.31C106.465 351.641 108.853 348.727 111.928 349.195C113.956 349.503 115.457 351.275 116.358 353.12C117.259 354.965 117.764 357.001 118.87 358.736C120.759 361.702 124.413 363.452 127.905 363.049C131.398 362.646 134.569 360.135 135.748 356.818C136.333 355.163 136.451 353.376 136.494 351.619C136.619 346.537 136.194 341.456 135.777 336.388C135.586 334.075 135.396 331.753 135.198 329.44C135.015 327.199 134.825 324.951 134.481 322.725C134.151 320.609 133.492 318.595 132.965 316.552C132.877 315.527 132.745 314.465 132.562 313.367L132.284 313.111C132.108 311.741 131.999 310.365 131.647 308.974C121.645 268.95 124.142 236.438 130.395 208.299C131.647 202.36 132.584 197.359 133.207 192.98C158.842 191.106 181.044 188.294 188.234 180.159C196.992 170.156 192.921 136.701 178.539 133.881H178.561Z" fill="url(#paint0_linear_53_14)"/>
+<path d="M329.49 245.218C325.397 233.788 321.347 222.665 316.991 211.586C312.634 200.508 308.006 189.78 302.448 179.178C301.138 176.52 299.827 173.854 298.201 171.24L296.935 168.89C296.495 168.004 296.063 167.118 295.624 166.232C294.438 164.504 293.215 162.461 292.029 160.725C287.247 153.491 281.938 146.959 275.861 141.797C269.791 136.635 263.222 132.483 255.937 130.008C252.319 128.924 248.739 128.156 244.895 127.738C241.05 127.321 237.294 127.518 233.574 128.024C229.855 128.536 226.179 129.356 222.862 130.44C219.581 131.839 216.301 133.23 213.108 135.251C206.987 138.927 201.649 143.767 197.065 149.442C192.481 155.116 188.637 161.641 185.503 168.699C183.76 172.097 182.369 175.758 180.978 179.419L179.63 183.388L178.239 187.049C174.827 196.671 172.293 205.853 170.038 214.684C167.776 223.515 165.784 231.994 164.1 240.429C160.731 257.3 158.879 271.439 157.707 283.595C156.536 295.75 155.994 305.606 156.162 313.785C156.28 319.401 155.796 325.823 156.133 330.699C156.829 340.555 157.817 347.057 160.614 358.466C160.724 358.905 160.893 359.344 161.171 359.696C162.694 361.651 165.271 362.551 167.754 362.735C170.294 362.918 172.835 362.456 175.376 362.273C177.185 362.141 179.33 362.317 180.297 363.855C180.875 364.777 180.853 365.934 180.817 367.025C180.751 369.068 180.714 371.155 181.307 373.118C181.9 375.08 183.218 376.918 185.144 377.628C186.389 378.09 187.758 378.038 189.084 377.914C191.815 377.665 194.59 377.116 196.911 375.658C199.965 373.74 201.905 370.423 202.945 366.974C203.985 363.525 204.219 359.893 204.556 356.305C205.105 350.528 205.94 344.773 207.06 339.076C207.697 335.818 209.293 331.871 209.864 328.202C211.82 322.579 213.467 315.886 214.705 307.963C215.437 304.075 216.301 298.906 217.048 292.806C218.022 292.989 218.637 292.901 218.637 292.901C228.412 292.821 240.662 292.411 252.891 287.256C258.251 284.942 264.065 281.303 268.121 276.331C269.337 280.585 270.508 284.524 271.68 288.464C276.432 304.324 280.994 317.387 285.709 326.145L285.475 326.203C285.841 326.709 286.215 327.206 286.581 327.712C288.28 330.655 289.993 333.035 291.758 334.778C295.507 339.903 299.263 345.029 303.012 350.155C304.447 352.117 305.926 354.123 307.918 355.522C309.683 356.767 311.821 357.492 313.981 357.558C315.548 357.609 317.137 357.067 318.118 355.852C319.641 353.977 318.763 351.868 318.169 349.913C317.708 348.383 317.474 346.537 318.543 345.351C319.663 344.106 321.582 344.216 323.229 343.916C326.824 343.264 329.79 340.006 330.083 336.359C330.207 334.829 329.922 333.255 329.739 331.71C329.534 330.011 330.112 328.327 331.233 327.023C331.233 327.023 331.24 327.009 331.247 327.009C336.453 321.246 340.305 312.511 341.044 299.469C341.784 286.428 337.684 268.056 329.504 245.189L329.49 245.218ZM229.708 249.428C229.708 249.428 227.079 253.258 223.433 256.597C224.934 249.135 226.354 241.052 228.39 232.88C230.382 224.401 232.688 215.877 235.383 207.94C236.057 205.956 236.73 203.971 237.404 201.98L237.858 200.654C238.085 199.995 238.348 199.636 238.348 199.636L238.612 199.285C239.191 198.889 239.769 198.494 240.077 198.45C240.963 198.011 241.936 198.194 242.332 198.772C242.727 199.351 242.808 199.973 242.852 200.281L242.896 200.588C243.247 200.852 243.335 201.474 243.416 202.097C245.166 205.641 246.952 209.5 248.483 213.71C251.485 221.816 254.223 230.28 256.962 238.738C245.751 235.223 234.058 246.609 229.708 249.414V249.428Z" fill="url(#paint1_linear_53_14)"/>
+<path d="M631.324 133.881L630.387 132.944C616.006 130.132 600.058 146.388 565.35 145.136C530.642 143.884 513.764 126.376 488.751 127.943C463.738 129.51 430.597 169.527 473.433 194.855C479.686 198.604 501.258 198.296 524.711 197.044C517.542 230.969 508.558 298.1 518.795 329.293C521.204 336.652 524.067 344.692 526.424 350.682C528.109 354.965 531.616 359.029 533.286 363.313C534.955 367.596 537.657 371.763 541.809 373.74C545.96 375.717 551.731 374.714 553.942 370.686C555.963 367.003 554.572 362.141 556.651 358.495C559.104 354.189 565.006 353.611 569.949 353.882C574.891 354.153 580.537 354.526 584.066 351.055C587.317 347.855 587.361 342.722 587.193 338.168C587.083 335.261 586.98 332.354 586.87 329.44C586.731 325.72 586.556 321.883 585.845 318.229C585.721 315.425 585.267 312.357 584.425 308.981C574.423 268.957 576.919 236.446 583.173 208.306C584.425 202.367 585.362 197.366 585.985 192.987C611.62 191.113 633.822 188.301 641.012 180.166C649.77 170.164 645.698 136.708 631.317 133.889L631.324 133.881Z" fill="url(#paint2_linear_53_14)"/>
+<path d="M456.115 244.881L455.8 243.944C428.283 223.932 394.205 208.921 397.954 192.666C401.703 176.41 421.092 171.094 421.092 171.094C421.092 171.094 416.091 197.359 438.6 199.234C461.109 201.108 477.994 195.17 476.12 170.472C475.183 159.84 454.548 120.76 397.639 129.51C340.737 138.268 318.843 194.233 353.551 216.119C388.259 238.006 416.399 262.704 414.832 281.464C413.272 300.224 400.136 309.919 376.997 298.349C353.859 286.78 370.122 260.515 341.982 258.325C313.842 256.136 295.082 305.54 329.16 328.678C334.323 332.186 340.041 335.232 346.112 337.795C348.037 341.075 351.113 343.741 354.071 346.237C359.372 350.704 365.545 355.456 372.428 354.629C375.328 354.277 378.022 352.945 380.893 352.374C387.395 351.078 393.934 353.801 400.158 356.108C406.382 358.407 413.455 360.296 419.467 357.492C427.463 353.75 429.982 343.528 436.587 337.67C436.792 337.487 437.026 337.319 437.238 337.15C441.639 334.697 445.674 331.79 449.232 328.386C477.372 301.498 483.625 264.915 456.108 244.903L456.115 244.881Z" fill="url(#paint3_linear_53_14)"/>
+<path d="M808.291 144.199V144.514C802.038 131.385 778.584 116.374 754.516 139.198C746.703 146.703 728.251 167.338 708.239 192.666C705.112 187.979 701.67 182.663 697.292 176.718C678.532 150.767 652.581 127.943 627.568 135.756C602.555 143.569 603.807 162.336 610.683 172.654C616.621 181.719 668.522 217.679 681.973 227.059C659.882 257.359 644.629 291.071 634.371 309.809C631.42 316.165 629.391 320.47 629.267 324.688C629.011 333.182 634.18 341.5 641.576 345.681C642.381 346.135 643.282 346.53 643.838 347.27C648.093 352.893 645.713 354.087 645.603 356.357C645.171 365.437 653.57 370.657 662.628 369.896C674.292 368.915 681.973 357.682 687.912 347.599C691.17 342.078 696.12 335.971 698.463 329.938C701.378 325.815 704.145 320.756 706.672 314.598C727.621 263.634 753.571 227.366 779.522 198.289C805.472 169.212 814.537 157.328 808.284 144.199H808.291Z" fill="url(#paint4_linear_53_14)"/>
+<path d="M402.384 5.20565L402.062 4.88346C396.057 1.14906 382.745 -0.146989 377.07 11.3784C369.602 16.731 360.515 23.5482 351.589 33.2869C349.48 35.5568 347.21 38.3173 345.094 41.0779C342.494 37.1824 339.902 33.7775 338.599 31.8297C338.599 31.8297 334.542 26.6382 330.486 21.4393C328.055 18.3566 322.534 11.7006 317.503 6.9923C316.851 5.20565 315.716 3.7485 313.93 2.61354C307.603 -1.28196 292.995 -2.57801 287.957 11.5395C284.055 22.5011 272.917 75.493 277.076 100.191C277.047 100.894 277.128 101.612 277.223 102.307C277.428 103.75 277.626 105.192 277.831 106.628C278.211 109.322 278.607 112.09 279.903 114.484C281.192 116.886 283.579 118.885 286.303 118.922C288.36 118.951 290.264 117.897 292.241 117.311C294.218 116.725 296.708 116.769 297.923 118.431C298.428 119.127 298.626 119.998 298.956 120.796C299.9 123.081 302.111 124.787 304.564 125.131C307.01 125.468 309.602 124.428 311.14 122.495C313.249 119.83 313.198 116.103 313.036 112.698C312.831 108.253 312.722 103.794 312.458 99.3492C312.678 97.1378 312.597 94.6116 312.143 91.7046C308.409 68.0095 310.518 48.8542 314.413 32.2984C316.2 36.8455 318.47 41.7149 321.23 46.7454C327.396 57.9412 338.269 72.7104 347.686 68.4928C355.477 67.0356 363.59 56.4841 368.62 49.5059C365.003 71.7146 362.836 97.3941 368.145 108.041C368.276 109.132 368.694 110.216 369.214 111.189C371.095 114.668 374.72 117.479 378.667 117.267C380.607 117.164 382.438 116.366 384.32 115.883C386.201 115.407 388.361 115.297 389.943 116.432C391.027 117.208 391.686 118.468 392.762 119.259C395.157 121.016 398.803 119.683 400.48 117.238C402.157 114.785 402.355 111.636 402.34 108.671C402.325 105.932 402.171 103.193 401.93 100.462C401.813 99.1222 402.003 96.2884 401.22 94.8093C401.146 94.0258 401.051 93.213 400.912 92.3636C397.017 68.1779 399.455 48.7004 403.511 32.1519C407.568 15.5961 408.703 9.10115 402.377 5.21298L402.384 5.20565Z" fill="url(#paint5_linear_53_14)"/>
+<path d="M490.977 96.0545C490.933 95.725 490.86 95.4028 490.765 95.0879C490.172 87.4947 482.329 80.2748 479.964 77.2653H480.125C480.125 77.2653 476.391 73.5309 472.657 69.7965C470.87 68.0099 467.304 64.7661 463.408 62.0055C478.017 54.0535 491.812 41.3931 486.13 22.8895C477.855 -4.04942 456.101 3.08986 445.879 8.28141C445.227 5.52089 443.77 3.57315 441.17 2.116C434.676 -1.45731 420.075 -1.94059 415.85 12.338C412.196 24.6981 402.479 89.4058 412.43 108.107C412.913 109.213 413.404 110.318 413.895 111.424C414.539 112.903 415.198 114.404 416.143 115.715C416.919 116.784 417.878 117.714 418.947 118.498C420.961 119.977 423.399 120.951 425.903 120.965C428.4 120.98 430.948 119.977 432.567 118.073C433.021 117.538 433.401 116.938 433.921 116.477C435.415 115.151 437.641 115.195 439.523 114.543C442.715 113.445 444.854 110.289 445.637 107.009C446.421 103.728 446.084 100.294 445.688 96.9405C445.578 95.9666 445.425 94.9415 445.103 94.0116C444.978 92.9718 444.817 91.8881 444.568 90.7385C443.104 83.9213 442.13 77.4264 441.646 71.261C442.942 70.7777 444.568 70.2871 446.194 69.6354C447.006 77.1042 448.302 86.3524 453.172 95.7689C455.098 99.3715 457.88 103.326 461.439 106.247C462.325 107.111 463.094 108.1 463.709 109.176C464.434 110.443 464.961 111.849 465.957 112.925C467.568 114.668 470.13 115.217 472.503 115.115C475.366 114.997 478.243 114.046 480.411 112.171C481.129 111.549 481.795 110.816 482.688 110.487C483.823 110.069 485.156 110.377 486.247 109.857C486.884 109.55 487.367 108.993 487.792 108.429C490.406 104.929 491.578 100.389 490.977 96.0618V96.0545ZM457.887 39.6138C455.288 48.8619 449.284 55.3568 444.414 54.2219C442.957 53.8997 441.815 52.9258 441.009 51.4613C441.331 43.6704 442.305 36.37 443.609 29.5529C443.77 28.579 443.931 27.6051 444.092 26.6312C447.014 22.2525 450.587 19.8141 453.67 20.6269C458.539 21.7619 460.326 30.2046 457.726 39.4527L457.887 39.6138Z" fill="url(#paint6_linear_53_14)"/>
+<path d="M520.596 99.8252C520.596 92.847 514.914 87.1648 507.936 87.1648C500.957 87.1648 495.275 92.847 495.275 99.8252C495.275 100.858 495.414 101.853 495.649 102.813C495.649 103.106 495.641 103.398 495.634 103.691C495.627 104.292 495.619 104.922 495.912 105.449C496.103 105.8 496.403 106.071 496.637 106.386C497.443 107.492 497.443 109.168 498.556 109.967C499.098 110.355 499.837 110.472 500.24 111.006C500.379 111.189 500.46 111.409 500.591 111.6C500.716 111.783 500.877 111.936 501.045 112.083C503.286 114.06 506.427 114.968 509.371 114.492C509.774 114.426 510.176 114.338 510.535 114.14C511.384 113.672 511.838 112.698 512.644 112.171C513.193 111.812 513.867 111.687 514.489 111.475C515.932 110.977 517.184 109.937 517.923 108.605C518.26 108.004 518.487 107.36 518.721 106.716C518.831 106.415 519.036 105.998 519.212 105.566C520.098 103.838 520.603 101.89 520.603 99.8252H520.596Z" fill="url(#paint7_linear_53_14)"/>
+<defs>
+<linearGradient id="paint0_linear_53_14" x1="0.00576074" y1="245.481" x2="192.847" y2="245.481" gradientUnits="userSpaceOnUse">
+<stop stop-color="#FAB515"/>
+<stop offset="0.45" stop-color="#F9B315"/>
+<stop offset="0.62" stop-color="#F8AC16"/>
+<stop offset="0.73" stop-color="#F6A017"/>
+<stop offset="0.83" stop-color="#F38F1A"/>
+<stop offset="0.91" stop-color="#EF791D"/>
+<stop offset="0.93" stop-color="#EE731E"/>
+</linearGradient>
+<linearGradient id="paint1_linear_53_14" x1="156.016" y1="252.76" x2="341.118" y2="252.76" gradientUnits="userSpaceOnUse">
+<stop stop-color="#FAB515"/>
+<stop offset="0.46" stop-color="#F9B315"/>
+<stop offset="0.62" stop-color="#F8AC16"/>
+<stop offset="0.74" stop-color="#F6A018"/>
+<stop offset="0.83" stop-color="#F38F1B"/>
+<stop offset="0.87" stop-color="#F1851D"/>
+<stop offset="1" stop-color="#EE731E"/>
+</linearGradient>
+<linearGradient id="paint2_linear_53_14" x1="452.769" y1="251.281" x2="645.61" y2="251.281" gradientUnits="userSpaceOnUse">
+<stop stop-color="#FAB515"/>
+<stop offset="0.2" stop-color="#F9B015"/>
+<stop offset="0.43" stop-color="#F6A217"/>
+<stop offset="0.67" stop-color="#F28B1A"/>
+<stop offset="0.87" stop-color="#EE731E"/>
+</linearGradient>
+<linearGradient id="paint3_linear_53_14" x1="310.825" y1="243.563" x2="476.266" y2="243.563" gradientUnits="userSpaceOnUse">
+<stop stop-color="#FAB515"/>
+<stop offset="0.32" stop-color="#F9B215"/>
+<stop offset="0.52" stop-color="#F7A916"/>
+<stop offset="0.69" stop-color="#F59B18"/>
+<stop offset="0.83" stop-color="#F1871B"/>
+<stop offset="0.94" stop-color="#EE731E"/>
+</linearGradient>
+<linearGradient id="paint4_linear_53_14" x1="606.407" y1="248.682" x2="810.195" y2="248.682" gradientUnits="userSpaceOnUse">
+<stop stop-color="#FAB515"/>
+<stop offset="0.49" stop-color="#F9B315"/>
+<stop offset="0.66" stop-color="#F8AC16"/>
+<stop offset="0.79" stop-color="#F6A017"/>
+<stop offset="0.89" stop-color="#F38F1A"/>
+<stop offset="0.98" stop-color="#EF791D"/>
+<stop offset="1" stop-color="#EE731E"/>
+</linearGradient>
+<linearGradient id="paint5_linear_53_14" x1="276.161" y1="62.5983" x2="406.85" y2="62.5983" gradientUnits="userSpaceOnUse">
+<stop stop-color="#FAB515"/>
+<stop offset="0.49" stop-color="#F9B315"/>
+<stop offset="0.66" stop-color="#F8AC16"/>
+<stop offset="0.79" stop-color="#F6A017"/>
+<stop offset="0.89" stop-color="#F38F1A"/>
+<stop offset="0.98" stop-color="#EF791D"/>
+<stop offset="1" stop-color="#EE731E"/>
+</linearGradient>
+<linearGradient id="paint6_linear_53_14" x1="408.081" y1="60.4898" x2="491.131" y2="60.4898" gradientUnits="userSpaceOnUse">
+<stop stop-color="#FAB515"/>
+<stop offset="0.49" stop-color="#F9B315"/>
+<stop offset="0.66" stop-color="#F8AC16"/>
+<stop offset="0.79" stop-color="#F6A017"/>
+<stop offset="0.89" stop-color="#F38F1A"/>
+<stop offset="0.98" stop-color="#EF791D"/>
+<stop offset="1" stop-color="#EE731E"/>
+</linearGradient>
+<linearGradient id="paint7_linear_53_14" x1="495.275" y1="100.894" x2="520.596" y2="100.894" gradientUnits="userSpaceOnUse">
+<stop stop-color="#FAB515"/>
+<stop offset="0.49" stop-color="#F9B315"/>
+<stop offset="0.66" stop-color="#F8AC16"/>
+<stop offset="0.79" stop-color="#F6A017"/>
+<stop offset="0.89" stop-color="#F38F1A"/>
+<stop offset="0.98" stop-color="#EF791D"/>
+<stop offset="1" stop-color="#EE731E"/>
+</linearGradient>
+</defs>
+</svg>
+    </span>
+
+    <h1 class="hero-title">
+        <span class="title-white">STOCK ANIVERSARIO</span>
+        <span class="title-orange">GRUPO EL DESEMBARCO</span>
+    </h1>
+
+    <div class="hero-rule"></div>
+
+    <p class="hero-sub">
+        A continuación podrás conocer el stock disponible en cada sucursal,<br>
+        acompañado de su dirección y teléfono.
+    </p>
+
+</section>
+
+<div class="content">
+
+    <div id="loading" class="state-loading">
+        <div class="spinner"></div>
+        <span>Cargando sucursales…</span>
+    </div>
+
+    <div id="error" class="state-error"></div>
+
+    <div id="search-wrap" class="search-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="7"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" id="search-input" placeholder="Buscar sucursal...">
+    </div>
+
+    <div id="search-empty" class="search-empty">No encontramos ninguna sucursal con ese nombre.</div>
+
+    <div id="table-shell" class="table-shell">
+        <div class="table-scroll">
+            <table>
+                <thead><tr id="thead-tr"></tr></thead>
+                <tbody id="tbody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="cards-wrap" class="cards-wrap"></div>
+
+</div>
+
+<footer>Mr. Tasty &nbsp;·&nbsp; Stock Aniversario Grupo El Desembarco</footer>
+
+<script>
+const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTBK1Zo3HAFY9U4SuTnFEy7zqq6MBPIe_QeEyufp8lBu7ZTIJ9kJiQc4A7LEo5aflDts8D2mLjU-h6S/pub?output=csv';
+
+const TARGET_COLS = [
+    'LOCAL',
+    'DIRECCIÓN',
+    'TELÉFONO',
+    'TODO EL DÍA BURGER QUESO A $3.000',
+];
+
+const isEmail = v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((v||'').trim());
+const isPhone = v => /^[\d\s\-()+]{6,20}$/.test((v||'').trim());
+
+function esc(s) {
+    return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function cellHTML(raw, colName) {
+    const v = (raw||'').trim();
+    if (!v) return '<span class="val-empty">—</span>';
+    if (isEmail(v))  return `<a href="mailto:${esc(v)}">${esc(v)}</a>`;
+    if (colName === 'TELÉFONO' && isPhone(v))
+        return `<a href="tel:${v.replace(/[^\d+]/g,'')}">${esc(v)}</a>`;
+    const vUp = v.toUpperCase();
+    if (vUp.includes('CON STOCK')) return `<span class="badge badge-yes">${esc(v)}</span>`;
+    if (vUp.includes('SIN STOCK')) return `<span class="badge badge-no">${esc(v)}</span>`;
+    return esc(v);
+}
+
+function parseCSV(raw) {
+    const rows = [];
+    let row = [], field = '', inQ = false;
+    for (let i = 0; i < raw.length; i++) {
+        const c = raw[i];
+        if (c === '"') {
+            if (inQ && raw[i+1] === '"') { field += '"'; i++; }
+            else inQ = !inQ;
+        } else if (c === ',' && !inQ) {
+            row.push(field); field = '';
+        } else if ((c === '\n' || c === '\r') && !inQ) {
+            if (c === '\r' && raw[i+1] === '\n') i++;
+            row.push(field); field = '';
+            if (row.some(f => f.trim())) rows.push(row);
+            row = [];
+        } else { field += c; }
+    }
+    row.push(field);
+    if (row.some(f => f.trim())) rows.push(row);
+    return rows;
+}
+
+function normalizarTexto(s) {
+    return (s||'').toString()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase().trim();
+}
+
+function render(rows) {
+    // Normalizar: colapsar múltiples espacios para evitar discrepancias con la planilla
+    const norm = s => s.replace(/\s+/g, ' ').trim();
+
+    const headers = rows[0].map(h => norm(h));
+    const cols = TARGET_COLS.map(name => ({ name, idx: headers.indexOf(norm(name)) })).filter(c => c.idx !== -1);
+    if (!cols.length) { showError('No se encontraron las columnas esperadas.'); return; }
+
+    const data = rows.slice(1).filter(r => r.some(c => c.trim()));
+
+    const thead = document.getElementById('thead-tr');
+    cols.forEach(col => {
+        const th = document.createElement('th');
+        th.textContent = col.name;
+        thead.appendChild(th);
+    });
+
+    const tbody = document.getElementById('tbody');
+    data.forEach(r => {
+        const tr = document.createElement('tr');
+        const localCol2 = cols.find(c => c.name === 'LOCAL');
+        const sucVal = localCol2 ? (r[localCol2.idx]||'').trim() : '';
+        tr.dataset.sucursal = normalizarTexto(sucVal);
+        cols.forEach(col => {
+            const td = document.createElement('td');
+            td.innerHTML = cellHTML(r[col.idx], col.name);
+            if (col.name === 'LOCAL')    td.classList.add('col-local');
+            if (col.name === 'TELÉFONO') td.classList.add('col-phone');
+            tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+    });
+
+    const wrap     = document.getElementById('cards-wrap');
+    const localCol = cols.find(c => c.name === 'LOCAL');
+    data.forEach(r => {
+        const localVal = localCol ? (r[localCol.idx]||'').trim() : '';
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.dataset.sucursal = normalizarTexto(localVal);
+        card.innerHTML = `<div class="card-head"><div class="card-local">${esc(localVal)||'—'}</div></div><div class="card-body"></div>`;
+        const body = card.querySelector('.card-body');
+        cols.filter(c => c.name !== 'LOCAL').forEach(col => {
+            const f = document.createElement('div');
+            f.className = 'card-field';
+            f.innerHTML = `<span class="card-lbl">${esc(col.name)}</span><span class="card-val">${cellHTML(r[col.idx], col.name)}</span>`;
+            body.appendChild(f);
+        });
+        wrap.appendChild(card);
+    });
+
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('table-shell').classList.add('visible');
+    document.getElementById('cards-wrap').classList.add('visible');
+    document.getElementById('search-wrap').classList.add('visible');
+
+    inicializarBuscador();
+}
+
+function inicializarBuscador() {
+    const input    = document.getElementById('search-input');
+    const filas    = document.querySelectorAll('#tbody tr');
+    const tarjetas = document.querySelectorAll('#cards-wrap .card');
+    const vacio    = document.getElementById('search-empty');
+
+    input.addEventListener('input', () => {
+        const q = normalizarTexto(input.value);
+        let visibles = 0;
+
+        filas.forEach(tr => {
+            const match = (tr.dataset.sucursal || '').includes(q);
+            tr.style.display = match ? '' : 'none';
+            if (match) visibles++;
+        });
+
+        tarjetas.forEach(card => {
+            const match = (card.dataset.sucursal || '').includes(q);
+            card.style.display = match ? '' : 'none';
+        });
+
+        vacio.classList.toggle('visible', visibles === 0 && q !== '');
+    });
+}
+
+function showError(msg) {
+    document.getElementById('loading').style.display = 'none';
+    const el = document.getElementById('error');
+    el.textContent = msg;
+    el.style.display = 'block';
+}
+
+(async () => {
+    try {
+        const res = await fetch(CSV_URL + '&t=' + Date.now(), { cache: 'no-store' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const text = await res.text();
+        const rows = parseCSV(text);
+        if (rows.length < 2) throw new Error('La planilla no tiene datos.');
+        render(rows);
+    } catch (e) {
+        showError(`No se pudo cargar la planilla.\nVerificá que esté publicada como CSV.\n\n${e.message}`);
+    }
+})();
+</script>
+</body>
+</html>
