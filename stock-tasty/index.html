@@ -4,19 +4,31 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mr. Tasty — Stock Aniversario Grupo El Desembarco</title>
+    <meta name="description" content="Burger Queso a $3.000 todo el día. Mirá qué sucursal Mr. Tasty tiene stock disponible, con dirección, teléfono y cómo llegar.">
+    <meta property="og:title" content="Stock Aniversario — Mr. Tasty">
+    <meta property="og:description" content="Burger Queso a $3.000 todo el día · Fijate si tu sucursal tiene stock disponible.">
+    <meta property="og:type" content="website">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
         :root {
-            --orange: #F5A800;
-            --bg:     #181818;
-            --surf:   #1E1E1E;
-            --text:   #FFFFFF;
-            --muted:  rgba(255,255,255,0.55);
-            --line:   rgba(255,255,255,0.07);
+            --orange:  #F5A800;
+            --grad-a:  #FAB515;
+            --grad-b:  #EE731E;
+            --bg:      #141414;
+            --surf:    #1D1D1D;
+            --card:    #1E1E1E;
+            --text:    #FFFFFF;
+            --muted:   rgba(255,255,255,0.55);
+            --faint:   rgba(255,255,255,0.28);
+            --line:    rgba(255,255,255,0.07);
+            --verde:   #4ade80;
+            --rojo:    #f87171;
         }
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html { scroll-behavior: smooth; }
 
         body {
             background: var(--bg);
@@ -24,15 +36,26 @@
             font-family: 'Barlow', system-ui, sans-serif;
             min-height: 100vh;
             -webkit-font-smoothing: antialiased;
+            overflow-x: clip;
         }
 
-        /* ── HERO ── */
+        ::selection { background: var(--orange); color: #111; }
+
+        /* Scrollbar custom */
+        ::-webkit-scrollbar { width: 10px; }
+        ::-webkit-scrollbar-track { background: #101010; }
+        ::-webkit-scrollbar-thumb { background: linear-gradient(var(--grad-a), var(--grad-b)); border-radius: 5px; border: 2px solid #101010; }
+
+        a { color: var(--orange); }
+
+        /* ════ HERO ════ */
         .hero {
             position: relative;
             text-align: center;
-            padding: 3.5rem 2rem 3.5rem;
+            padding: clamp(2.6rem, 6vh, 4.5rem) 1.25rem clamp(2.8rem, 7vh, 5rem);
             overflow: hidden;
-            background: #181818;
+            background: #161616;
+            isolation: isolate;
         }
 
         .rays {
@@ -41,95 +64,225 @@
             width: 100%;
             height: 100%;
             pointer-events: none;
+            z-index: -2;
+            opacity: .9;
         }
 
-        /* Logo */
+        .hero-glow {
+            position: absolute;
+            left: 50%; top: 42%;
+            width: min(120vw, 900px);
+            aspect-ratio: 1;
+            transform: translate(-50%, -50%);
+            background: radial-gradient(circle, rgba(245,168,0,0.16) 0%, rgba(245,168,0,0.05) 38%, transparent 68%);
+            pointer-events: none;
+            z-index: -1;
+            animation: respira 6s ease-in-out infinite;
+        }
+        @keyframes respira {
+            0%, 100% { opacity: .75; transform: translate(-50%,-50%) scale(1); }
+            50%      { opacity: 1;   transform: translate(-50%,-50%) scale(1.06); }
+        }
+
         .logo-wrap {
-            position: relative;
             display: block;
-            width: 130px;
-            margin: 0 auto 2rem;
+            width: clamp(92px, 12vw, 128px);
+            margin: 0 auto 1.6rem;
+            filter: drop-shadow(0 0 26px rgba(245,168,0,0.35));
         }
-        .logo-wrap svg {
-            width: 100%;
-            height: auto;
-            display: block;
-        }
+        .logo-wrap svg { width: 100%; height: auto; display: block; }
 
-        /* Título */
-        .hero-title {
-            position: relative;
-            font-family: 'Anton', Impact, sans-serif;
-            font-size: clamp(2.2rem, 6.5vw, 5rem);
-            line-height: 1;
+        .hero-eyebrow {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: clamp(.68rem, 1.6vw, .8rem);
+            font-weight: 700;
+            letter-spacing: .34em;
             text-transform: uppercase;
-            letter-spacing: 0.01em;
-        }
-        .title-white {
-            color: #FFFFFF;
-            display: block;
-            margin-bottom: 0.55rem;
-        }
-        .title-orange {
             color: var(--orange);
-            display: block;
-            white-space: nowrap;
-            font-size: clamp(2rem, 6vw, 4.6rem);
+            margin-bottom: .9rem;
         }
 
-        .hero-rule {
-            width: 80px;
-            height: 3px;
-            background: var(--orange);
-            border-radius: 2px;
-            margin: 1.6rem auto 1.8rem;
+        .hero-title {
+            font-family: 'Anton', Impact, sans-serif;
+            font-size: clamp(2.3rem, 8.2vw, 4.6rem);
+            line-height: .98;
+            text-transform: uppercase;
+            letter-spacing: .012em;
+            color: #fff;
+            text-shadow: 0 4px 34px rgba(0,0,0,.55);
         }
+
+        .hero-promo {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: clamp(.85rem, 2.4vw, 1.15rem);
+            font-weight: 700;
+            letter-spacing: .3em;
+            text-transform: uppercase;
+            color: rgba(255,255,255,.85);
+            margin-top: 1.4rem;
+        }
+
+        .precio {
+            font-family: 'Anton', Impact, sans-serif;
+            font-size: clamp(4.6rem, 19vw, 11rem);
+            line-height: 1;
+            margin-top: .2rem;
+            background: linear-gradient(100deg, var(--grad-a) 20%, var(--grad-b) 42%, #ffd977 50%, var(--grad-b) 58%, var(--grad-a) 80%);
+            background-size: 220% 100%;
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            animation: brillo 4.2s linear infinite;
+            filter: drop-shadow(0 6px 28px rgba(238,115,30,0.30));
+        }
+        @keyframes brillo {
+            from { background-position: 120% 0; }
+            to   { background-position: -120% 0; }
+        }
+
+        .hero-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: .55rem;
+            margin-top: 1.7rem;
+            padding: .55rem 1.15rem;
+            border: 1px solid rgba(245,168,0,.45);
+            border-radius: 999px;
+            background: rgba(245,168,0,.08);
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: .82rem;
+            font-weight: 700;
+            letter-spacing: .18em;
+            text-transform: uppercase;
+        }
+        .hero-chip .dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--orange);
+            box-shadow: 0 0 10px var(--orange);
+        }
+        .hero-chip strong { color: var(--orange); font-weight: 700; }
 
         .hero-sub {
-            position: relative;
+            max-width: 560px;
+            margin: 1.5rem auto 0;
             font-family: 'Barlow Condensed', sans-serif;
-            font-size: clamp(0.78rem, 1.8vw, 0.95rem);
-            font-weight: 700;
-            letter-spacing: 0.14em;
+            font-size: clamp(.82rem, 2vw, .95rem);
+            font-weight: 600;
+            letter-spacing: .12em;
             text-transform: uppercase;
-            color: var(--text);
-            max-width: 680px;
-            margin: 0 auto;
-            line-height: 1.8;
+            line-height: 1.9;
+            color: var(--muted);
         }
 
-        /* ── CONTENIDO ── */
-        .content {
-            max-width: 1440px;
-            margin: 0 auto;
-            padding: 0 1.5rem 5rem;
-        }
-
-        /* ── BUSCADOR ── */
-        .search-wrap {
-            display: none;
+        /* ════ MARQUEE ════ */
+        .marquee {
             position: relative;
-            max-width: 420px;
-            margin: 0 0 1.5rem;
+            transform: rotate(-1.2deg) scale(1.02);
+            background: linear-gradient(90deg, var(--grad-a), var(--grad-b));
+            overflow: hidden;
+            padding: .62rem 0;
+            box-shadow: 0 8px 34px rgba(238,115,30,.25);
         }
-        .search-wrap.visible { display: block; }
+        .marquee-track {
+            display: flex;
+            width: max-content;
+            animation: desfile 26s linear infinite;
+        }
+        .marquee-track span {
+            font-family: 'Anton', Impact, sans-serif;
+            font-size: .95rem;
+            letter-spacing: .12em;
+            text-transform: uppercase;
+            color: #161616;
+            white-space: nowrap;
+            padding-right: 1.4rem;
+        }
+        @keyframes desfile {
+            from { transform: translateX(0); }
+            to   { transform: translateX(-50%); }
+        }
+
+        /* ════ CONTENIDO ════ */
+        .content {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 2.2rem 1.25rem 4.5rem;
+        }
+
+        /* Stats */
+        .stats {
+            display: none;
+            flex-wrap: wrap;
+            gap: .6rem;
+            margin-bottom: 1.4rem;
+        }
+        .stats.visible { display: flex; }
+        .stat-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: .5rem;
+            padding: .5rem 1rem;
+            border-radius: 8px;
+            background: var(--surf);
+            border: 1px solid var(--line);
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: .8rem;
+            font-weight: 700;
+            letter-spacing: .14em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+        .stat-chip b {
+            font-family: 'Anton', sans-serif;
+            font-size: 1.15rem;
+            font-weight: 400;
+            letter-spacing: .02em;
+        }
+        .stat-total b { color: var(--orange); }
+        .stat-yes b   { color: var(--verde); }
+        .stat-no b    { color: var(--rojo); }
+
+        /* Toolbar sticky */
+        .toolbar {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            display: none;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: .65rem;
+            padding: .8rem 0;
+            margin-bottom: 1.5rem;
+            background: rgba(20,20,20,.86);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--line);
+        }
+        .toolbar.visible { display: flex; }
+
+        .search-wrap {
+            position: relative;
+            flex: 1 1 230px;
+            max-width: 460px;
+        }
         .search-wrap svg {
             position: absolute;
             left: 1rem; top: 50%;
             transform: translateY(-50%);
-            width: 18px; height: 18px;
+            width: 17px; height: 17px;
             color: var(--muted);
             pointer-events: none;
         }
         #search-input {
             width: 100%;
-            padding: .78rem 1rem .78rem 2.7rem;
+            padding: .8rem 1rem .8rem 2.7rem;
             background: var(--surf);
             border: 1px solid var(--line);
-            border-radius: 24px;
+            border-radius: 999px;
             color: var(--text);
             font-family: 'Barlow Condensed', sans-serif;
-            font-size: .92rem;
+            font-size: 1rem;
             font-weight: 500;
             outline: none;
             transition: border-color .15s, box-shadow .15s;
@@ -137,41 +290,80 @@
         #search-input::placeholder { color: var(--muted); }
         #search-input:focus {
             border-color: var(--orange);
-            box-shadow: 0 0 0 3px rgba(245,168,0,0.15);
+            box-shadow: 0 0 0 3px rgba(245,168,0,0.18);
         }
-        .search-empty {
-            display: none;
-            text-align: center;
-            padding: 2.5rem 1rem;
-            color: var(--muted);
-            font-family: 'Barlow Condensed', sans-serif;
-            font-size: .95rem;
-            letter-spacing: .08em;
-            text-transform: uppercase;
-        }
-        .search-empty.visible { display: block; }
-        .state-loading {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 1rem;
-            padding: 5rem 2rem;
-            color: var(--muted);
-            font-family: 'Barlow Condensed', sans-serif;
-            font-size: 0.85rem;
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
-        }
-        .spinner {
-            width: 30px; height: 30px;
-            border: 2px solid rgba(255,255,255,0.08);
-            border-top-color: var(--orange);
-            border-radius: 50%;
-            animation: spin .75s linear infinite;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* ── ERROR ── */
+        .filter-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: .5rem;
+            padding: .74rem 1.1rem;
+            border-radius: 999px;
+            border: 1px solid var(--line);
+            background: var(--surf);
+            color: var(--muted);
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: .82rem;
+            font-weight: 700;
+            letter-spacing: .12em;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: border-color .15s, color .15s, background .15s, transform .1s;
+        }
+        .filter-btn .f-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--faint);
+            transition: background .15s, box-shadow .15s;
+        }
+        .filter-btn:active { transform: scale(.96); }
+        .filter-btn[aria-pressed="true"] {
+            border-color: rgba(74,222,128,.5);
+            background: rgba(74,222,128,.08);
+            color: var(--verde);
+        }
+        .filter-btn[aria-pressed="true"] .f-dot {
+            background: var(--verde);
+            box-shadow: 0 0 8px var(--verde);
+        }
+
+        .result-count {
+            margin-left: auto;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: .78rem;
+            font-weight: 700;
+            letter-spacing: .16em;
+            text-transform: uppercase;
+            color: var(--muted);
+            white-space: nowrap;
+        }
+
+        /* Focus visible global */
+        a:focus-visible, button:focus-visible, input:focus-visible {
+            outline: 2px solid var(--orange);
+            outline-offset: 2px;
+        }
+
+        /* ════ SKELETON ════ */
+        .skeleton {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(min(272px, 100%), 1fr));
+            gap: .9rem;
+        }
+        .sk-card {
+            height: 178px;
+            border-radius: 14px;
+            background: linear-gradient(100deg, var(--surf) 42%, #262626 50%, var(--surf) 58%);
+            background-size: 200% 100%;
+            animation: shimmer 1.3s linear infinite;
+            border: 1px solid var(--line);
+        }
+        @keyframes shimmer {
+            from { background-position: 120% 0; }
+            to   { background-position: -80% 0; }
+        }
+
+        /* ════ ERROR ════ */
         .state-error {
             display: none;
             margin: 2rem auto;
@@ -179,128 +371,192 @@
             padding: 1.25rem 1.5rem;
             background: rgba(200,40,40,.07);
             border: 1px solid rgba(200,40,40,.2);
-            border-radius: 6px;
+            border-radius: 10px;
             color: #FF8080;
             font-size: .875rem;
             white-space: pre-line;
         }
 
-        /* ── TABLA DESKTOP ── */
-        .table-shell { display: none; border-radius: 6px; overflow: hidden; }
-        .table-scroll { overflow-x: auto; }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background: var(--surf);
-        }
-
-        thead th {
-            background: var(--orange);
-            padding: 1rem 1.5rem;
-            text-align: left;
+        .search-empty {
+            display: none;
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--muted);
             font-family: 'Barlow Condensed', sans-serif;
-            font-size: 0.7rem;
-            font-weight: 700;
-            letter-spacing: 0.22em;
-            text-transform: uppercase;
-            color: #111111;
-            white-space: nowrap;
-        }
-
-        tbody tr { border-bottom: 1px solid var(--line); transition: background .12s; }
-        tbody tr:last-child { border-bottom: none; }
-        tbody tr:hover { background: rgba(245,168,0,0.05); }
-
-        tbody td {
-            padding: .9rem 1.5rem;
-            font-size: .9rem;
-            color: var(--text);
-            vertical-align: middle;
-        }
-        tbody td.col-local {
-            font-family: 'Barlow Condensed', sans-serif;
-            font-weight: 700;
-            font-size: 1rem;
-            letter-spacing: .06em;
+            font-size: .95rem;
+            letter-spacing: .08em;
             text-transform: uppercase;
         }
+        .search-empty.visible { display: block; }
 
-        a { color: var(--orange); text-decoration: none; }
-        a:hover { text-decoration: underline; }
-        td.col-phone a { color: var(--muted); }
-        td.col-phone a:hover { color: var(--orange); }
-        .val-empty { color: rgba(255,255,255,0.18); }
-
-        /* Stock badges */
-        .badge {
-            display: inline-block;
-            padding: .25rem .65rem;
-            border-radius: 4px;
-            font-family: 'Barlow Condensed', sans-serif;
-            font-size: .72rem;
-            font-weight: 700;
-            letter-spacing: .1em;
-            text-transform: uppercase;
-            white-space: nowrap;
+        /* ════ CARDS ════ */
+        .grid {
+            display: none;
+            grid-template-columns: repeat(auto-fill, minmax(min(272px, 100%), 1fr));
+            gap: .9rem;
         }
-        .badge-yes { background: rgba(34,197,94,.15); color: #4ade80; border: 1px solid rgba(34,197,94,.35); }
-        .badge-no  { background: rgba(239,68,68,.15);  color: #f87171; border: 1px solid rgba(239,68,68,.35); }
+        .grid.visible { display: grid; }
 
-        /* ── TARJETAS MOBILE ── */
-        .cards-wrap { display: none; flex-direction: column; gap: .9rem; }
+        .card {
+            display: flex;
+            flex-direction: column;
+            gap: .55rem;
+            padding: 1.1rem 1.15rem 1.05rem;
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-top: 3px solid var(--verde);
+            border-radius: 14px;
+            animation: aparece .45s cubic-bezier(.2,.7,.3,1) both;
+            animation-delay: calc(min(var(--i), 18) * 35ms);
+            transition: transform .18s cubic-bezier(.2,.7,.3,1), border-color .18s, box-shadow .18s;
+        }
+        /* La entrada corre UNA sola vez: despues se apaga para que buscar/filtrar
+           (display none <-> grid) no reinicie la animacion y haga parpadear las cards */
+        .grid.settled .card { animation: none; }
+        .card:hover {
+            transform: translateY(-3px);
+            border-color: rgba(245,168,0,.35);
+            box-shadow: 0 10px 30px rgba(0,0,0,.4);
+        }
+        .card.no-stock { border-top-color: var(--rojo); opacity: .82; }
+        .card.otro-stock { border-top-color: var(--orange); }
+        @keyframes aparece {
+            from { opacity: 0; transform: translateY(14px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
 
-        .card { background: var(--surf); border-radius: 6px; overflow: hidden; }
-        .card-head { background: var(--orange); padding: .7rem 1.2rem; }
+        .card-top {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: .6rem;
+        }
         .card-local {
             font-family: 'Barlow Condensed', sans-serif;
-            font-size: 1.05rem;
+            font-size: 1.22rem;
+            font-weight: 700;
+            letter-spacing: .07em;
+            text-transform: uppercase;
+            line-height: 1.15;
+        }
+
+        .badge {
+            flex-shrink: 0;
+            display: inline-flex;
+            align-items: center;
+            gap: .38rem;
+            padding: .26rem .6rem;
+            border-radius: 999px;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: .64rem;
             font-weight: 700;
             letter-spacing: .1em;
             text-transform: uppercase;
-            color: #111;
+            white-space: nowrap;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
-        .card-body { padding: .6rem 1.2rem .9rem; }
-        .card-field { display: flex; flex-direction: column; padding: .45rem 0; border-bottom: 1px solid var(--line); }
-        .card-field:last-child { border-bottom: none; }
-        .card-lbl {
+        .badge .b-dot { flex-shrink: 0; width: 6px; height: 6px; border-radius: 50%; }
+        .badge-yes { background: rgba(74,222,128,.12); color: var(--verde); border: 1px solid rgba(74,222,128,.35); }
+        .badge-yes .b-dot { background: var(--verde); box-shadow: 0 0 7px rgba(74,222,128,.8); }
+        .badge-no  { background: rgba(248,113,113,.12); color: var(--rojo); border: 1px solid rgba(248,113,113,.35); }
+        .badge-no .b-dot { background: var(--rojo); }
+        .badge-otro { background: rgba(245,168,0,.1); color: var(--orange); border: 1px solid rgba(245,168,0,.35); }
+        .badge-otro .b-dot { background: var(--orange); }
+
+        .card-row {
+            display: flex;
+            align-items: baseline;
+            gap: .55rem;
+            font-size: .92rem;
+            color: rgba(255,255,255,.82);
+            line-height: 1.4;
+        }
+        .card-row svg {
+            width: 13px; height: 13px;
+            flex-shrink: 0;
+            color: var(--orange);
+            transform: translateY(1px);
+        }
+        .card-row .vacio { color: var(--faint); }
+
+        .acciones {
+            display: flex;
+            gap: .55rem;
+            margin-top: auto;
+            padding-top: .5rem;
+        }
+        .btn {
+            flex: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: .45rem;
+            padding: .68rem .5rem;
+            border-radius: 10px;
             font-family: 'Barlow Condensed', sans-serif;
-            font-size: .6rem; font-weight: 700;
-            letter-spacing: .18em; text-transform: uppercase;
-            color: var(--orange); margin-bottom: .1rem;
+            font-size: .84rem;
+            font-weight: 700;
+            letter-spacing: .1em;
+            text-transform: uppercase;
+            text-decoration: none;
+            transition: transform .12s, box-shadow .15s, border-color .15s;
         }
-        .card-val { font-size: .9rem; color: var(--text); }
+        .btn:active { transform: scale(.95); }
+        .btn svg { width: 14px; height: 14px; }
 
-        /* ── RESPONSIVE ── */
-        @media (max-width: 768px) {
-            .table-shell.visible { display: none !important; }
-            .cards-wrap.visible  { display: flex; }
-            .content { padding-left: 1rem; padding-right: 1rem; }
-            .logo-wrap { width: 100px; }
+        .btn-llamar {
+            background: linear-gradient(115deg, var(--grad-a), var(--grad-b));
+            color: #161616;
+            box-shadow: 0 4px 16px rgba(238,115,30,.28);
         }
-        @media (min-width: 769px) {
-            .table-shell.visible { display: block; }
-            .cards-wrap.visible  { display: none !important; }
+        .btn-llamar:hover { box-shadow: 0 6px 22px rgba(238,115,30,.45); }
+
+        .btn-off {
+            background: var(--surf);
+            color: var(--faint);
+            border: 1px solid var(--line);
+            pointer-events: none;
         }
 
-        /* ── FOOTER ── */
+        .btn-mapa {
+            background: transparent;
+            color: var(--orange);
+            border: 1px solid rgba(245,168,0,.4);
+        }
+        .btn-mapa:hover { border-color: var(--orange); background: rgba(245,168,0,.07); }
+
+        /* ════ FOOTER ════ */
         footer {
             text-align: center;
-            padding: 1.25rem 2rem;
+            padding: 1.4rem 2rem;
             font-family: 'Barlow Condensed', sans-serif;
-            font-size: .65rem;
+            font-size: .66rem;
             font-weight: 600;
             letter-spacing: .16em;
             text-transform: uppercase;
-            color: rgba(255,255,255,0.18);
+            color: rgba(255,255,255,0.22);
             border-top: 1px solid var(--line);
+        }
+
+        /* ════ REDUCED MOTION ════ */
+        @media (prefers-reduced-motion: reduce) {
+            html { scroll-behavior: auto; }
+            .hero-glow, .precio, .marquee-track, .sk-card { animation: none; }
+            .card { animation: none; }
+            *, *::before, *::after { transition-duration: .01ms !important; }
+        }
+
+        @media (max-width: 480px) {
+            .result-count { margin-left: 0; width: 100%; }
+            .content { padding-left: 1rem; padding-right: 1rem; }
         }
     </style>
 </head>
 <body>
 
-<section class="hero">
-
+<header class="hero">
     <svg class="rays" viewBox="0 0 1440 560" preserveAspectRatio="xMidYMid slice"
          xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <defs>
@@ -313,8 +569,8 @@
         <path d="M 720.0 80.0 L 993.1 -1293.1 L 1255.8 -1213.4 Z M 720.0 80.0 L 1497.8 -1084.1 L 1709.9 -909.9 Z M 720.0 80.0 L 1884.1 -697.8 L 2013.4 -455.8 Z M 720.0 80.0 L 2093.1 -193.1 L 2120.0 80.0 Z M 720.0 80.0 L 2093.1 353.1 L 2013.4 615.8 Z M 720.0 80.0 L 1884.1 857.8 L 1709.9 1069.9 Z M 720.0 80.0 L 1497.8 1244.1 L 1255.8 1373.4 Z M 720.0 80.0 L 993.1 1453.1 L 720.0 1480.0 Z M 720.0 80.0 L 446.9 1453.1 L 184.2 1373.4 Z M 720.0 80.0 L -57.8 1244.1 L -269.9 1069.9 Z M 720.0 80.0 L -444.1 857.8 L -573.4 615.8 Z M 720.0 80.0 L -653.1 353.1 L -680.0 80.0 Z M 720.0 80.0 L -653.1 -193.1 L -573.4 -455.8 Z M 720.0 80.0 L -444.1 -697.8 L -269.9 -909.9 Z M 720.0 80.0 L -57.8 -1084.1 L 184.2 -1213.4 Z M 720.0 80.0 L 446.9 -1293.1 L 720.0 -1320.0 Z" fill="#1d1d1d"/>
         <rect x="0" y="0" width="1440" height="560" fill="url(#glowG)"/>
     </svg>
+    <div class="hero-glow" aria-hidden="true"></div>
 
-    <!-- Logo Mr. Tasty SVG inline -->
     <span class="logo-wrap" aria-label="Mr. Tasty">
         <svg width="811" height="378" viewBox="0 0 811 378" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="M178.561 133.881L177.624 132.944C163.243 130.132 147.295 146.388 112.587 145.136C77.879 143.884 61.001 126.376 35.9805 127.943C10.9673 129.51 -22.1737 169.527 20.6621 194.855C26.9154 198.604 48.4871 198.296 71.9406 197.044C63.3661 237.617 51.7382 326.262 73.9689 343.535C78.0255 347.489 77.4982 346.823 79.2043 348.602C81.0569 350.528 82.968 352.498 85.3771 353.655C87.2882 354.57 89.419 354.921 91.5279 355.156C95.7382 355.624 100.271 355.58 103.837 353.31C106.465 351.641 108.853 348.727 111.928 349.195C113.956 349.503 115.457 351.275 116.358 353.12C117.259 354.965 117.764 357.001 118.87 358.736C120.759 361.702 124.413 363.452 127.905 363.049C131.398 362.646 134.569 360.135 135.748 356.818C136.333 355.163 136.451 353.376 136.494 351.619C136.619 346.537 136.194 341.456 135.777 336.388C135.586 334.075 135.396 331.753 135.198 329.44C135.015 327.199 134.825 324.951 134.481 322.725C134.151 320.609 133.492 318.595 132.965 316.552C132.877 315.527 132.745 314.465 132.562 313.367L132.284 313.111C132.108 311.741 131.999 310.365 131.647 308.974C121.645 268.95 124.142 236.438 130.395 208.299C131.647 202.36 132.584 197.359 133.207 192.98C158.842 191.106 181.044 188.294 188.234 180.159C196.992 170.156 192.921 136.701 178.539 133.881H178.561Z" fill="url(#paint0_linear_53_14)"/>
@@ -399,51 +655,60 @@
 </svg>
     </span>
 
-    <h1 class="hero-title">
-        <span class="title-white">STOCK ANIVERSARIO</span>
-        <span class="title-orange">GRUPO EL DESEMBARCO</span>
-    </h1>
+    <p class="hero-eyebrow">Grupo El Desembarco presenta</p>
+    <h1 class="hero-title">Stock Aniversario</h1>
+    <p class="hero-promo">Todo el día · Burger Queso a</p>
+    <div class="precio" aria-label="3000 pesos">$3.000</div>
 
-    <div class="hero-rule"></div>
-
-    <p class="hero-sub">
-        A continuación podrás conocer el stock disponible en cada sucursal,<br>
-        acompañado de su dirección y teléfono.
-    </p>
-
-</section>
-
-<div class="content">
-
-    <div id="loading" class="state-loading">
-        <div class="spinner"></div>
-        <span>Cargando sucursales…</span>
+    <div class="hero-chip">
+        <span class="dot" aria-hidden="true"></span>
+        <span><strong id="hero-count">64</strong>&nbsp;sucursales en todo el país</span>
     </div>
 
-    <div id="error" class="state-error"></div>
+    <p class="hero-sub">Fijate si tu sucursal más cercana tiene stock disponible,<br>con dirección, teléfono y cómo llegar.</p>
+</header>
 
-    <div id="search-wrap" class="search-wrap">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="11" cy="11" r="7"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-        </svg>
-        <input type="text" id="search-input" placeholder="Buscar sucursal...">
+<div class="marquee" aria-hidden="true">
+    <div class="marquee-track" id="marquee-track">
+        <span>Burger Queso a $3.000 ★ Todo el día ★ Stock Aniversario ★ Grupo El Desembarco ★&nbsp;</span>
     </div>
+</div>
+
+<main class="content" id="sucursales">
+
+    <div id="stats" class="stats">
+        <span class="stat-chip stat-total"><b id="st-total">–</b> Sucursales</span>
+        <span class="stat-chip stat-yes"><b id="st-yes">–</b> Con stock</span>
+        <span class="stat-chip stat-no"><b id="st-no">–</b> Sin stock</span>
+    </div>
+
+    <div id="toolbar" class="toolbar">
+        <div class="search-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="11" cy="11" r="7"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="search-input" placeholder="Buscar sucursal..." aria-label="Buscar sucursal">
+        </div>
+        <button id="filter-stock" class="filter-btn" aria-pressed="false" type="button">
+            <span class="f-dot" aria-hidden="true"></span>
+            Solo con stock
+        </button>
+        <span id="result-count" class="result-count" aria-live="polite"></span>
+    </div>
+
+    <div id="skeleton" class="skeleton" aria-hidden="true">
+        <div class="sk-card"></div><div class="sk-card"></div><div class="sk-card"></div><div class="sk-card"></div>
+        <div class="sk-card"></div><div class="sk-card"></div><div class="sk-card"></div><div class="sk-card"></div>
+    </div>
+
+    <div id="error" class="state-error" role="alert"></div>
+
+    <div id="grid" class="grid" role="list"></div>
 
     <div id="search-empty" class="search-empty">No encontramos ninguna sucursal con ese nombre.</div>
 
-    <div id="table-shell" class="table-shell">
-        <div class="table-scroll">
-            <table>
-                <thead><tr id="thead-tr"></tr></thead>
-                <tbody id="tbody"></tbody>
-            </table>
-        </div>
-    </div>
-
-    <div id="cards-wrap" class="cards-wrap"></div>
-
-</div>
+</main>
 
 <footer>Mr. Tasty &nbsp;·&nbsp; Stock Aniversario Grupo El Desembarco</footer>
 
@@ -462,23 +727,8 @@ const TARGET_COLS = [
     'TODO EL DÍA BURGER QUESO A $3.000',
 ];
 
-const isEmail = v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((v||'').trim());
-const isPhone = v => /^[\d\s\-()+]{6,20}$/.test((v||'').trim());
-
 function esc(s) {
     return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-function cellHTML(raw, colName) {
-    const v = (raw||'').trim();
-    if (!v) return '<span class="val-empty">—</span>';
-    if (isEmail(v))  return `<a href="mailto:${esc(v)}">${esc(v)}</a>`;
-    if (colName === 'TELÉFONO' && isPhone(v))
-        return `<a href="tel:${v.replace(/[^\d+]/g,'')}">${esc(v)}</a>`;
-    const vUp = v.toUpperCase();
-    if (vUp.includes('CON STOCK')) return `<span class="badge badge-yes">${esc(v)}</span>`;
-    if (vUp.includes('SIN STOCK')) return `<span class="badge badge-no">${esc(v)}</span>`;
-    return esc(v);
 }
 
 function parseCSV(raw) {
@@ -505,99 +755,8 @@ function parseCSV(raw) {
 
 function normalizarTexto(s) {
     return (s||'').toString()
-        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .normalize('NFD').replace(/[̀-ͯ]/g, '')
         .toLowerCase().trim();
-}
-
-function render(rows) {
-    // Normalizar: colapsar múltiples espacios para evitar discrepancias con la planilla
-    const norm = s => s.replace(/\s+/g, ' ').trim();
-
-    const headers = rows[0].map(h => norm(h));
-    const cols = TARGET_COLS.map(name => ({ name, idx: headers.indexOf(norm(name)) })).filter(c => c.idx !== -1);
-    if (!cols.length) { showError('No se encontraron las columnas esperadas.'); return; }
-
-    const data = rows.slice(1).filter(r => r.some(c => c.trim()));
-
-    const thead = document.getElementById('thead-tr');
-    cols.forEach(col => {
-        const th = document.createElement('th');
-        th.textContent = col.name;
-        thead.appendChild(th);
-    });
-
-    const tbody = document.getElementById('tbody');
-    data.forEach(r => {
-        const tr = document.createElement('tr');
-        const localCol2 = cols.find(c => c.name === 'LOCAL');
-        const sucVal = localCol2 ? (r[localCol2.idx]||'').trim() : '';
-        tr.dataset.sucursal = normalizarTexto(sucVal);
-        cols.forEach(col => {
-            const td = document.createElement('td');
-            td.innerHTML = cellHTML(r[col.idx], col.name);
-            if (col.name === 'LOCAL')    td.classList.add('col-local');
-            if (col.name === 'TELÉFONO') td.classList.add('col-phone');
-            tr.appendChild(td);
-        });
-        tbody.appendChild(tr);
-    });
-
-    const wrap     = document.getElementById('cards-wrap');
-    const localCol = cols.find(c => c.name === 'LOCAL');
-    data.forEach(r => {
-        const localVal = localCol ? (r[localCol.idx]||'').trim() : '';
-        const card = document.createElement('div');
-        card.className = 'card';
-        card.dataset.sucursal = normalizarTexto(localVal);
-        card.innerHTML = `<div class="card-head"><div class="card-local">${esc(localVal)||'—'}</div></div><div class="card-body"></div>`;
-        const body = card.querySelector('.card-body');
-        cols.filter(c => c.name !== 'LOCAL').forEach(col => {
-            const f = document.createElement('div');
-            f.className = 'card-field';
-            f.innerHTML = `<span class="card-lbl">${esc(col.name)}</span><span class="card-val">${cellHTML(r[col.idx], col.name)}</span>`;
-            body.appendChild(f);
-        });
-        wrap.appendChild(card);
-    });
-
-    document.getElementById('loading').style.display = 'none';
-    document.getElementById('table-shell').classList.add('visible');
-    document.getElementById('cards-wrap').classList.add('visible');
-    document.getElementById('search-wrap').classList.add('visible');
-
-    inicializarBuscador();
-}
-
-function inicializarBuscador() {
-    const input    = document.getElementById('search-input');
-    const filas    = document.querySelectorAll('#tbody tr');
-    const tarjetas = document.querySelectorAll('#cards-wrap .card');
-    const vacio    = document.getElementById('search-empty');
-
-    input.addEventListener('input', () => {
-        const q = normalizarTexto(input.value);
-        let visibles = 0;
-
-        filas.forEach(tr => {
-            const match = (tr.dataset.sucursal || '').includes(q);
-            tr.style.display = match ? '' : 'none';
-            if (match) visibles++;
-        });
-
-        tarjetas.forEach(card => {
-            const match = (card.dataset.sucursal || '').includes(q);
-            card.style.display = match ? '' : 'none';
-        });
-
-        vacio.classList.toggle('visible', visibles === 0 && q !== '');
-    });
-}
-
-function showError(msg) {
-    document.getElementById('loading').style.display = 'none';
-    const el = document.getElementById('error');
-    el.textContent = msg;
-    el.style.display = 'block';
 }
 
 async function fetchCSV() {
@@ -617,6 +776,168 @@ async function fetchCSV() {
     }
     throw lastErr;
 }
+
+// ── Helpers de presentación ──
+const ICONO_PIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>';
+const ICONO_TEL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>';
+const ICONO_MAPA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>';
+
+function tipoStock(v) {
+    const vUp = (v||'').toUpperCase();
+    if (vUp.includes('CON STOCK')) return 'si';
+    if (vUp.includes('SIN STOCK')) return 'no';
+    return 'otro';
+}
+
+function telefonoLimpio(v) {
+    const digitos = (v||'').replace(/[^\d+]/g, '');
+    return digitos.replace(/^\+?54/, '').length >= 6 ? digitos : null;
+}
+
+function linkMaps(direccion, local) {
+    const q = encodeURIComponent(`Mr. Tasty, ${direccion}, ${local}`);
+    return `https://www.google.com/maps/search/?api=1&query=${q}`;
+}
+
+// ── Render ──
+function render(rows) {
+    const norm = s => s.replace(/\s+/g, ' ').trim();
+    const headers = rows[0].map(h => norm(h));
+    const cols = TARGET_COLS.map(name => ({ name, idx: headers.indexOf(norm(name)) })).filter(c => c.idx !== -1);
+    if (!cols.length) { showError('No se encontraron las columnas esperadas.'); return; }
+
+    const idx = {};
+    cols.forEach(c => { idx[c.name] = c.idx; });
+    const data = rows.slice(1).filter(r => r.some(c => (c||'').trim()));
+
+    const grid = document.getElementById('grid');
+    let conStock = 0, sinStock = 0;
+
+    data.forEach((r, i) => {
+        const local     = (r[idx['LOCAL']] || '').trim();
+        const direccion = (r[idx['DIRECCIÓN']] || '').trim();
+        const telRaw    = (r[idx['TELÉFONO']] || '').trim();
+        const stockRaw  = (r[idx['TODO EL DÍA BURGER QUESO A $3.000']] || '').trim();
+
+        const stock = tipoStock(stockRaw);
+        if (stock === 'si') conStock++;
+        if (stock === 'no') sinStock++;
+
+        const tel = telefonoLimpio(telRaw);
+        const badgeCls  = stock === 'si' ? 'badge-yes' : stock === 'no' ? 'badge-no' : 'badge-otro';
+        // Badge compacto; el texto completo de la planilla queda en el tooltip
+        const badgeTxt  = stock === 'si' ? 'Con stock' : stock === 'no' ? 'Sin stock' : (stockRaw || 'Consultar');
+
+        const card = document.createElement('article');
+        card.className = 'card' + (stock === 'no' ? ' no-stock' : stock === 'otro' ? ' otro-stock' : '');
+        card.setAttribute('role', 'listitem');
+        card.dataset.sucursal = normalizarTexto(local);
+        card.dataset.stock = stock;
+        card.style.setProperty('--i', i);
+
+        card.innerHTML =
+            `<div class="card-top">` +
+                `<h3 class="card-local">${esc(local) || '—'}</h3>` +
+                `<span class="badge ${badgeCls}" title="${esc(stockRaw)}"><span class="b-dot" aria-hidden="true"></span>${esc(badgeTxt)}</span>` +
+            `</div>` +
+            `<p class="card-row">${ICONO_PIN}<span>${direccion ? esc(direccion) : '<span class="vacio">Sin dirección</span>'}</span></p>` +
+            `<p class="card-row">${ICONO_TEL}<span>${tel ? esc(telRaw) : '<span class="vacio">' + (telRaw && !/^[-—.]*$/.test(telRaw) ? esc(telRaw) : 'Sin teléfono') + '</span>'}</span></p>` +
+            `<div class="acciones">` +
+                (tel
+                    ? `<a class="btn btn-llamar" href="tel:${tel}">${ICONO_TEL}Llamar</a>`
+                    : `<span class="btn btn-off">${ICONO_TEL}Sin teléfono</span>`) +
+                (direccion
+                    ? `<a class="btn btn-mapa" href="${linkMaps(direccion, local)}" target="_blank" rel="noopener">${ICONO_MAPA}Cómo llegar</a>`
+                    : '') +
+            `</div>`;
+
+        grid.appendChild(card);
+    });
+
+    // Stats
+    document.getElementById('st-total').textContent = data.length;
+    document.getElementById('st-yes').textContent = conStock;
+    document.getElementById('st-no').textContent = sinStock;
+    animarContador(data.length);
+
+    // Mostrar UI
+    document.getElementById('skeleton').style.display = 'none';
+    document.getElementById('stats').classList.add('visible');
+    document.getElementById('toolbar').classList.add('visible');
+    grid.classList.add('visible');
+    setTimeout(() => grid.classList.add('settled'), 1400);
+    actualizarContadorResultados(data.length, data.length);
+
+    inicializarFiltros(data.length);
+}
+
+// Contador del hero: robusto, siempre clavado en el total al final
+function animarContador(total) {
+    const el = document.getElementById('hero-count');
+    if (!el) return;
+    const reducido = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reducido || !window.requestAnimationFrame) { el.textContent = total; return; }
+    const dur = 1100;
+    const t0 = performance.now();
+    function paso(t) {
+        const p = Math.min(1, Math.max(0, (t - t0) / dur));
+        const eased = 1 - Math.pow(1 - p, 3);
+        el.textContent = Math.max(0, Math.min(total, Math.round(total * eased)));
+        if (p < 1) requestAnimationFrame(paso);
+        else el.textContent = total;
+    }
+    requestAnimationFrame(paso);
+    // Failsafe: pase lo que pase con rAF, el numero final queda clavado
+    setTimeout(() => { el.textContent = total; }, dur + 300);
+}
+
+function actualizarContadorResultados(visibles, total) {
+    const el = document.getElementById('result-count');
+    el.textContent = visibles === total ? `${total} sucursales` : `${visibles} de ${total}`;
+}
+
+function inicializarFiltros(total) {
+    const input  = document.getElementById('search-input');
+    const boton  = document.getElementById('filter-stock');
+    const cards  = document.querySelectorAll('#grid .card');
+    const vacio  = document.getElementById('search-empty');
+    let soloStock = false;
+
+    function aplicar() {
+        const q = normalizarTexto(input.value);
+        let visibles = 0;
+        cards.forEach(card => {
+            const okTexto = (card.dataset.sucursal || '').includes(q);
+            const okStock = !soloStock || card.dataset.stock === 'si';
+            const ok = okTexto && okStock;
+            card.style.display = ok ? '' : 'none';
+            if (ok) visibles++;
+        });
+        vacio.classList.toggle('visible', visibles === 0);
+        actualizarContadorResultados(visibles, total);
+    }
+
+    input.addEventListener('input', aplicar);
+    boton.addEventListener('click', () => {
+        soloStock = !soloStock;
+        boton.setAttribute('aria-pressed', String(soloStock));
+        aplicar();
+    });
+}
+
+function showError(msg) {
+    document.getElementById('skeleton').style.display = 'none';
+    const el = document.getElementById('error');
+    el.textContent = msg;
+    el.style.display = 'block';
+}
+
+// Duplicar el contenido del marquee para el loop infinito
+(() => {
+    const track = document.getElementById('marquee-track');
+    const item = track.innerHTML;
+    track.innerHTML = item.repeat(6);
+})();
 
 (async () => {
     try {
