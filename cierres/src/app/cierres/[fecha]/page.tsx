@@ -17,6 +17,7 @@ type CierreConHijos = {
   fondoFijo: unknown
   montoZ: unknown
   efectivoDepositado: unknown
+  retiroFondoFijo: unknown
   notaCredito: unknown
   cantidadTickets: number | null
   nota: string | null
@@ -44,6 +45,9 @@ function toInicial(c: CierreConHijos | undefined): (Partial<TurnoInput> & { nota
     fondoFijo: Number(c.fondoFijo),
     montoZ: Number(c.montoZ),
     efectivoDepositado: Number(c.efectivoDepositado),
+    // OJO: sin esto, la recarga hidrataba el recupero en 0 y el auto-guardado
+    // pisaba el valor real en la base (bug reportado por los locales el 13/07).
+    retiroFondoFijo: Number(c.retiroFondoFijo),
     notaCredito: Number(c.notaCredito),
     cantidadTickets: c.cantidadTickets,
     ventas: c.ventas.map((v) => ({ canal: v.canal as Canal, monto: Number(v.monto) })),
