@@ -13,12 +13,44 @@
 --   * Lo vendido sin receta (gaseosas, latas) cuenta 1:1 como sí mismo.
 --     Se excluye COSTO_ENVIO. Explosión recursiva (tope 6 niveles; real: 2).
 --
+-- REGLA DE FÓRMULAS VARIABLES (definida con Pablo el 15/07): Tango Restô
+--   registra las promos variables (Balde Mixto 508041, Toma Sin Límite 508059,
+--   Fernet Libre 508053, HH 2x1 501018, Menú Ejecutivo 505009) con la fórmula
+--   completa en el padre Y ADEMÁS renglones hijos $0 con lo elegido/servido.
+--   Contar ambos duplica el consumo (medido: Toma Sin Límite contaría 7.790
+--   medias pintas/mes en vez de 6.750). Regla adoptada:
+--   * Si el artículo PADRE tiene fórmula en STA03 -> manda la fórmula (mix
+--     promedio/estimado) y los renglones hijos $0 SE IGNORAN. Motivo: los
+--     mozos sub-registran refills (1,5 por promo "sin límite" = irreal).
+--   * Si el padre NO tiene fórmula -> los hijos computan normal.
+--   Por eso el consumo se lee de vw_VentasParaConsumo (detalle) y no de
+--   vw_VentasPorArticulo (que agrega hijos sin distinguirlos).
+--
 -- Validaciones (30 días al 10/07, 20 locales propios):
 --   food cost D 38,3% / T 39,8%; Hurlingham 07/07 = 110 servilletas, 68 bolas,
 --   24 LT barril. REQUIERE mantener el db_datareader de bridge_lectura en
 --   MAESTRO y MAESTRO_TASTY (GRANT del 08/07).
 -- ============================================================
 USE CENTRAL_ESTADISTICA;
+GO
+-- Ventas a nivel detalle para consumo: excluye renglones hijos ($0, colgados
+-- de un padre) cuando el artículo padre tiene fórmula en MAESTRO (la fórmula
+-- ya modela ese consumo). Hijos de padres sin fórmula sí computan.
+CREATE OR ALTER VIEW dbo.vw_VentasParaConsumo AS
+SELECT
+  CAST(d.FECHA_COMERCIAL AS date) AS FECHA,
+  d.ID_SUCURSAL                   AS ID_SUCURSAL,
+  a.COD_ARTICULO                  AS COD_ARTICULO,
+  SUM(d.CANTIDAD)                 AS CANTIDAD
+FROM dbo.CTA_DETALLE_COMANDA d
+JOIN dbo.CTA_ENCABEZADO_COMANDA e ON e.ID_CTA_ENCABEZADO_COMANDA = d.ID_CTA_ENCABEZADO_COMANDA
+JOIN dbo.CTA_ARTICULO a           ON a.ID_CTA_ARTICULO = d.ID_CTA_ARTICULO
+LEFT JOIN dbo.CTA_DETALLE_COMANDA dp ON dp.ID_CTA_DETALLE_COMANDA = d.ID_CTA_DETALLE_COMANDA_PADRE
+LEFT JOIN dbo.CTA_ARTICULO ap        ON ap.ID_CTA_ARTICULO = dp.ID_CTA_ARTICULO
+WHERE e.ESTADO IN ('C','T')
+  AND NOT (d.ID_CTA_DETALLE_COMANDA_PADRE IS NOT NULL
+           AND EXISTS (SELECT 1 FROM MAESTRO.dbo.STA03 f WHERE f.COD_ARTICU = ap.COD_ARTICULO))
+GROUP BY CAST(d.FECHA_COMERCIAL AS date), d.ID_SUCURSAL, a.COD_ARTICULO;
 GO
 CREATE OR ALTER VIEW dbo.vw_ConsumoInsumos AS
 WITH Sucur AS (
@@ -40,7 +72,7 @@ Recetas AS (
 Explosion AS (
   SELECT v.FECHA, v.ID_SUCURSAL, s.MARCA, v.COD_ARTICULO AS COD_ARTICU,
          CAST(v.CANTIDAD AS decimal(18,6)) AS CANTIDAD, 0 AS NIVEL
-  FROM dbo.vw_VentasPorArticulo v
+  FROM dbo.vw_VentasParaConsumo v
   JOIN Sucur s ON s.ID_SUCURSAL = v.ID_SUCURSAL
   WHERE v.COD_ARTICULO <> 'COSTO_ENVIO'
   UNION ALL
