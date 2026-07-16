@@ -4,11 +4,12 @@
 // (el localId de su sesión manda, ignora el del form); central/admin pueden
 // justificar en nombre de un local. Contable no escribe. Upsert por la clave
 // natural (localId, fechaHora, importe) que sobrevive a los resyncs de Tango.
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, updateTag } from 'next/cache'
 import { auth } from '@/lib/auth/auth'
 import { prisma } from '@/lib/db'
 import { esCentral } from '@/lib/auth/rbac'
 import { MOTIVO_LABEL } from '@/lib/tango/anuladas'
+import { TAG_ANULACIONES } from '@/lib/cachedData'
 
 export async function justificarAnulacion(formData: FormData) {
   const session = await auth()
@@ -56,5 +57,6 @@ export async function justificarAnulacion(formData: FormData) {
     },
   })
 
+  updateTag(TAG_ANULACIONES) // el que justifica ve el cambio al instante
   revalidatePath('/anulaciones')
 }

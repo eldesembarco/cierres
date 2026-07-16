@@ -5,8 +5,10 @@
 // el cuerpo HTML y el Excel adjunto (Detalle + Resumen por local) en base64.
 //
 //   GET /api/mp/resumen?fecha=YYYY-MM-DD   (sin fecha = ayer hora Argentina)
+import { revalidateTag } from 'next/cache'
 import { descargarReportes, sftpConfigFromEnv } from '@/lib/mp/sftpReportes'
 import { consolidarLiberaciones, mailAsunto, mailHtml } from '@/lib/mp/consolidarLiberaciones'
+import { TAG_MP_SFTP } from '@/lib/cachedData'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -28,8 +30,12 @@ export async function GET(request: Request) {
   const fecha = fechaParam && /^\d{4}-\d{2}-\d{2}$/.test(fechaParam) ? fechaParam : ayerArgentina()
 
   try {
+    // Lee el SFTP directo (sin Data Cache): el mail de la mañana no puede salir
+    // con datos viejos. Después invalida el cache de operaciones, que a esta
+    // altura ya tiene los archivos nuevos del día.
     const archivos = await descargarReportes(sftpConfigFromEnv(), { desdeFecha: fecha })
     const cons = await consolidarLiberaciones(archivos, fecha)
+    revalidateTag(TAG_MP_SFTP, { expire: 0 })
 
     return Response.json({
       ok: true,

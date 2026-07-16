@@ -1,12 +1,13 @@
 import { auth } from '@/lib/auth/auth'
 import { puedeVerFinanzas } from '@/lib/auth/rbac'
-import { armarConsolidadoDia } from '@/lib/mp/reporteDia'
+import { armarResumenDia } from '@/lib/mp/reporteDia'
 import { ayerAr } from '@/lib/fecha'
 import { formatMoney } from '@/lib/money'
 import type { ResumenLocal } from '@/lib/mp/consolidarLiberaciones'
 import { FileSpreadsheet, Lock, Download, Inbox, AlertTriangle, Store, Receipt, Coins } from 'lucide-react'
 
-// Lee el SFTP en cada carga → dinámica, con margen de tiempo.
+// Las operaciones del día salen del Data Cache (operacionesMpDia); el SFTP solo
+// se lee al vencer el TTL. Margen de tiempo para ese caso.
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
@@ -35,10 +36,10 @@ export default async function ReportesMpPage({ searchParams }: { searchParams: S
   let totalOperaciones = 0
   let error: string | null = null
   try {
-    const cons = await armarConsolidadoDia(fecha)
-    resumen = cons.resumen
-    total = cons.total
-    totalOperaciones = cons.totalOperaciones
+    const r = await armarResumenDia(fecha)
+    resumen = r.resumen
+    total = r.total
+    totalOperaciones = r.totalOperaciones
   } catch (e) {
     error = e instanceof Error ? e.message : String(e)
   }

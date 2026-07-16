@@ -1,10 +1,11 @@
 // Orquesta la conciliación operación-por-operación de un local en un día:
 //   1) mapea el localId a los nombres con que aparece en los reportes de MP,
-//   2) baja del SFTP las operaciones aprobadas de ese local+día (con su canal),
+//   2) toma las operaciones del día ya parseadas del SFTP (Data Cache) y filtra
+//      las aprobadas de ese local (con su canal),
 //   3) trae las líneas que cargó el encargado (cierre_detalle, canales de MP),
 //   4) las choca con conciliarMp.
-import { descargarReportes, sftpConfigFromEnv } from '@/lib/mp/sftpReportes'
-import { leerOperacionesDia, COL } from '@/lib/mp/consolidarLiberaciones'
+import { getOperacionesMpDiaCached } from '@/lib/mp/operacionesMpDia'
+import { COL } from '@/lib/mp/consolidarLiberaciones'
 import { prisma } from '@/lib/db'
 import {
   conciliarMp,
@@ -48,8 +49,7 @@ export async function conciliarLocalDia(localId: number, fecha: string): Promise
   const nombresMp = mapeos.map((m) => m.restaurantIdExterno)
   const nombresNorm = new Set(nombresMp.map(norm))
 
-  const archivos = await descargarReportes(sftpConfigFromEnv(), { desdeFecha: fecha })
-  const filas = await leerOperacionesDia(archivos, fecha)
+  const { archivosLeidos, filas } = await getOperacionesMpDiaCached(fecha)
   const operaciones: OperacionMp[] = []
   for (const f of filas) {
     if (!nombresNorm.has(norm(String(f[COL.LOCAL] ?? '')))) continue
@@ -67,7 +67,7 @@ export async function conciliarLocalDia(localId: number, fecha: string): Promise
     fecha,
     localId,
     nombresMp,
-    archivosLeidos: archivos.length,
+    archivosLeidos,
     operacionesMp: operaciones.length,
     lineasEncargado: lineas.length,
     hayCierre: cierres.length > 0,

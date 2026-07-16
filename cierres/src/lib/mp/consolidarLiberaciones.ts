@@ -137,40 +137,17 @@ export async function leerOperacionesDia(archivos: ArchivoLiberacion[], fecha: s
   return filas
 }
 
-export async function consolidarLiberaciones(
-  archivos: ArchivoLiberacion[],
-  fecha: string,
-): Promise<Consolidado> {
-  const seen = new Set<string>()
-  const filas: Fila[] = []
-  for (const a of archivos) {
-    let fs: Fila[]
-    try {
-      fs = await leerFilas(a)
-    } catch {
-      continue // archivo ilegible / no-settlement: se ignora
-    }
-    for (const f of fs) {
-      const origen = String(f[1] ?? '').slice(0, 10)
-      if (origen !== fecha) continue
-      const key = f.map((c) => (c === null ? '' : String(c))).join('')
-      if (seen.has(key)) continue
-      seen.add(key)
-      filas.push(f)
-    }
-  }
+// Resumen por local + total de un día, a partir de las filas ya filtradas y
+// deduplicadas (leerOperacionesDia). Es puro y no arma el Excel: la pantalla
+// /reportes usa solo esto (armar el workbook en cada vista era CPU tirado).
+export interface ResumenDia {
+  fecha: string
+  totalOperaciones: number
+  resumen: ResumenLocal[]
+  total: ResumenLocal
+}
 
-  // Orden: por local (asc; "(sin nombre)" primero) y luego FECHA DE ORIGEN desc.
-  filas.sort((a, b) => {
-    const la = String(a[0] ?? ''),
-      lb = String(b[0] ?? '')
-    if (la !== lb) return la < lb ? -1 : 1
-    const fa = String(a[1] ?? ''),
-      fb = String(b[1] ?? '')
-    return fa < fb ? 1 : fa > fb ? -1 : 0
-  })
-
-  // Resumen por local.
+export function resumirOperaciones(filas: Fila[], fecha: string): ResumenDia {
   const agg = new Map<string, ResumenLocal>()
   for (const f of filas) {
     const local = (f[0] as string | null) || '(sin nombre)'
@@ -197,7 +174,23 @@ export async function consolidarLiberaciones(
     comisiones: round2(resumen.reduce((s, r) => s + r.comisiones, 0)),
     neto: round2(resumen.reduce((s, r) => s + r.neto, 0)),
   }
+  return { fecha, totalOperaciones: filas.length, resumen, total }
+}
 
+// Consolidado completo (resumen + Excel) desde filas ya leídas (leerOperacionesDia
+// o el Data Cache de operacionesMpDia). No muta filasDia: ordena una copia para
+// la hoja Detalle.
+export async function consolidarDesdeFilas(filasDia: Fila[], fecha: string): Promise<Consolidado> {
+  // Orden: por local (asc; "(sin nombre)" primero) y luego FECHA DE ORIGEN desc.
+  const filas = [...filasDia].sort((a, b) => {
+    const la = String(a[0] ?? ''),
+      lb = String(b[0] ?? '')
+    if (la !== lb) return la < lb ? -1 : 1
+    const fa = String(a[1] ?? ''),
+      fb = String(b[1] ?? '')
+    return fa < fb ? 1 : fa > fb ? -1 : 0
+  })
+  const { resumen, total } = resumirOperaciones(filas, fecha)
   const xlsx = await construirXlsx(fecha, filas, resumen, total)
   return {
     fecha,
@@ -207,6 +200,13 @@ export async function consolidarLiberaciones(
     resumen,
     total,
   }
+}
+
+export async function consolidarLiberaciones(
+  archivos: ArchivoLiberacion[],
+  fecha: string,
+): Promise<Consolidado> {
+  return consolidarDesdeFilas(await leerOperacionesDia(archivos, fecha), fecha)
 }
 
 const MONEY = '#,##0.00'

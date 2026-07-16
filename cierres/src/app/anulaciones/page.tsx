@@ -3,7 +3,8 @@ import { puedeVerFinanzas, esCentral } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db'
 import { formatMoney } from '@/lib/money'
 import { hoyAr, primerDiaDelMesAr } from '@/lib/fecha'
-import { resumenAnuladas, MOTIVOS_ANULACION, MOTIVO_LABEL, type AnuladaDetalle } from '@/lib/tango/anuladas'
+import { MOTIVOS_ANULACION, MOTIVO_LABEL, type AnuladaDetalle } from '@/lib/tango/anuladas'
+import { getResumenAnuladasCached } from '@/lib/cachedData'
 import { justificarAnulacion } from './actions'
 import { Ban, Lock, Inbox, AlertTriangle, Store, Bike, CheckCircle2, MessageSquareText, RefreshCw, Info } from 'lucide-react'
 
@@ -51,7 +52,7 @@ export default async function AnulacionesPage({ searchParams }: { searchParams: 
   const puedeJustificar = esEncargado || esCentral(rol!)
 
   const [r, locales] = await Promise.all([
-    resumenAnuladas({ desde, hasta, localId }),
+    getResumenAnuladasCached({ desde, hasta, localId }),
     prisma.local.findMany({
       where: { activo: true, tangoSucursalId: { not: null } },
       select: { id: true, nombre: true, marca: { select: { nombre: true } } },

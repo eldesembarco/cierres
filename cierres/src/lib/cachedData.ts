@@ -12,12 +12,16 @@ import { prisma } from '@/lib/db'
 import { hoyAr } from '@/lib/fecha'
 import { getDashboard, type DashboardData } from '@/lib/dashboard/getDashboard'
 import { getSaldosFondoFijoTodos, getSaldoFondoFijo, type SaldoFondoFijo, type SaldoFondoFijoLocal } from '@/lib/cierre/getSaldoFondoFijo'
+import { resumenAnuladas, type FiltroAnuladas, type ResumenAnuladas } from '@/lib/tango/anuladas'
 
 // ---------- Tags ----------
 export const tagCierre = (localId: number, fecha: string) => `cierre-${localId}-${fecha}`
 export const TAG_DASHBOARD = 'dashboard'
 export const TAG_FONDO_FIJO = 'fondo-fijo'
 export const TAG_CTA_CTE = 'cta-cte'
+export const TAG_ANULACIONES = 'anulaciones'
+// Operaciones de MP parseadas del SFTP (ver src/lib/mp/operacionesMpDia.ts).
+export const TAG_MP_SFTP = 'mp-sftp'
 
 // ---------- Planilla de /cierres/[fecha] ----------
 export interface PlanillaCierrePlano {
@@ -174,4 +178,19 @@ export function getCtaCteCached(scopeLocalId: number | null): Promise<CtaCtePage
     tags: [TAG_CTA_CTE],
     revalidate: 120,
   })(scopeLocalId)
+}
+
+// ---------- Anulaciones ----------
+// resumenAnuladas ya devuelve datos planos (fechas como string ISO). Escriben:
+// justificarAnulacion (updateTag) y el sync diario del BI, que corre en otra app
+// → lo cubre el TTL; un resync manual puede invalidar vía POST /api/revalidar.
+async function anuladasData(desde: string, hasta: string, localId: number | null): Promise<ResumenAnuladas> {
+  return resumenAnuladas({ desde, hasta, localId: localId ?? undefined })
+}
+
+export function getResumenAnuladasCached(f: FiltroAnuladas): Promise<ResumenAnuladas> {
+  return unstable_cache(anuladasData, ['anuladas-v1'], {
+    tags: [TAG_ANULACIONES],
+    revalidate: 600,
+  })(f.desde, f.hasta, f.localId ?? null)
 }

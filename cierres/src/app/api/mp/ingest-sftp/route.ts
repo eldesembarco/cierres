@@ -4,7 +4,9 @@
 // (local, fecha) y persiste (mapeo por store_id o por nombre). Excluido del proxy.
 //
 //   GET /api/mp/ingest-sftp?desde=YYYY-MM-DD   (opcional; acota la lectura del SFTP)
+import { revalidateTag } from 'next/cache'
 import { ingestReportesSftp } from '@/lib/mp/ingestSftp'
+import { TAG_MP_SFTP } from '@/lib/cachedData'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -21,6 +23,10 @@ export async function GET(request: Request) {
 
   try {
     const r = await ingestReportesSftp({ desdeFecha })
+    // Corre a la mañana justo después de que MP deja los archivos nuevos:
+    // invalida el Data Cache de operaciones para que /conciliacion y /reportes
+    // vean el día nuevo al instante (sin esperar el TTL).
+    revalidateTag(TAG_MP_SFTP, { expire: 0 })
     return Response.json({
       ok: true,
       archivosLeidos: r.archivosLeidos,
