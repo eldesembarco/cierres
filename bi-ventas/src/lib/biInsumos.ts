@@ -1,14 +1,16 @@
-// Consultas del informe de insumos (/insumos): cuánto insumo consume cada local,
-// sobre los agregados sincronizados de Tango (consumo_insumo_tango). El detalle
-// por local se normaliza por facturación (venta_tango_hora) para poder comparar
-// locales de distinto tamaño.
+// Consultas del informe de insumos (/insumos): cuánto insumo consume cada
+// sucursal (propias y franquicias), sobre los agregados sincronizados de Tango
+// (consumo_insumo_tango). El detalle por sucursal se normaliza por facturación
+// (venta_tango_hora) para poder comparar locales de distinto tamaño.
 import { prisma } from '@/lib/db'
 import { round2 } from '@/lib/money'
+import { type Alcance, sucursalesBi, filtraAlcance } from '@/lib/bi'
 
 export interface FiltroInsumos {
   desde: string // YYYY-MM-DD inclusive
   hasta: string
-  localId?: number // undefined = todos
+  alcance: Alcance
+  sucursalId?: number // undefined = todas las del alcance
   rubro?: string
   q?: string // búsqueda por descripción
 }
@@ -24,7 +26,7 @@ export interface InsumoBi {
 }
 
 export interface InsumoLocalBi {
-  localId: number
+  sucursalId: number
   nombre: string
   marca: string
   cantidad: number
@@ -59,20 +61,23 @@ export interface ResumenInsumos {
 const fechaDb = (ymd: string) => new Date(`${ymd}T00:00:00.000Z`)
 const ymd = (d: Date) => d.toISOString().slice(0, 10)
 
-function whereRango(f: FiltroInsumos) {
-  return {
+export async function resumenInsumos(f: FiltroInsumos, insumoDetalle?: string): Promise<ResumenInsumos> {
+  const sucursales = await sucursalesBi()
+  const delAlcance = filtraAlcance(sucursales, f.alcance)
+  const ids =
+    f.sucursalId != null ? [f.sucursalId] : f.alcance === 'todos' ? undefined : delAlcance.map((s) => s.id)
+
+  const whereRango = {
     fecha: { gte: fechaDb(f.desde), lte: fechaDb(f.hasta) },
-    ...(f.localId != null ? { localId: f.localId } : {}),
+    ...(ids ? { sucursalId: { in: ids } } : {}),
     ...(f.rubro ? { rubro: f.rubro } : {}),
     ...(f.q ? { descripcion: { contains: f.q, mode: 'insensitive' as const } } : {}),
   }
-}
 
-export async function resumenInsumos(f: FiltroInsumos, insumoDetalle?: string): Promise<ResumenInsumos> {
   const [porInsumo, rubrosRaw, ultimaConInsumos, syncsRango, totalFilas] = await Promise.all([
     prisma.consumoInsumoTango.groupBy({
       by: ['codigo'],
-      where: whereRango(f),
+      where: whereRango,
       _sum: { cantidad: true, costoTotal: true },
       _max: { descripcion: true, rubro: true, unidad: true },
     }),
@@ -105,37 +110,33 @@ export async function resumenInsumos(f: FiltroInsumos, insumoDetalle?: string): 
 
   let detalle: DetalleInsumo | null = null
   if (insumoDetalle) {
-    const [porLocal, ventaPorLocal, locales] = await Promise.all([
+    const whereFechas = { fecha: { gte: fechaDb(f.desde), lte: fechaDb(f.hasta) }, ...(ids ? { sucursalId: { in: ids } } : {}) }
+    const [porSucursal, ventaPorSucursal] = await Promise.all([
       prisma.consumoInsumoTango.groupBy({
-        by: ['localId'],
-        where: {
-          fecha: { gte: fechaDb(f.desde), lte: fechaDb(f.hasta) },
-          codigo: insumoDetalle,
-        },
+        by: ['sucursalId'],
+        where: { ...whereFechas, codigo: insumoDetalle },
         _sum: { cantidad: true, costoTotal: true },
         _max: { descripcion: true, unidad: true },
       }),
       prisma.ventaTangoHora.groupBy({
-        by: ['localId'],
-        where: { fecha: { gte: fechaDb(f.desde), lte: fechaDb(f.hasta) } },
+        by: ['sucursalId'],
+        where: whereFechas,
         _sum: { monto: true },
       }),
-      prisma.local.findMany({
-        where: { tangoSucursalId: { not: null } },
-        select: { id: true, nombre: true, marca: { select: { nombre: true } } },
-      }),
     ])
-    const nombrePorLocal = new Map(locales.map((l) => [l.id, { nombre: l.nombre, marca: l.marca.nombre }]))
-    const ventaLocal = new Map(ventaPorLocal.map((r) => [r.localId, Number(r._sum.monto ?? 0)]))
+    const infoPorSucursal = new Map(sucursales.map((s) => [s.id, s]))
+    const ventaSucursal = new Map(ventaPorSucursal.map((r) => [r.sucursalId, Number(r._sum.monto ?? 0)]))
 
-    const localesBi: InsumoLocalBi[] = porLocal
+    const localesBi: InsumoLocalBi[] = porSucursal
+      .filter((r) => r.sucursalId != null)
       .map((r) => {
+        const sucursalId = r.sucursalId as number
         const cantidad = Number(r._sum.cantidad ?? 0)
-        const facturacion = round2(ventaLocal.get(r.localId) ?? 0)
-        const info = nombrePorLocal.get(r.localId)
+        const facturacion = round2(ventaSucursal.get(sucursalId) ?? 0)
+        const info = infoPorSucursal.get(sucursalId)
         return {
-          localId: r.localId,
-          nombre: info?.nombre ?? `Local ${r.localId}`,
+          sucursalId,
+          nombre: info?.nombre ?? `Sucursal #${sucursalId}`,
           marca: info?.marca ?? '',
           cantidad,
           costoTotal: r._sum.costoTotal != null ? round2(Number(r._sum.costoTotal)) : null,
@@ -145,12 +146,12 @@ export async function resumenInsumos(f: FiltroInsumos, insumoDetalle?: string): 
       })
       .sort((a, b) => b.cantidad - a.cantidad)
 
-    if (porLocal.length > 0) {
+    if (porSucursal.length > 0) {
       const costos = localesBi.filter((l) => l.costoTotal != null)
       detalle = {
         codigo: insumoDetalle,
-        descripcion: porLocal[0]._max.descripcion ?? insumoDetalle,
-        unidad: porLocal[0]._max.unidad ?? null,
+        descripcion: porSucursal[0]._max.descripcion ?? insumoDetalle,
+        unidad: porSucursal[0]._max.unidad ?? null,
         totalCantidad: localesBi.reduce((s, l) => s + l.cantidad, 0),
         totalCosto: costos.length > 0 ? round2(costos.reduce((s, l) => s + (l.costoTotal as number), 0)) : null,
         locales: localesBi,

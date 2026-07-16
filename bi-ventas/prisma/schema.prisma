@@ -63,49 +63,74 @@ model TangoBridge {
 
 // Agregados de venta REAL de Tango (facturada, definición Z, neta de NC).
 // Sincronizados desde el bridge; NO desde /cobros (universo más chico).
+// Desde 2026-07-16 la clave es la SUCURSAL de Tango (propias y franquicias);
+// localId queda solo como link a los locales propios de cierres.
+
+// Dimensión de sucursales de Tango. Seed inicial desde CENTRAL_ESTADISTICA.SUCURSAL;
+// el sync auto-crea las que aparezcan después. `esPropia` alimenta el selector
+// Propios/Franquicias/Todos del BI.
+model SucursalTango {
+  id       Int     @id // ID_SUCURSAL de Tango
+  nombre   String
+  marca    String  @default("D") // 'D' Desembarco | 'T' Tasty/Mila&Go
+  esPropia Boolean @default(false) @map("es_propia")
+  localId  Int?    @unique @map("local_id")
+  ventasTangoHora       VentaTangoHora[]
+  ventasTangoArticulo   VentaTangoArticulo[]
+  consumosInsumoTango   ConsumoInsumoTango[]
+  comandasAnuladasTango ComandaAnuladaTango[]
+  @@map("sucursal_tango")
+}
+
 model VentaTangoHora {
-  id      Int      @id @default(autoincrement())
-  local   Local    @relation(fields: [localId], references: [id])
-  localId Int      @map("local_id")
-  fecha   DateTime @db.Date
-  hora    Int
-  monto   Decimal  @default(0) @db.Decimal(14, 2)
-  tickets Int      @default(0)
-  @@unique([localId, fecha, hora])
+  id         Int            @id @default(autoincrement())
+  local      Local?         @relation(fields: [localId], references: [id])
+  localId    Int?           @map("local_id")
+  sucursal   SucursalTango? @relation(fields: [sucursalId], references: [id])
+  sucursalId Int?           @map("sucursal_id")
+  fecha      DateTime       @db.Date
+  hora       Int
+  monto      Decimal        @default(0) @db.Decimal(14, 2)
+  tickets    Int            @default(0)
+  @@unique([sucursalId, fecha, hora])
   @@index([fecha])
   @@map("venta_tango_hora")
 }
 
 model VentaTangoArticulo {
-  id          Int      @id @default(autoincrement())
-  local       Local    @relation(fields: [localId], references: [id])
-  localId     Int      @map("local_id")
-  fecha       DateTime @db.Date
+  id          Int            @id @default(autoincrement())
+  local       Local?         @relation(fields: [localId], references: [id])
+  localId     Int?           @map("local_id")
+  sucursal    SucursalTango? @relation(fields: [sucursalId], references: [id])
+  sucursalId  Int?           @map("sucursal_id")
+  fecha       DateTime       @db.Date
   codigo      String
   descripcion String
   rubro       String?
-  cantidad    Decimal  @default(0) @db.Decimal(14, 3)
-  monto       Decimal  @default(0) @db.Decimal(14, 2)
-  @@unique([localId, fecha, codigo])
+  cantidad    Decimal        @default(0) @db.Decimal(14, 3)
+  monto       Decimal        @default(0) @db.Decimal(14, 2)
+  @@unique([sucursalId, fecha, codigo])
   @@index([fecha])
   @@map("venta_tango_articulo")
 }
 
 // Consumo de insumos (materia prima/empaque) por local/fecha, desde vw_ConsumoInsumos.
 model ConsumoInsumoTango {
-  id            Int      @id @default(autoincrement())
-  local         Local    @relation(fields: [localId], references: [id])
-  localId       Int      @map("local_id")
-  fecha         DateTime @db.Date
+  id            Int            @id @default(autoincrement())
+  local         Local?         @relation(fields: [localId], references: [id])
+  localId       Int?           @map("local_id")
+  sucursal      SucursalTango? @relation(fields: [sucursalId], references: [id])
+  sucursalId    Int?           @map("sucursal_id")
+  fecha         DateTime       @db.Date
   codigo        String
   descripcion   String
   rubro         String?
   unidad        String?
-  cantidad      Decimal  @default(0) @db.Decimal(14, 3)
+  cantidad      Decimal        @default(0) @db.Decimal(14, 3)
   // Valorización al precio de reposición de Tango (STA12); null = sin costo cargado.
   costoUnitario Decimal? @map("costo_unitario") @db.Decimal(14, 4)
   costoTotal    Decimal? @map("costo_total") @db.Decimal(14, 2)
-  @@unique([localId, fecha, codigo])
+  @@unique([sucursalId, fecha, codigo])
   @@index([fecha])
   @@map("consumo_insumo_tango")
 }
@@ -113,16 +138,19 @@ model ConsumoInsumoTango {
 // Comandas anuladas en Tango (ESTADO='X'), para la auditoría de anulaciones del
 // BI. Sin clave natural: el resync borra y reinserta por fecha.
 model ComandaAnuladaTango {
-  id         Int      @id @default(autoincrement())
-  local      Local    @relation(fields: [localId], references: [id])
-  localId    Int      @map("local_id")
-  fecha      DateTime @db.Date
-  fechaHora  DateTime @map("fecha_hora")
-  importe    Decimal  @default(0) @db.Decimal(14, 2)
-  tipoPedido String?  @map("tipo_pedido")
-  cubiertos  Int      @default(0)
+  id         Int            @id @default(autoincrement())
+  local      Local?         @relation(fields: [localId], references: [id])
+  localId    Int?           @map("local_id")
+  sucursal   SucursalTango? @relation(fields: [sucursalId], references: [id])
+  sucursalId Int?           @map("sucursal_id")
+  fecha      DateTime       @db.Date
+  fechaHora  DateTime       @map("fecha_hora")
+  importe    Decimal        @default(0) @db.Decimal(14, 2)
+  tipoPedido String?        @map("tipo_pedido")
+  cubiertos  Int            @default(0)
   @@index([fecha])
   @@index([localId, fecha])
+  @@index([sucursalId, fecha])
   @@map("comanda_anulada_tango")
 }
 

@@ -1,18 +1,22 @@
 import { auth } from '@/lib/auth/auth'
-import { prisma } from '@/lib/db'
 import { BiTabs } from '@/components/BiTabs'
 import { formatMoney } from '@/lib/money'
 import { hoyAr, ayerAr, primerDiaDelMesAr } from '@/lib/fecha'
-import { resumenBi, type LocalBi, type ArticuloBi } from '@/lib/bi'
+import { resumenBi, sucursalesBi, filtraAlcance, type Alcance, type LocalBi, type ArticuloBi } from '@/lib/bi'
 import { sincronizarVentas } from '@/app/actions/sync'
 import { TrendingUp, TrendingDown, Inbox, RefreshCw, AlertTriangle, Clock3, Trophy, Minus } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
-type SearchParams = Promise<{ desde?: string; hasta?: string; localId?: string; syncMsg?: string }>
+type SearchParams = Promise<{ desde?: string; hasta?: string; alcance?: string; sucursalId?: string; syncMsg?: string }>
 
 const YMD = /^\d{4}-\d{2}-\d{2}$/
+const ALCANCES: { valor: Alcance; etiqueta: string }[] = [
+  { valor: 'propios', etiqueta: 'Locales propios' },
+  { valor: 'franquicias', etiqueta: 'Franquicias' },
+  { valor: 'todos', etiqueta: 'Todos los locales' },
+]
 const formatInt = (n: number) => Math.round(n).toLocaleString('es-AR')
 const formatPct = (v: number) => `${v > 0 ? '+' : ''}${(v * 100).toFixed(1)}%`
 
@@ -23,16 +27,14 @@ export default async function VentasPage({ searchParams }: { searchParams: Searc
   const sp = await searchParams
   const desde = sp.desde && YMD.test(sp.desde) ? sp.desde : primerDiaDelMesAr()
   const hasta = sp.hasta && YMD.test(sp.hasta) && sp.hasta >= desde ? sp.hasta : hoyAr()
-  const localId = sp.localId && /^\d+$/.test(sp.localId) ? Number(sp.localId) : undefined
+  const alcance: Alcance = sp.alcance === 'franquicias' || sp.alcance === 'todos' ? sp.alcance : 'propios'
+  const sucursalId = sp.sucursalId && /^\d+$/.test(sp.sucursalId) ? Number(sp.sucursalId) : undefined
 
-  const [bi, locales] = await Promise.all([
-    resumenBi({ desde, hasta, localId }),
-    prisma.local.findMany({
-      where: { activo: true, tangoSucursalId: { not: null } },
-      select: { id: true, nombre: true, marca: { select: { nombre: true } } },
-      orderBy: [{ marca: { nombre: 'asc' } }, { nombre: 'asc' }],
-    }),
+  const [bi, sucursales] = await Promise.all([
+    resumenBi({ desde, hasta, alcance, sucursalId }),
+    sucursalesBi(),
   ])
+  const delAlcance = filtraAlcance(sucursales, alcance)
   const maxHora = Math.max(1, ...bi.horas.map((h) => h.monto))
   const puedeSync = session != null && ['central', 'admin'].includes(session.user.rol)
 
@@ -71,12 +73,20 @@ export default async function VentasPage({ searchParams }: { searchParams: Searc
           <input name="hasta" type="date" defaultValue={hasta} className="rounded-lg border border-slate-300 px-3 py-2 tabular-nums outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500" />
         </label>
         <label className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-slate-500">Alcance</span>
+          <select name="alcance" defaultValue={alcance} className="rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500">
+            {ALCANCES.map((a) => (
+              <option key={a.valor} value={a.valor}>{a.etiqueta}</option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1">
           <span className="text-xs font-medium text-slate-500">Local</span>
-          <select name="localId" defaultValue={localId ?? ''} className="rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500">
-            <option value="">Todos los locales</option>
-            {locales.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.nombre} · {l.marca.nombre}
+          <select name="sucursalId" defaultValue={sucursalId ?? ''} className="rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500">
+            <option value="">Todos los del alcance</option>
+            {delAlcance.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.nombre} · {s.marca}
               </option>
             ))}
           </select>
@@ -142,7 +152,7 @@ export default async function VentasPage({ searchParams }: { searchParams: Searc
                 </thead>
                 <tbody>
                   {bi.locales.map((l, i) => (
-                    <FilaLocal key={l.localId} l={l} pos={i + 1} />
+                    <FilaLocal key={l.sucursalId} l={l} pos={i + 1} />
                   ))}
                 </tbody>
               </table>
@@ -155,7 +165,9 @@ export default async function VentasPage({ searchParams }: { searchParams: Searc
               <Clock3 size={16} className="text-slate-400" />
               <h2 className="text-sm font-semibold text-slate-900">Venta por hora</h2>
               <span className="ml-auto text-xs text-slate-400">
-                {localId ? locales.find((l) => l.id === localId)?.nombre : 'todos los locales'}
+                {sucursalId
+                  ? sucursales.find((s) => s.id === sucursalId)?.nombre
+                  : ALCANCES.find((a) => a.valor === alcance)?.etiqueta.toLowerCase()}
               </span>
             </div>
             <div className="flex h-40 items-end gap-1">

@@ -81,7 +81,10 @@ export async function getTableroGlobalBatch(fecha: Date): Promise<TableroGlobal>
   ])
 
   const tangoPorLocal = new Map<number, number>()
-  for (const t of tangoHoras) tangoPorLocal.set(t.localId, round2(Number(t._sum.monto ?? 0)))
+  // localId es null para las sucursales franquiciadas (solo el BI las usa).
+  for (const t of tangoHoras) {
+    if (t.localId != null) tangoPorLocal.set(t.localId, round2(Number(t._sum.monto ?? 0)))
+  }
 
   const cierresPorLocal = new Map<number, typeof cierres>()
   for (const c of cierres) {

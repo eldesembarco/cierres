@@ -125,38 +125,41 @@ export async function resumenAnuladas(f: FiltroAnuladas): Promise<ResumenAnulada
 
   const acc = new Map<number, AnuladasLocal>()
   for (const r of filas) {
-    const info = nombrePorLocal.get(r.localId)
-    const e = acc.get(r.localId) ?? {
-      localId: r.localId,
-      nombre: info?.nombre ?? `Local ${r.localId}`,
+    // localId es null para las sucursales franquiciadas: esta pantalla es de propios.
+    const localId = r.localId
+    if (localId == null) continue
+    const info = nombrePorLocal.get(localId)
+    const e = acc.get(localId) ?? {
+      localId,
+      nombre: info?.nombre ?? `Local ${localId}`,
       marca: info?.marca ?? '',
       cantidad: 0,
       conImporte: 0,
       importe: 0,
       salon: 0,
       delivery: 0,
-      facturacion: ventaLocal.get(r.localId) ?? 0,
+      facturacion: ventaLocal.get(localId) ?? 0,
       pctVenta: null,
       sinJustificar: 0,
-      datosHasta: datosLocal.get(r.localId) ?? null,
+      datosHasta: datosLocal.get(localId) ?? null,
     }
     const importe = Number(r.importe)
     e.cantidad += 1
     if (importe > 0) {
       e.conImporte += 1
       e.importe = round2(e.importe + importe)
-      if (!justPorClave.has(claveAnulada(r.localId, r.fechaHora, importe))) e.sinJustificar += 1
+      if (!justPorClave.has(claveAnulada(localId, r.fechaHora, importe))) e.sinJustificar += 1
     }
     if (r.tipoPedido === 'R') e.salon += 1
     else if (r.tipoPedido === 'D') e.delivery += 1
-    acc.set(r.localId, e)
+    acc.set(localId, e)
   }
   const porLocal = [...acc.values()]
     .map((e) => ({ ...e, pctVenta: e.facturacion > 0 ? round2((e.importe / e.facturacion) * 100) : null }))
     .sort((a, b) => b.importe - a.importe)
 
   const conImporteFilas = filas
-    .filter((r) => Number(r.importe) > 0)
+    .filter((r): r is (typeof filas)[number] & { localId: number } => r.localId != null && Number(r.importe) > 0)
     .sort((a, b) => b.fechaHora.getTime() - a.fechaHora.getTime())
   const detalle: AnuladaDetalle[] = conImporteFilas.slice(0, DETALLE_MAX).map((r) => ({
     localId: r.localId,

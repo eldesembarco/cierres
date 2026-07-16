@@ -1,7 +1,10 @@
 // Sincroniza los datos de Tango (venta por hora, por artículo y consumo de
 // insumos) a nuestra base. Idempotente por fecha: borra y reinserta cada día del
-// rango, así se puede re-sincronizar sin duplicar. Las sucursales que no mapean
-// a un local propio (resto de la franquicia) se ignoran.
+// rango, así se puede re-sincronizar sin duplicar. Se guardan TODAS las
+// sucursales (propias y franquicias), clavadas por sucursalId; localId solo se
+// completa para las propias (link a los locales de cierres). Las sucursales que
+// aparecen en la venta y no están en la dimensión se auto-crean con nombre
+// provisorio para no perder datos.
 //
 // Tolerante a endpoints faltantes: cada dataset se trae por separado; si uno
 // falla (p.ej. /consumo-insumos todavía no está en el bridge del server) se
@@ -41,14 +44,11 @@ function fechasDelRango(desde: string, hasta: string): string[] {
   return out
 }
 
-const delDia = <T extends { fecha: string; id_sucursal: number }>(
-  rows: T[],
-  fecha: string,
-  localPorSucursal: Map<number, number>,
-) => rows.filter((r) => r.fecha.slice(0, 10) === fecha && localPorSucursal.has(r.id_sucursal))
+const delDia = <T extends { fecha: string }>(rows: T[], fecha: string) =>
+  rows.filter((r) => r.fecha.slice(0, 10) === fecha)
 
 export async function syncVentasTango(desde: string, hasta: string): Promise<SyncVentasResult> {
-  const [horasR, articulosR, insumosR, anuladasR, locales] = await Promise.all([
+  const [horasR, articulosR, insumosR, anuladasR, sucursales] = await Promise.all([
     fetchVentasHoras(desde, hasta).then(
       (v) => ({ ok: true as const, v }),
       (e) => ({ ok: false as const, e }),
@@ -65,7 +65,7 @@ export async function syncVentasTango(desde: string, hasta: string): Promise<Syn
       (v) => ({ ok: true as const, v }),
       (e) => ({ ok: false as const, e }),
     ),
-    prisma.local.findMany({ where: { tangoSucursalId: { not: null } }, select: { id: true, tangoSucursalId: true } }),
+    prisma.sucursalTango.findMany({ select: { id: true, localId: true } }),
   ])
 
   // Si no vino NINGÚN dataset, el bridge está caído de verdad: error para arriba.
@@ -80,23 +80,46 @@ export async function syncVentasTango(desde: string, hasta: string): Promise<Syn
   if (!insumosR.ok) avisos.push(`No se sincronizó ${nombreDataset.insumos}: ${insumosR.e instanceof Error ? insumosR.e.message : insumosR.e}`)
   if (!anuladasR.ok) avisos.push(`No se sincronizó ${nombreDataset.anuladas}: ${anuladasR.e instanceof Error ? anuladasR.e.message : anuladasR.e}`)
 
-  const localPorSucursal = new Map(locales.map((l) => [l.tangoSucursalId as number, l.id]))
+  const localPorSucursal = new Map(sucursales.map((s) => [s.id, s.localId]))
+
+  // Sucursales nuevas (aperturas): alta provisoria en la dimensión para no
+  // perder sus datos. Nombre "#id" hasta que alguien lo corrija.
+  const idsVistos = new Set<number>()
+  for (const r of [
+    ...(horasR.ok ? horasR.v : []),
+    ...(articulosR.ok ? articulosR.v : []),
+    ...(insumosR.ok ? insumosR.v : []),
+    ...(anuladasR.ok ? anuladasR.v : []),
+  ]) idsVistos.add(r.id_sucursal)
+  const desconocidas = [...idsVistos].filter((id) => !localPorSucursal.has(id))
+  if (desconocidas.length > 0) {
+    await prisma.sucursalTango.createMany({
+      data: desconocidas.map((id) => ({ id, nombre: `Sucursal #${id}`, marca: 'D', esPropia: false })),
+      skipDuplicates: true,
+    })
+    for (const id of desconocidas) localPorSucursal.set(id, null)
+    avisos.push(`Sucursales nuevas auto-creadas (revisar nombre/marca): ${desconocidas.join(', ')}`)
+  }
+
+  const base = (r: { id_sucursal: number }, fecha: string) => ({
+    sucursalId: r.id_sucursal,
+    localId: localPorSucursal.get(r.id_sucursal) ?? null,
+    fecha: fechaDb(fecha),
+  })
 
   const dias: SyncVentasResult['dias'] = []
   for (const fecha of fechasDelRango(desde, hasta)) {
     const filasHoras = horasR.ok
-      ? delDia(horasR.v, fecha, localPorSucursal).map((r) => ({
-          localId: localPorSucursal.get(r.id_sucursal) as number,
-          fecha: fechaDb(fecha),
+      ? delDia(horasR.v, fecha).map((r) => ({
+          ...base(r, fecha),
           hora: r.hora,
           monto: round2(Number(r.importe)),
           tickets: Number(r.tickets) || 0,
         }))
       : null
     const filasArticulos = articulosR.ok
-      ? delDia(articulosR.v, fecha, localPorSucursal).map((r) => ({
-          localId: localPorSucursal.get(r.id_sucursal) as number,
-          fecha: fechaDb(fecha),
+      ? delDia(articulosR.v, fecha).map((r) => ({
+          ...base(r, fecha),
           codigo: r.cod_articulo,
           descripcion: r.descripcion,
           rubro: r.rubro ?? null,
@@ -105,9 +128,8 @@ export async function syncVentasTango(desde: string, hasta: string): Promise<Syn
         }))
       : null
     const filasInsumos = insumosR.ok
-      ? delDia(insumosR.v, fecha, localPorSucursal).map((r) => ({
-          localId: localPorSucursal.get(r.id_sucursal) as number,
-          fecha: fechaDb(fecha),
+      ? delDia(insumosR.v, fecha).map((r) => ({
+          ...base(r, fecha),
           codigo: r.cod_articulo,
           descripcion: r.descripcion,
           rubro: r.rubro ?? null,
@@ -118,9 +140,8 @@ export async function syncVentasTango(desde: string, hasta: string): Promise<Syn
         }))
       : null
     const filasAnuladas = anuladasR.ok
-      ? delDia(anuladasR.v, fecha, localPorSucursal).map((r) => ({
-          localId: localPorSucursal.get(r.id_sucursal) as number,
-          fecha: fechaDb(fecha),
+      ? delDia(anuladasR.v, fecha).map((r) => ({
+          ...base(r, fecha),
           // El bridge manda "YYYY-MM-DD HH:mm:ss" (hora local del ticket).
           fechaHora: new Date(r.fecha_hora.replace(' ', 'T') + 'Z'),
           importe: round2(Number(r.importe) || 0),

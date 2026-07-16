@@ -1,17 +1,29 @@
-// Consultas del BI de ventas (/ventas) sobre los agregados sincronizados de Tango
+// Consultas del BI de ventas (/) sobre los agregados sincronizados de Tango
 // (venta_tango_hora / venta_tango_articulo). La facturación "oficial" del BI es la
 // suma de venta_tango_hora (misma definición que el Z: comprobantes netos de NC).
+// Todo se agrupa por SUCURSAL de Tango (dimensión sucursal_tango), con alcance
+// Propios / Franquicias / Todos.
 import { prisma } from '@/lib/db'
 import { round2 } from '@/lib/money'
+
+export type Alcance = 'propios' | 'franquicias' | 'todos'
+
+export interface SucursalOpcion {
+  id: number
+  nombre: string
+  marca: string // etiqueta legible
+  esPropia: boolean
+}
 
 export interface FiltroBi {
   desde: string // YYYY-MM-DD inclusive
   hasta: string
-  localId?: number // undefined = todos los locales
+  alcance: Alcance
+  sucursalId?: number // undefined = todas las del alcance
 }
 
 export interface LocalBi {
-  localId: number
+  sucursalId: number
   nombre: string
   marca: string
   monto: number
@@ -52,6 +64,20 @@ export interface ResumenBi {
 const fechaDb = (ymd: string) => new Date(`${ymd}T00:00:00.000Z`)
 const ymd = (d: Date) => d.toISOString().slice(0, 10)
 
+const etiquetaMarca = (m: string) => (m === 'T' ? 'Tasty' : 'Desembarco')
+
+/** Sucursales de la dimensión, con etiqueta de marca, ordenadas para selects. */
+export async function sucursalesBi(): Promise<SucursalOpcion[]> {
+  const rows = await prisma.sucursalTango.findMany({
+    select: { id: true, nombre: true, marca: true, esPropia: true },
+    orderBy: [{ esPropia: 'desc' }, { marca: 'asc' }, { nombre: 'asc' }],
+  })
+  return rows.map((s) => ({ id: s.id, nombre: s.nombre, marca: etiquetaMarca(s.marca), esPropia: s.esPropia }))
+}
+
+export const filtraAlcance = (sucursales: SucursalOpcion[], alcance: Alcance): SucursalOpcion[] =>
+  alcance === 'todos' ? sucursales : sucursales.filter((s) => s.esPropia === (alcance === 'propios'))
+
 /** Rango de igual longitud inmediatamente anterior a [desde, hasta]. */
 export function rangoAnterior(desde: string, hasta: string): { desde: string; hasta: string } {
   const d = fechaDb(desde)
@@ -63,10 +89,10 @@ export function rangoAnterior(desde: string, hasta: string): { desde: string; ha
   }
 }
 
-function whereRango(f: FiltroBi) {
+function whereRango(desde: string, hasta: string, sucursalIds: number[] | undefined) {
   return {
-    fecha: { gte: fechaDb(f.desde), lte: fechaDb(f.hasta) },
-    ...(f.localId != null ? { localId: f.localId } : {}),
+    fecha: { gte: fechaDb(desde), lte: fechaDb(hasta) },
+    ...(sucursalIds ? { sucursalId: { in: sucursalIds } } : {}),
   }
 }
 
@@ -75,33 +101,34 @@ const variacionPct = (actual: number, base: number): number | null =>
 
 export async function resumenBi(f: FiltroBi, topN = 15): Promise<ResumenBi> {
   const anterior = rangoAnterior(f.desde, f.hasta)
+  const sucursales = await sucursalesBi()
+  const delAlcance = filtraAlcance(sucursales, f.alcance)
+  // Con sucursal puntual manda esa; si no, las del alcance; "todos" sin filtro.
+  const ids =
+    f.sucursalId != null ? [f.sucursalId] : f.alcance === 'todos' ? undefined : delAlcance.map((s) => s.id)
 
-  const [porLocal, porLocalAnt, porHora, porArticulo, locales, syncs, ultima] = await Promise.all([
+  const [porSucursal, porSucursalAnt, porHora, porArticulo, syncs, ultima] = await Promise.all([
     prisma.ventaTangoHora.groupBy({
-      by: ['localId'],
-      where: whereRango(f),
+      by: ['sucursalId'],
+      where: whereRango(f.desde, f.hasta, ids),
       _sum: { monto: true, tickets: true },
     }),
     prisma.ventaTangoHora.groupBy({
-      by: ['localId'],
-      where: whereRango({ ...anterior, localId: f.localId }),
+      by: ['sucursalId'],
+      where: whereRango(anterior.desde, anterior.hasta, ids),
       _sum: { monto: true },
     }),
     prisma.ventaTangoHora.groupBy({
       by: ['hora'],
-      where: whereRango(f),
+      where: whereRango(f.desde, f.hasta, ids),
       _sum: { monto: true, tickets: true },
       orderBy: { hora: 'asc' },
     }),
     prisma.ventaTangoArticulo.groupBy({
       by: ['codigo'],
-      where: whereRango(f),
+      where: whereRango(f.desde, f.hasta, ids),
       _sum: { cantidad: true, monto: true },
       _max: { descripcion: true, rubro: true },
-    }),
-    prisma.local.findMany({
-      where: { tangoSucursalId: { not: null } },
-      select: { id: true, nombre: true, marca: { select: { nombre: true } } },
     }),
     prisma.ventaTangoSync.findMany({
       where: { fecha: { gte: fechaDb(f.desde), lte: fechaDb(f.hasta) } },
@@ -110,27 +137,29 @@ export async function resumenBi(f: FiltroBi, topN = 15): Promise<ResumenBi> {
     prisma.ventaTangoSync.findFirst({ orderBy: { fecha: 'desc' } }),
   ])
 
-  const nombrePorLocal = new Map(locales.map((l) => [l.id, { nombre: l.nombre, marca: l.marca.nombre }]))
-  const antPorLocal = new Map(porLocalAnt.map((r) => [r.localId, Number(r._sum.monto ?? 0)]))
+  const infoPorSucursal = new Map(sucursales.map((s) => [s.id, s]))
+  const antPorSucursal = new Map(porSucursalAnt.map((r) => [r.sucursalId, Number(r._sum.monto ?? 0)]))
 
-  const montoTotal = round2(porLocal.reduce((s, r) => s + Number(r._sum.monto ?? 0), 0))
-  const ticketsTotal = porLocal.reduce((s, r) => s + Number(r._sum.tickets ?? 0), 0)
-  const montoTotalAnt = round2(porLocalAnt.reduce((s, r) => s + Number(r._sum.monto ?? 0), 0))
+  const montoTotal = round2(porSucursal.reduce((s, r) => s + Number(r._sum.monto ?? 0), 0))
+  const ticketsTotal = porSucursal.reduce((s, r) => s + Number(r._sum.tickets ?? 0), 0)
+  const montoTotalAnt = round2(porSucursalAnt.reduce((s, r) => s + Number(r._sum.monto ?? 0), 0))
 
-  const localesBi: LocalBi[] = porLocal
+  const localesBi: LocalBi[] = porSucursal
+    .filter((r) => r.sucursalId != null)
     .map((r) => {
+      const sucursalId = r.sucursalId as number
       const monto = round2(Number(r._sum.monto ?? 0))
       const tickets = Number(r._sum.tickets ?? 0)
-      const info = nombrePorLocal.get(r.localId)
+      const info = infoPorSucursal.get(sucursalId)
       return {
-        localId: r.localId,
-        nombre: info?.nombre ?? `Local ${r.localId}`,
+        sucursalId,
+        nombre: info?.nombre ?? `Sucursal #${sucursalId}`,
         marca: info?.marca ?? '',
         monto,
         tickets,
         ticketPromedio: tickets > 0 ? round2(monto / tickets) : 0,
         share: montoTotal > 0 ? monto / montoTotal : 0,
-        variacion: variacionPct(monto, antPorLocal.get(r.localId) ?? 0),
+        variacion: variacionPct(monto, antPorSucursal.get(sucursalId) ?? 0),
       }
     })
     .sort((a, b) => b.monto - a.monto)
@@ -166,6 +195,6 @@ export async function resumenBi(f: FiltroBi, topN = 15): Promise<ResumenBi> {
     topPorCantidad: [...articulos].sort((a, b) => b.cantidad - a.cantidad).slice(0, topN),
     ultimaSync: ultima ? { fecha: ymd(ultima.fecha), sincronizadoEn: ultima.sincronizadoEn } : null,
     diasSinDatos,
-    sinDatos: porLocal.length === 0,
+    sinDatos: porSucursal.length === 0,
   }
 }

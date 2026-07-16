@@ -1,8 +1,8 @@
 import Link from 'next/link'
-import { prisma } from '@/lib/db'
 import { BiTabs } from '@/components/BiTabs'
 import { hoyAr, primerDiaDelMesAr } from '@/lib/fecha'
 import { formatMoney } from '@/lib/money'
+import { sucursalesBi, filtraAlcance, type Alcance } from '@/lib/bi'
 import { resumenInsumos, type InsumoBi, type DetalleInsumo } from '@/lib/biInsumos'
 import { Package, Inbox, AlertTriangle, Search, X } from 'lucide-react'
 
@@ -12,11 +12,18 @@ export const maxDuration = 60
 type SearchParams = Promise<{
   desde?: string
   hasta?: string
-  localId?: string
+  alcance?: string
+  sucursalId?: string
   rubro?: string
   q?: string
   insumo?: string
 }>
+
+const ALCANCES: { valor: Alcance; etiqueta: string }[] = [
+  { valor: 'propios', etiqueta: 'Locales propios' },
+  { valor: 'franquicias', etiqueta: 'Franquicias' },
+  { valor: 'todos', etiqueta: 'Todos los locales' },
+]
 
 const YMD = /^\d{4}-\d{2}-\d{2}$/
 
@@ -27,24 +34,23 @@ export default async function InsumosPage({ searchParams }: { searchParams: Sear
   const sp = await searchParams
   const desde = sp.desde && YMD.test(sp.desde) ? sp.desde : primerDiaDelMesAr()
   const hasta = sp.hasta && YMD.test(sp.hasta) && sp.hasta >= desde ? sp.hasta : hoyAr()
-  const localId = sp.localId && /^\d+$/.test(sp.localId) ? Number(sp.localId) : undefined
+  const alcance: Alcance = sp.alcance === 'franquicias' || sp.alcance === 'todos' ? sp.alcance : 'propios'
+  const sucursalId = sp.sucursalId && /^\d+$/.test(sp.sucursalId) ? Number(sp.sucursalId) : undefined
   const rubro = sp.rubro || undefined
   const q = sp.q?.trim() || undefined
 
-  const [r, locales] = await Promise.all([
-    resumenInsumos({ desde, hasta, localId, rubro, q }, sp.insumo || undefined),
-    prisma.local.findMany({
-      where: { activo: true, tangoSucursalId: { not: null } },
-      select: { id: true, nombre: true, marca: { select: { nombre: true } } },
-      orderBy: [{ marca: { nombre: 'asc' } }, { nombre: 'asc' }],
-    }),
+  const [r, sucursales] = await Promise.all([
+    resumenInsumos({ desde, hasta, alcance, sucursalId, rubro, q }, sp.insumo || undefined),
+    sucursalesBi(),
   ])
+  const delAlcance = filtraAlcance(sucursales, alcance)
 
   // Query base para los links de drill-down (conserva los filtros activos).
   const qsBase = new URLSearchParams({
     desde,
     hasta,
-    ...(localId != null ? { localId: String(localId) } : {}),
+    alcance,
+    ...(sucursalId != null ? { sucursalId: String(sucursalId) } : {}),
     ...(rubro ? { rubro } : {}),
     ...(q ? { q } : {}),
   })
@@ -72,12 +78,20 @@ export default async function InsumosPage({ searchParams }: { searchParams: Sear
           <input name="hasta" type="date" defaultValue={hasta} className="rounded-lg border border-slate-300 px-3 py-2 tabular-nums outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500" />
         </label>
         <label className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-slate-500">Alcance</span>
+          <select name="alcance" defaultValue={alcance} className="rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500">
+            {ALCANCES.map((a) => (
+              <option key={a.valor} value={a.valor}>{a.etiqueta}</option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1">
           <span className="text-xs font-medium text-slate-500">Local</span>
-          <select name="localId" defaultValue={localId ?? ''} className="rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500">
-            <option value="">Todos los locales</option>
-            {locales.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.nombre} · {l.marca.nombre}
+          <select name="sucursalId" defaultValue={sucursalId ?? ''} className="rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500">
+            <option value="">Todos los del alcance</option>
+            {delAlcance.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.nombre} · {s.marca}
               </option>
             ))}
           </select>
@@ -133,7 +147,10 @@ export default async function InsumosPage({ searchParams }: { searchParams: Sear
           <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
             <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-3">
               <h2 className="text-sm font-semibold text-slate-900">
-                Consumo por insumo {localId ? `· ${locales.find((l) => l.id === localId)?.nombre}` : '· todos los locales'}
+                Consumo por insumo ·{' '}
+                {sucursalId
+                  ? sucursales.find((s) => s.id === sucursalId)?.nombre
+                  : ALCANCES.find((a) => a.valor === alcance)?.etiqueta.toLowerCase()}
               </h2>
               {r.costoTotal > 0 && (
                 <span
@@ -235,7 +252,7 @@ function DetalleCard({ detalle, qsBase }: { detalle: DetalleInsumo; qsBase: URLS
               // Desvío vs promedio normalizado: >25% arriba = rojo (posible sobreconsumo/merma).
               const desvio = promedioPorMillon && l.porMillon != null ? l.porMillon / promedioPorMillon - 1 : null
               return (
-                <tr key={l.localId} className="border-t border-slate-100">
+                <tr key={l.sucursalId} className="border-t border-slate-100">
                   <td className="px-4 py-1.5 text-slate-400">{idx + 1}</td>
                   <td className="py-1.5">
                     <span className="font-medium text-slate-800">{l.nombre}</span>
