@@ -3,7 +3,8 @@
 import { auth } from '@/lib/auth/auth'
 import { prisma } from '@/lib/db'
 import { esCentral } from '@/lib/auth/rbac'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, updateTag } from 'next/cache'
+import { TAG_CTA_CTE } from '@/lib/cachedData'
 
 // Crea (o reutiliza, si ya existe con el mismo nombre) un proveedor. Cualquier
 // usuario autenticado puede darlo de alta: el encargado lo elige al cargar un
@@ -36,6 +37,7 @@ export async function marcarPagado(movimientoId: number, pagar: boolean) {
       ? { pagado: true, pagadoEn: new Date(), pagadoPor: Number(session.user.id) }
       : { pagado: false, pagadoEn: null, pagadoPor: null },
   })
+  updateTag(TAG_CTA_CTE)
   revalidatePath('/cuenta-corriente')
   return { ok: true as const }
 }

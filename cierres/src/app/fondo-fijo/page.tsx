@@ -1,7 +1,7 @@
 import { auth } from '@/lib/auth/auth'
 import { puedeVerFinanzas, puedeMarcarPagado } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db'
-import { getSaldoFondoFijo, getSaldosFondoFijoTodos } from '@/lib/cierre/getSaldoFondoFijo'
+import { getSaldosFondoFijoTodosCached, getSaldoFondoFijoCached } from '@/lib/cachedData'
 import { formatMoney } from '@/lib/money'
 import { FondoFijoTabla, type SaldoRow } from '@/components/FondoFijoTabla'
 import { Coins, Lock, Wallet, TrendingDown, Inbox } from 'lucide-react'
@@ -17,7 +17,7 @@ export default async function FondoFijoPage() {
 
   let filas: SaldoRow[]
   if (verTodos) {
-    filas = await getSaldosFondoFijoTodos()
+    filas = await getSaldosFondoFijoTodosCached()
   } else {
     if (!session.user.localId) {
       return (
@@ -29,7 +29,7 @@ export default async function FondoFijoPage() {
         </main>
       )
     }
-    const s = await getSaldoFondoFijo(session.user.localId)
+    const s = await getSaldoFondoFijoCached(session.user.localId)
     const local = await prisma.local.findUnique({ where: { id: session.user.localId }, select: { nombre: true } })
     filas = [{ localId: session.user.localId, localNombre: local?.nombre ?? 'Mi local', ...s }]
   }

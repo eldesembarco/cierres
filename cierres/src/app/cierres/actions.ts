@@ -8,7 +8,8 @@ import { esCentral } from '@/lib/auth/rbac'
 import { getLocalActivoId } from '@/lib/auth/localActivo'
 import { amnistiaReaperturaActiva } from '@/lib/cierre/amnistia'
 import type { Turno } from '@/lib/cierre/types'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, updateTag } from 'next/cache'
+import { tagCierre, TAG_CTA_CTE } from '@/lib/cachedData'
 
 const UMBRAL_DIFERENCIA = 1000 // $ — calibrar en el piloto
 
@@ -188,6 +189,8 @@ export async function guardarCierre(
       : []),
   ])
 
+  updateTag(tagCierre(localId, fecha))
+  updateTag(TAG_CTA_CTE) // los gastos en cta cte del cierre resincronizan movimientos
   revalidatePath('/cierres')
   revalidatePath(`/cierres/${fecha}`)
   revalidatePath('/cuenta-corriente')
@@ -231,6 +234,7 @@ export async function reabrirCierre(fecha: string, turno: Turno, observacion: st
     },
   })
 
+  updateTag(tagCierre(localId, fecha))
   revalidatePath('/cierres')
   revalidatePath(`/cierres/${fecha}`)
   return { ok: true as const }

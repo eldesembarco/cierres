@@ -4,7 +4,8 @@ import { auth } from '@/lib/auth/auth'
 import { prisma } from '@/lib/db'
 import { puedeMarcarPagado } from '@/lib/auth/rbac'
 import { reponerFondoFijoSchema } from '@/lib/cierre/schema'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, updateTag } from 'next/cache'
+import { TAG_FONDO_FIJO, TAG_DASHBOARD } from '@/lib/cachedData'
 
 // Administración carga una reposición del fondo fijo (le entrega plata al local para
 // volver a llenar la caja chica). Sube el saldo corriente del fondo fijo del local.
@@ -27,6 +28,8 @@ export async function reponerFondoFijo(localId: number, monto: number, descripci
       creadoPor: Number(session.user.id),
     },
   })
+  updateTag(TAG_FONDO_FIJO)
+  updateTag(TAG_DASHBOARD)
   revalidatePath('/fondo-fijo')
   revalidatePath('/cierres', 'layout') // refrescar el saldo mostrado en la planilla
   return { ok: true as const }
@@ -45,6 +48,7 @@ export async function setFondoFijoObjetivo(localId: number, monto: number) {
     return { ok: false as const, error: 'Ingresá un monto válido (0 o más).' }
   }
   await prisma.local.update({ where: { id: localId }, data: { fondoFijoDefault: monto } })
+  updateTag(TAG_FONDO_FIJO)
   revalidatePath('/fondo-fijo')
   revalidatePath('/cierres', 'layout')
   return { ok: true as const }

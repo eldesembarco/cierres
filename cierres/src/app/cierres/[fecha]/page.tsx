@@ -5,6 +5,7 @@ import { esCentral } from '@/lib/auth/rbac'
 import { getLocalActivoId } from '@/lib/auth/localActivo'
 import type { Canal, FormaPago, TipoGasto, TipoTarjeta, Turno, TurnoInput } from '@/lib/cierre/types'
 import type { CierreAuditoria } from '@/components/TurnoCierre'
+import { getPlanillaCached, type PlanillaCierrePlano } from '@/lib/cachedData'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 
@@ -13,61 +14,40 @@ function formatFecha(iso: string) {
   return d.toLocaleDateString('es-AR', { day: '2-digit', month: 'long', year: 'numeric' })
 }
 
-type CierreConHijos = {
-  fondoFijo: unknown
-  montoZ: unknown
-  efectivoDepositado: unknown
-  retiroFondoFijo: unknown
-  notaCredito: unknown
-  cantidadTickets: number | null
-  nota: string | null
-  estado: string
-  ventas: { canal: string; monto: unknown }[]
-  tarjetas: { tipo: string; monto: unknown; lote: string | null }[]
-  detalles: { canal: string; referencia: string; importe: unknown }[]
-  gastos: { tipo: string; formaPago: string; monto: unknown; descripcion: string | null; comprobanteId: number | null; facturaNumero: string | null; facturaTotal: unknown; proveedorId: number | null }[]
-  auditorias: { usuarioNombre: string; accion: string; observacion: string; creadoEn: Date }[]
-}
-
-function toAuditorias(c: CierreConHijos | undefined): CierreAuditoria[] {
+function toAuditorias(c: PlanillaCierrePlano | undefined): CierreAuditoria[] {
   if (!c) return []
-  return c.auditorias.map((a) => ({
-    usuarioNombre: a.usuarioNombre,
-    accion: a.accion,
-    observacion: a.observacion,
-    creadoEn: a.creadoEn.toISOString(),
-  }))
+  return c.auditorias
 }
 
-function toInicial(c: CierreConHijos | undefined): (Partial<TurnoInput> & { nota?: string }) | undefined {
+function toInicial(c: PlanillaCierrePlano | undefined): (Partial<TurnoInput> & { nota?: string }) | undefined {
   if (!c) return undefined
   return {
-    fondoFijo: Number(c.fondoFijo),
-    montoZ: Number(c.montoZ),
-    efectivoDepositado: Number(c.efectivoDepositado),
+    fondoFijo: c.fondoFijo,
+    montoZ: c.montoZ,
+    efectivoDepositado: c.efectivoDepositado,
     // OJO: sin esto, la recarga hidrataba el recupero en 0 y el auto-guardado
     // pisaba el valor real en la base (bug reportado por los locales el 13/07).
-    retiroFondoFijo: Number(c.retiroFondoFijo),
-    notaCredito: Number(c.notaCredito),
+    retiroFondoFijo: c.retiroFondoFijo,
+    notaCredito: c.notaCredito,
     cantidadTickets: c.cantidadTickets,
-    ventas: c.ventas.map((v) => ({ canal: v.canal as Canal, monto: Number(v.monto) })),
-    tarjetas: c.tarjetas.map((t) => ({ tipo: t.tipo as TipoTarjeta, monto: Number(t.monto), lote: t.lote })),
-    detalles: c.detalles.map((d) => ({ canal: d.canal as Canal, referencia: d.referencia, importe: Number(d.importe) })),
+    ventas: c.ventas.map((v) => ({ canal: v.canal as Canal, monto: v.monto })),
+    tarjetas: c.tarjetas.map((t) => ({ tipo: t.tipo as TipoTarjeta, monto: t.monto, lote: t.lote })),
+    detalles: c.detalles.map((d) => ({ canal: d.canal as Canal, referencia: d.referencia, importe: d.importe })),
     gastos: c.gastos.map((g) => ({
       tipo: g.tipo as TipoGasto,
       formaPago: g.formaPago as FormaPago,
-      monto: Number(g.monto),
+      monto: g.monto,
       descripcion: g.descripcion,
       comprobanteId: g.comprobanteId,
       facturaNumero: g.facturaNumero,
-      facturaTotal: g.facturaTotal == null ? null : Number(g.facturaTotal),
+      facturaTotal: g.facturaTotal,
       proveedorId: g.proveedorId,
     })),
     nota: c.nota ?? '',
   }
 }
 
-function estadoLabel(c: CierreConHijos | undefined) {
+function estadoLabel(c: PlanillaCierrePlano | undefined) {
   if (!c) return '—'
   return c.estado === 'cerrado' ? 'cerrado' : 'borrador'
 }
@@ -80,16 +60,8 @@ export default async function CierreDiaPage({ params }: { params: Promise<{ fech
   const localId = await getLocalActivoId(session)
   const local = await prisma.local.findUniqueOrThrow({ where: { id: localId } })
 
-  const cierres = await prisma.cierre.findMany({
-    where: { localId, fecha: new Date(fecha) },
-    include: {
-      ventas: true,
-      tarjetas: true,
-      detalles: true,
-      gastos: true,
-      auditorias: { orderBy: { creadoEn: 'desc' } },
-    },
-  })
+  // Consulta pesada cacheada por (local, fecha); guardar/reabrir invalidan el tag.
+  const cierres = await getPlanillaCached(localId, fecha)
 
   const proveedores = await prisma.proveedor.findMany({
     where: { activo: true },
@@ -97,10 +69,10 @@ export default async function CierreDiaPage({ params }: { params: Promise<{ fech
     select: { id: true, nombre: true },
   })
 
-  const byTurno = new Map<Turno, (typeof cierres)[number]>()
-  for (const c of cierres) byTurno.set(c.turno as Turno, c)
-  const manana = byTurno.get('manana') as CierreConHijos | undefined
-  const tarde = byTurno.get('tarde') as CierreConHijos | undefined
+  const byTurno = new Map<Turno, PlanillaCierrePlano>()
+  for (const c of cierres) byTurno.set(c.turno, c)
+  const manana = byTurno.get('manana')
+  const tarde = byTurno.get('tarde')
 
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-6">

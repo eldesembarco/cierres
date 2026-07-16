@@ -3,6 +3,7 @@ import { puedeVerFinanzas, puedeMarcarPagado } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db'
 import { formatMoney } from '@/lib/money'
 import { CuentaCorrienteTabla, type MovimientoRow } from '@/components/CuentaCorrienteTabla'
+import { getCtaCteCached } from '@/lib/cachedData'
 import { Wallet, Lock, Inbox, Building2, Package } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
@@ -38,37 +39,21 @@ export default async function CuentaCorrientePage({ searchParams }: { searchPara
     scopeLocalId = Number(sp.localId)
   }
 
-  const whereScope = scopeLocalId != null ? { localId: scopeLocalId } : {}
-
-  const [movs, locales] = await Promise.all([
-    prisma.movimientoCtaCte.findMany({
-      where: whereScope,
-      include: { proveedor: true, local: true },
-      orderBy: [{ pagado: 'asc' }, { fecha: 'desc' }, { id: 'desc' }],
-    }),
+  // Consulta pesada cacheada por alcance (tag 'cta-cte'; marcar pagado la invalida).
+  const [data, locales] = await Promise.all([
+    getCtaCteCached(scopeLocalId),
     verTodos ? prisma.local.findMany({ where: { activo: true }, orderBy: { nombre: 'asc' } }) : Promise.resolve([]),
   ])
+  const { movs, saldoPendiente, totalPagado } = data
 
   const pendientes = movs.filter((m) => !m.pagado)
-  const saldoPendiente = pendientes.reduce((s, m) => s + Number(m.monto), 0)
-  const totalPagado = movs.filter((m) => m.pagado).reduce((s, m) => s + Number(m.monto), 0)
 
   // Saldo pendiente agrupado por proveedor y por local (sólo sobre lo pendiente).
-  const porProveedor = agrupar(pendientes, (m) => m.proveedor?.nombre ?? '(sin asignar)', (m) => Number(m.monto))
-  const porLocal = agrupar(pendientes, (m) => m.local.nombre, (m) => Number(m.monto))
+  const porProveedor = agrupar(pendientes, (m) => m.proveedorNombre ?? '(sin asignar)', (m) => m.monto)
+  const porLocal = agrupar(pendientes, (m) => m.localNombre, (m) => m.monto)
 
   const lista = estado === 'todos' ? movs : estado === 'pagado' ? movs.filter((m) => m.pagado) : pendientes
-  const filas: MovimientoRow[] = lista.map((m) => ({
-    id: m.id,
-    fecha: m.fecha.toISOString(),
-    localNombre: m.local.nombre,
-    proveedorNombre: m.proveedor?.nombre ?? null,
-    concepto: m.concepto,
-    descripcion: m.descripcion,
-    monto: Number(m.monto),
-    pagado: m.pagado,
-    pagadoEn: m.pagadoEn?.toISOString() ?? null,
-  }))
+  const filas: MovimientoRow[] = lista
 
   return (
     <main className="mx-auto w-full max-w-5xl px-4 py-6">

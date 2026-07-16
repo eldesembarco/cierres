@@ -1,6 +1,6 @@
 import { auth } from '@/lib/auth/auth'
 import { puedeVerFinanzas } from '@/lib/auth/rbac'
-import { getDashboard } from '@/lib/dashboard/getDashboard'
+import { getDashboardCached } from '@/lib/cachedData'
 import { hoyAr, ayerAr } from '@/lib/fecha'
 import { Dashboard } from '@/components/Dashboard'
 import { Lock } from 'lucide-react'
@@ -25,6 +25,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
   const hoy = hoyAr()
   const sp = await searchParams
   const fecha = sp.fecha && /^\d{4}-\d{2}-\d{2}$/.test(sp.fecha) ? sp.fecha : hoy
-  const data = await getDashboard(fecha)
+  const data = await getDashboardCached(fecha)
   return <Dashboard data={data} hoy={hoy} ayer={ayerAr()} />
 }
