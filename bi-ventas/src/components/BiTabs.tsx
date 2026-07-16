@@ -1,8 +1,9 @@
 import Link from 'next/link'
-import { TrendingUp, Package } from 'lucide-react'
+import { TrendingUp, Package, LayoutDashboard } from 'lucide-react'
 
 // Pestañas del BI. `actual` = pathname de la página que la renderiza.
 const TABS = [
+  { href: '/tablero', label: 'Tablero', icon: LayoutDashboard },
   { href: '/', label: 'Ventas', icon: TrendingUp },
   { href: '/insumos', label: 'Insumos', icon: Package },
 ] as const
