@@ -33,9 +33,44 @@
 -- ============================================================
 USE CENTRAL_ESTADISTICA;
 GO
--- Ventas a nivel detalle para consumo: excluye renglones hijos ($0, colgados
--- de un padre) cuando el artículo padre tiene fórmula en MAESTRO (la fórmula
--- ya modela ese consumo). Hijos de padres sin fórmula sí computan.
+-- AUTO-CALIBRACIÓN (regla 16/07, pedida por Pablo): para cada par
+-- (promo padre, componente hijo) medimos qué porcentaje de las ventas de la
+-- promo registró renglones hijos $0 de ese componente en los últimos 60 días.
+-- Si la cobertura es >= 50%, el registro de los mozos es confiable y el
+-- consumo REAL viene de los hijos (ej. Toma Sin Límite: 5,4 medias/promo
+-- reales vs 10 estimadas en fórmula); ese renglón de la fórmula se ignora.
+-- Componentes con registro pobre siguen tomando la fórmula (mix promedio).
+-- Ventana móvil: se recalibra solo, sin tocar fórmulas de Tango.
+CREATE OR ALTER VIEW dbo.vw_ComponentesVariables AS
+WITH VentasPadre AS (
+  SELECT a.COD_ARTICULO AS padre, COUNT(*) AS ventas
+  FROM dbo.CTA_DETALLE_COMANDA d
+  JOIN dbo.CTA_ENCABEZADO_COMANDA e ON e.ID_CTA_ENCABEZADO_COMANDA = d.ID_CTA_ENCABEZADO_COMANDA
+  JOIN dbo.CTA_ARTICULO a ON a.ID_CTA_ARTICULO = d.ID_CTA_ARTICULO
+  WHERE e.ESTADO IN ('C','T')
+    AND d.ID_CTA_DETALLE_COMANDA_PADRE IS NULL
+    AND d.FECHA_COMERCIAL >= DATEADD(day, -60, CAST(GETDATE() AS date))
+  GROUP BY a.COD_ARTICULO
+),
+Pares AS (
+  SELECT ap.COD_ARTICULO AS padre, ah.COD_ARTICULO AS hijo,
+         COUNT(DISTINCT h.ID_CTA_DETALLE_COMANDA_PADRE) AS ventas_con_hijo
+  FROM dbo.CTA_DETALLE_COMANDA h
+  JOIN dbo.CTA_DETALLE_COMANDA p ON p.ID_CTA_DETALLE_COMANDA = h.ID_CTA_DETALLE_COMANDA_PADRE
+  JOIN dbo.CTA_ARTICULO ah ON ah.ID_CTA_ARTICULO = h.ID_CTA_ARTICULO
+  JOIN dbo.CTA_ARTICULO ap ON ap.ID_CTA_ARTICULO = p.ID_CTA_ARTICULO
+  WHERE h.FECHA_COMERCIAL >= DATEADD(day, -60, CAST(GETDATE() AS date))
+  GROUP BY ap.COD_ARTICULO, ah.COD_ARTICULO
+)
+SELECT pa.padre AS COD_PADRE, pa.hijo AS COD_HIJO
+FROM Pares pa
+JOIN VentasPadre vp ON vp.padre = pa.padre
+WHERE vp.ventas > 0 AND pa.ventas_con_hijo * 2 >= vp.ventas;
+GO
+-- Ventas a nivel detalle para consumo. Renglones hijos ($0, colgados de un
+-- padre): computan solo si el par (padre, hijo) es confiable según
+-- vw_ComponentesVariables (registro denso) o si el padre no tiene fórmula.
+-- Si no, se ignoran (la fórmula del padre ya modela ese consumo).
 CREATE OR ALTER VIEW dbo.vw_VentasParaConsumo AS
 SELECT
   CAST(d.FECHA_COMERCIAL AS date) AS FECHA,
@@ -48,8 +83,12 @@ JOIN dbo.CTA_ARTICULO a           ON a.ID_CTA_ARTICULO = d.ID_CTA_ARTICULO
 LEFT JOIN dbo.CTA_DETALLE_COMANDA dp ON dp.ID_CTA_DETALLE_COMANDA = d.ID_CTA_DETALLE_COMANDA_PADRE
 LEFT JOIN dbo.CTA_ARTICULO ap        ON ap.ID_CTA_ARTICULO = dp.ID_CTA_ARTICULO
 WHERE e.ESTADO IN ('C','T')
-  AND NOT (d.ID_CTA_DETALLE_COMANDA_PADRE IS NOT NULL
-           AND EXISTS (SELECT 1 FROM MAESTRO.dbo.STA03 f WHERE f.COD_ARTICU = ap.COD_ARTICULO))
+  AND (
+    d.ID_CTA_DETALLE_COMANDA_PADRE IS NULL
+    OR NOT EXISTS (SELECT 1 FROM MAESTRO.dbo.STA03 f WHERE f.COD_ARTICU = ap.COD_ARTICULO)
+    OR EXISTS (SELECT 1 FROM dbo.vw_ComponentesVariables cv
+               WHERE cv.COD_PADRE = ap.COD_ARTICULO AND cv.COD_HIJO = a.COD_ARTICULO)
+  )
 GROUP BY CAST(d.FECHA_COMERCIAL AS date), d.ID_SUCURSAL, a.COD_ARTICULO;
 GO
 CREATE OR ALTER VIEW dbo.vw_ConsumoInsumos AS
@@ -91,6 +130,11 @@ Explosion AS (
   FROM Explosion e
   JOIN Recetas r ON r.MARCA = e.MARCA AND r.COD_ARTICU = e.COD_ARTICU
   WHERE e.NIVEL < 6
+    -- Componente con registro confiable de hijos: NO se explota desde la
+    -- fórmula (el consumo real ya entró por los renglones hijos $0).
+    AND NOT EXISTS (SELECT 1 FROM dbo.vw_ComponentesVariables cv
+                    WHERE cv.COD_PADRE COLLATE DATABASE_DEFAULT = e.COD_ARTICU
+                      AND cv.COD_HIJO COLLATE DATABASE_DEFAULT = r.COD_INSUMO)
 ),
 Articulos AS (
   -- Descripción/unidad: por marca, con fallback a MAESTRO para Tasty.
