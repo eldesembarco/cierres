@@ -83,6 +83,46 @@ input:focus-visible, select:focus-visible, textarea:focus-visible {
   border-color: var(--color-brand) !important;
 }
 
+/* ── Organigrama vertical (raíz arriba, niveles hacia abajo) ────────────────
+   Patrón clásico de árbol con ul/li: cada li dibuja su bajada (::before) y el
+   riel horizontal que une hermanos (::after). El tallo bajo cada padre lo
+   renderiza el componente. No responsive a propósito: scroll horizontal.     */
+.orgv ul {
+  display: flex;
+  align-items: flex-start;
+}
+.orgv li {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 28px 12px 0;
+}
+.orgv li::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 1px;
+  height: 28px;
+  background: var(--color-line-strong);
+}
+.orgv li::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--color-line-strong);
+}
+.orgv li:first-child::after { left: 50%; }
+.orgv li:last-child::after { right: 50%; }
+.orgv li:only-child::after { content: none; }
+.orgv > ul > li { padding-top: 0; }
+.orgv > ul > li::before,
+.orgv > ul > li::after { content: none; }
+
 /* animación de entrada sutil para cards del dashboard */
 @keyframes rise {
   from { opacity: 0; transform: translateY(6px); }
