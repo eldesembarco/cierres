@@ -9,10 +9,11 @@
 // datos PLANOS (números/strings/null). Nada de Date ni Prisma.Decimal.
 import { unstable_cache } from 'next/cache'
 import { prisma } from '@/lib/db'
-import { hoyAr } from '@/lib/fecha'
+import { hoyAr, ayerAr } from '@/lib/fecha'
 import { getDashboard, type DashboardData } from '@/lib/dashboard/getDashboard'
 import { getSaldosFondoFijoTodos, getSaldoFondoFijo, type SaldoFondoFijo, type SaldoFondoFijoLocal } from '@/lib/cierre/getSaldoFondoFijo'
 import { resumenAnuladas, type FiltroAnuladas, type ResumenAnuladas } from '@/lib/tango/anuladas'
+import { resumenCajaDia, type ResumenCaja } from '@/lib/tango/resumenCaja'
 
 // ---------- Tags ----------
 export const tagCierre = (localId: number, fecha: string) => `cierre-${localId}-${fecha}`
@@ -22,6 +23,8 @@ export const TAG_CTA_CTE = 'cta-cte'
 export const TAG_ANULACIONES = 'anulaciones'
 // Operaciones de MP parseadas del SFTP (ver src/lib/mp/operacionesMpDia.ts).
 export const TAG_MP_SFTP = 'mp-sftp'
+// Visor de caja Tango (/caja-tango).
+export const TAG_CAJA_TANGO = 'caja-tango'
 
 // ---------- Planilla de /cierres/[fecha] ----------
 export interface PlanillaCierrePlano {
@@ -193,4 +196,20 @@ export function getResumenAnuladasCached(f: FiltroAnuladas): Promise<ResumenAnul
     tags: [TAG_ANULACIONES],
     revalidate: 600,
   })(f.desde, f.hasta, f.localId ?? null)
+}
+
+// ---------- Caja Tango (visor) ----------
+// La ida al bridge (túnel a SRVTANGO) es lenta y el server de Tango a veces está
+// apagado: cachear también lo protege. En un miss el error del bridge NO se
+// cachea (el throw aborta el cacheo); con entrada stale, unstable_cache sirve lo
+// viejo y traga el error de la revalidación — por eso la página muestra la hora
+// de consulta (obtenidoEn), para que un dato viejo se vea como viejo.
+// "Ayer" también es caliente: el día comercial cruza la medianoche y el
+// replicador de Tango sigue mandando cobros hasta la mañana siguiente.
+export function getResumenCajaCached(fecha: string): Promise<ResumenCaja> {
+  const esReciente = fecha >= ayerAr()
+  return unstable_cache(resumenCajaDia, ['caja-tango-v1'], {
+    tags: [TAG_CAJA_TANGO],
+    revalidate: esReciente ? 300 : 3600,
+  })(fecha)
 }
