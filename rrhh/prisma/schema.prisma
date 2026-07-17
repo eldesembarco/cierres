@@ -1,0 +1,292 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ── Catálogos ────────────────────────────────────────────────────────────────
+
+model Empresa {
+  id        Int        @id @default(autoincrement())
+  nombre    String     @unique
+  cuit      String?
+  activo    Boolean    @default(true)
+  empleados Empleado[]
+  @@map("empresas")
+}
+
+model Marca {
+  id        Int        @id @default(autoincrement())
+  nombre    String     @unique
+  color     String?
+  activo    Boolean    @default(true)
+  locaciones Locacion[]
+  @@map("marcas")
+}
+
+model Locacion {
+  id        Int        @id @default(autoincrement())
+  nombre    String
+  marca     Marca?     @relation(fields: [marcaId], references: [id])
+  marcaId   Int?       @map("marca_id")
+  tipo      String     @default("LOCAL") // LOCAL | OFICINA | PLANTA
+  direccion String?
+  activo    Boolean    @default(true)
+  empleados Empleado[]
+  invitaciones Invitacion[]
+  @@map("locaciones")
+}
+
+model Departamento {
+  id        Int        @id @default(autoincrement())
+  nombre    String     @unique
+  activo    Boolean    @default(true)
+  empleados Empleado[]
+  posiciones Posicion[]
+  @@map("departamentos")
+}
+
+model Posicion {
+  id             Int           @id @default(autoincrement())
+  nombre         String        @unique
+  departamento   Departamento? @relation(fields: [departamentoId], references: [id])
+  departamentoId Int?          @map("departamento_id")
+  convenio       String?
+  activo         Boolean       @default(true)
+  empleados      Empleado[]
+  documentosRequeridos PosicionDocumento[]
+  invitaciones   Invitacion[]
+  @@map("posiciones")
+}
+
+// ── Núcleo: empleados ────────────────────────────────────────────────────────
+
+enum EstadoEmpleado {
+  ONBOARDING
+  ACTIVO
+  EGRESADO
+}
+
+model Empleado {
+  id             Int            @id @default(autoincrement())
+  legajo         Int?           @unique
+  nombreCompleto String         @map("nombre_completo")
+  cuil           String?        @unique
+  dni            String?
+  fechaNacimiento DateTime?     @map("fecha_nacimiento") @db.Date
+  nacionalidad   String?
+  estadoCivil    String?        @map("estado_civil")
+  telefono       String?
+  email          String?
+  direccion      String?
+  pisoDpto       String?        @map("piso_dpto")
+  localidad      String?
+  cp             String?
+  cbu            String?
+  emergenciaNombre   String?    @map("emergencia_nombre")
+  emergenciaTelefono String?    @map("emergencia_telefono")
+  emergenciaRelacion String?    @map("emergencia_relacion")
+  empresa        Empresa?       @relation(fields: [empresaId], references: [id])
+  empresaId      Int?           @map("empresa_id")
+  locacion       Locacion?      @relation(fields: [locacionId], references: [id])
+  locacionId     Int?           @map("locacion_id")
+  departamento   Departamento?  @relation(fields: [departamentoId], references: [id])
+  departamentoId Int?           @map("departamento_id")
+  posicion       Posicion?      @relation(fields: [posicionId], references: [id])
+  posicionId     Int?           @map("posicion_id")
+  convenio       String?
+  obraSocial     String?        @map("obra_social")
+  art            String?
+  fechaIngreso   DateTime?      @map("fecha_ingreso") @db.Date
+  fechaEgreso    DateTime?      @map("fecha_egreso") @db.Date
+  motivoEgreso   String?        @map("motivo_egreso")
+  estado         EstadoEmpleado @default(ACTIVO)
+  fotoUrl        String?        @map("foto_url")
+  notas          String?
+  reportaA       Empleado?      @relation("Jerarquia", fields: [reportaAId], references: [id])
+  reportaAId     Int?           @map("reporta_a_id")
+  reportes       Empleado[]     @relation("Jerarquia")
+  historial      HistorialPuesto[]
+  documentos     Documento[]
+  saldosVacaciones VacacionSaldo[]
+  solicitudes    Solicitud[]
+  usuario        Usuario?
+  invitacion     Invitacion?
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+  @@index([locacionId, estado])
+  @@map("empleados")
+}
+
+model HistorialPuesto {
+  id         Int       @id @default(autoincrement())
+  empleado   Empleado  @relation(fields: [empleadoId], references: [id], onDelete: Cascade)
+  empleadoId Int       @map("empleado_id")
+  posicion   String
+  departamento String?
+  salario    Decimal?  @db.Decimal(14, 2)
+  desde      DateTime  @db.Date
+  hasta      DateTime? @db.Date
+  @@index([empleadoId])
+  @@map("historial_puestos")
+}
+
+// ── Legajo documental ────────────────────────────────────────────────────────
+
+model DocumentoTipo {
+  id                 Int      @id @default(autoincrement())
+  nombre             String   @unique
+  requiereVencimiento Boolean @default(false) @map("requiere_vencimiento")
+  activo             Boolean  @default(true)
+  documentos         Documento[]
+  posiciones         PosicionDocumento[]
+  @@map("documento_tipos")
+}
+
+model PosicionDocumento {
+  posicion        Posicion      @relation(fields: [posicionId], references: [id], onDelete: Cascade)
+  posicionId      Int           @map("posicion_id")
+  documentoTipo   DocumentoTipo @relation(fields: [documentoTipoId], references: [id], onDelete: Cascade)
+  documentoTipoId Int           @map("documento_tipo_id")
+  @@id([posicionId, documentoTipoId])
+  @@map("posicion_documentos")
+}
+
+enum EstadoDocumento {
+  PENDIENTE
+  APROBADO
+  RECHAZADO
+}
+
+model Documento {
+  id            Int             @id @default(autoincrement())
+  empleado      Empleado        @relation(fields: [empleadoId], references: [id], onDelete: Cascade)
+  empleadoId    Int             @map("empleado_id")
+  tipo          DocumentoTipo   @relation(fields: [tipoId], references: [id])
+  tipoId        Int             @map("tipo_id")
+  archivoUrl    String?         @map("archivo_url")
+  archivoNombre String?         @map("archivo_nombre")
+  vencimiento   DateTime?       @db.Date
+  estado        EstadoDocumento @default(PENDIENTE)
+  observacion   String?
+  subidoEn      DateTime        @default(now()) @map("subido_en")
+  revisadoPor   Usuario?        @relation(fields: [revisadoPorId], references: [id])
+  revisadoPorId Int?            @map("revisado_por_id")
+  @@index([empleadoId])
+  @@index([estado])
+  @@map("documentos")
+}
+
+// ── Onboarding ───────────────────────────────────────────────────────────────
+
+enum EstadoInvitacion {
+  ENVIADA
+  EN_CURSO
+  COMPLETADA
+  APROBADA
+  EXPIRADA
+}
+
+model Invitacion {
+  id         Int              @id @default(autoincrement())
+  token      String           @unique
+  email      String
+  nombre     String?
+  posicion   Posicion?        @relation(fields: [posicionId], references: [id])
+  posicionId Int?             @map("posicion_id")
+  locacion   Locacion?        @relation(fields: [locacionId], references: [id])
+  locacionId Int?             @map("locacion_id")
+  estado     EstadoInvitacion @default(ENVIADA)
+  datos      Json?
+  empleado   Empleado?        @relation(fields: [empleadoId], references: [id])
+  empleadoId Int?             @unique @map("empleado_id")
+  creadaEn   DateTime         @default(now()) @map("creada_en")
+  expiraEn   DateTime         @map("expira_en")
+  @@map("invitaciones")
+}
+
+// ── Vacaciones y novedades ───────────────────────────────────────────────────
+
+model VacacionSaldo {
+  id                  Int      @id @default(autoincrement())
+  empleado            Empleado @relation(fields: [empleadoId], references: [id], onDelete: Cascade)
+  empleadoId          Int      @map("empleado_id")
+  anio                Int
+  diasCorrespondientes Int     @map("dias_correspondientes")
+  diasTomados         Int      @default(0) @map("dias_tomados")
+  @@unique([empleadoId, anio])
+  @@map("vacacion_saldos")
+}
+
+enum TipoSolicitud {
+  VACACIONES
+  ESTUDIO
+  ENFERMEDAD
+  HORAS_EXTRA
+  OTRO
+}
+
+enum EstadoSolicitud {
+  PENDIENTE
+  APROBADA
+  RECHAZADA
+}
+
+model Solicitud {
+  id           Int             @id @default(autoincrement())
+  empleado     Empleado        @relation(fields: [empleadoId], references: [id], onDelete: Cascade)
+  empleadoId   Int             @map("empleado_id")
+  tipo         TipoSolicitud
+  desde        DateTime        @db.Date
+  hasta        DateTime        @db.Date
+  dias         Int
+  estado       EstadoSolicitud @default(PENDIENTE)
+  observacion  String?
+  adjuntoUrl   String?         @map("adjunto_url")
+  aprobadaPor  Usuario?        @relation(fields: [aprobadaPorId], references: [id])
+  aprobadaPorId Int?           @map("aprobada_por_id")
+  creadaEn     DateTime        @default(now()) @map("creada_en")
+  @@index([empleadoId])
+  @@index([estado])
+  @@map("solicitudes")
+}
+
+// ── Usuarios y auditoría ─────────────────────────────────────────────────────
+
+enum Rol {
+  ADMIN
+  RRHH
+  LIDER
+  EMPLEADO
+}
+
+model Usuario {
+  id           Int        @id @default(autoincrement())
+  email        String     @unique
+  nombre       String
+  passwordHash String     @map("password_hash")
+  rol          Rol        @default(RRHH)
+  empleado     Empleado?  @relation(fields: [empleadoId], references: [id])
+  empleadoId   Int?       @unique @map("empleado_id")
+  activo       Boolean    @default(true)
+  documentosRevisados Documento[]
+  solicitudesAprobadas Solicitud[]
+  auditLogs    AuditLog[]
+  createdAt    DateTime   @default(now()) @map("created_at")
+  @@map("usuarios")
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  usuario   Usuario? @relation(fields: [usuarioId], references: [id])
+  usuarioId Int?     @map("usuario_id")
+  accion    String
+  entidad   String
+  entidadId String?  @map("entidad_id")
+  detalle   Json?
+  en        DateTime @default(now())
+  @@index([entidad, entidadId])
+  @@map("audit_log")
+}

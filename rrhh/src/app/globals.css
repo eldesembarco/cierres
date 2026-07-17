@@ -1,0 +1,93 @@
+@import "tailwindcss";
+
+/* ── Design tokens · RRHH Grupo Desembarco ─────────────────────────────────
+   Identidad: papel cálido + carbón + naranja Desembarco.
+   Charts: paleta categórica validada (dataviz) → ver src/lib/palette.ts     */
+
+@theme {
+  /* superficie y tinta */
+  --color-paper: #f6f5f2;
+  --color-surface: #ffffff;
+  --color-ink: #1c1917;
+  --color-ink-2: #57534e;
+  --color-ink-3: #a19c96;
+  --color-line: #e9e6e1;
+  --color-line-strong: #d9d4cd;
+
+  /* marca */
+  --color-brand: #e8590c;
+  --color-brand-strong: #c2410c;
+  --color-brand-soft: #fcf0e8;
+
+  /* sidebar (carbón cálido) */
+  --color-coal: #1b1917;
+  --color-coal-2: #262220;
+  --color-coal-ink: #eae7e3;
+  --color-coal-muted: #8f8880;
+
+  /* estados */
+  --color-ok: #2f9e44;
+  --color-ok-soft: #e9f7ec;
+  --color-warn: #b45309;
+  --color-warn-soft: #fdf3e3;
+  --color-bad: #dc2626;
+  --color-bad-soft: #fdeeee;
+  --color-info: #1971c2;
+  --color-info-soft: #e9f2fb;
+
+  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+
+  --radius-card: 1rem;
+
+  --shadow-card: 0 1px 2px rgb(28 25 23 / 0.04), 0 4px 16px -4px rgb(28 25 23 / 0.06);
+  --shadow-pop: 0 2px 6px rgb(28 25 23 / 0.08), 0 12px 32px -8px rgb(28 25 23 / 0.18);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-feature-settings: "cv05", "ss01";
+}
+
+/* números tabulares en tablas y KPIs */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* scrollbars discretas */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line-strong) transparent;
+}
+
+::selection {
+  background: #f5d0b5;
+}
+
+/* transiciones suaves por defecto en interactivos */
+button, a, input, select {
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+}
+
+input, select, textarea {
+  outline: none;
+}
+input:focus-visible, select:focus-visible, textarea:focus-visible {
+  box-shadow: 0 0 0 3px rgb(232 89 12 / 0.18);
+  border-color: var(--color-brand) !important;
+}
+
+/* animación de entrada sutil para cards del dashboard */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.rise {
+  animation: rise 320ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
