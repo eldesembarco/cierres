@@ -1,0 +1,14 @@
+{
+  "primary": [
+    { "label": "Reproducciones", "value": "+2.5M" },
+    { "label": "Suscriptores", "value": "+180K" },
+    { "label": "Horas vistas", "value": "+1.2M" },
+    { "label": "Países", "value": "18" }
+  ],
+  "secondary": [
+    { "label": "Historias contadas", "value": "13" },
+    { "label": "Cartas descargadas", "value": "10K" },
+    { "label": "Historias recibidas", "value": "+3.000" },
+    { "label": "Objetos donados", "value": "12" }
+  ]
+}
