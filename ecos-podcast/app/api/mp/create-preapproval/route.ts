@@ -27,6 +27,7 @@ export async function POST() {
     })
     return NextResponse.json({ id: pre.id, init_point: pre.init_point })
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message ?? 'MP error' }, { status: 500 })
+    console.error('MP create-preapproval error', e)
+    return NextResponse.json({ error: 'mp-error' }, { status: 500 })
   }
 }

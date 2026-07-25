@@ -20,6 +20,7 @@ export async function POST() {
     })
     return NextResponse.json({ ok: true })
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message ?? 'MP error' }, { status: 500 })
+    console.error('MP cancel error', e)
+    return NextResponse.json({ error: 'mp-error' }, { status: 500 })
   }
 }

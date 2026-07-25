@@ -1,6 +1,7 @@
 import { MercadoPagoConfig, PreApproval } from 'mercadopago'
 
-const token = process.env.MP_ACCESS_TOKEN
+// Strip BOM/whitespace defensively — Windows pipelines can inject U+FEFF into env values.
+const token = process.env.MP_ACCESS_TOKEN?.replace(/^﻿/, '').trim()
 const client = token ? new MercadoPagoConfig({ accessToken: token }) : null
 
 export const mpClient = client

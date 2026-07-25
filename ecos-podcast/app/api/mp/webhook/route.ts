@@ -43,8 +43,9 @@ export async function POST(req: Request) {
     const res = await process(String(id))
     return NextResponse.json(res)
   } catch (e: any) {
+    // Log server-side only — never echo internals (they can contain auth headers).
     console.error('MP webhook error', e)
-    return NextResponse.json({ error: e?.message ?? 'error' }, { status: 500 })
+    return NextResponse.json({ error: 'internal' }, { status: 500 })
   }
 }
 
