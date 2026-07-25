@@ -1,12 +1,14 @@
 node_modules
+.next
+out
 dist
-dist-ssr
 .env
 .env.local
+.env*.local
 *.local
 .DS_Store
 .vscode/*
 !.vscode/extensions.json
-.netlify
+.vercel
 
 .vercel

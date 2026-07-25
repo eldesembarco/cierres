@@ -1,7 +1,10 @@
 import type { Config } from 'tailwindcss'
 
 export default {
-  content: ['./index.html', './src/**/*.{ts,tsx}'],
+  content: [
+    './app/**/*.{ts,tsx}',
+    './components/**/*.{ts,tsx}',
+  ],
   theme: {
     extend: {
       colors: {
@@ -36,8 +39,6 @@ export default {
           'radial-gradient(ellipse at 50% 20%, rgba(201,169,97,0.18) 0%, rgba(10,8,6,0) 55%)',
         'kraft':
           'linear-gradient(135deg, #8a6f45 0%, #6b5638 45%, #4b3d29 100%)',
-        'polaroid-shadow':
-          'radial-gradient(ellipse at 50% 100%, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0) 70%)',
       },
       boxShadow: {
         soft: '0 20px 60px -20px rgba(0,0,0,0.6)',

@@ -1,0 +1,101 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: #0a0806;
+    color: #f5e9d3;
+    overflow-x: hidden;
+  }
+  ::selection {
+    background: #c9a961;
+    color: #0a0806;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+}
+
+@layer components {
+  .container-page {
+    @apply mx-auto w-full max-w-7xl px-5 sm:px-8 lg:px-12;
+  }
+  .btn-gold {
+    @apply inline-flex items-center gap-2 rounded-sm border border-gold/70 bg-gold/10 px-6 py-3 text-sm font-medium uppercase tracking-[0.18em] text-cream-50 transition hover:bg-gold hover:text-ink-900;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center gap-2 rounded-sm border border-cream-400/30 px-5 py-2.5 text-xs font-medium uppercase tracking-[0.2em] text-cream-100/80 transition hover:border-gold hover:text-gold;
+  }
+  .eyebrow {
+    @apply text-[10px] font-semibold uppercase tracking-[0.35em] text-gold;
+  }
+  .card-panel {
+    @apply relative rounded-sm border border-cream-400/10 bg-ink-800/80 p-6 backdrop-blur-sm;
+  }
+  .tape {
+    @apply absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 h-5 w-24 rotate-[-2deg] bg-cream-200/25 backdrop-blur-sm shadow-[0_2px_6px_rgba(0,0,0,0.3)];
+  }
+  .divider-line {
+    @apply mx-auto my-4 h-px w-16 bg-gold/60;
+  }
+}
+
+.grain::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.06;
+  z-index: 60;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  background-size: 200px 200px;
+  mix-blend-mode: overlay;
+}
+
+.spotlight-bg {
+  background:
+    radial-gradient(ellipse at 50% 25%, rgba(201,169,97,0.16) 0%, rgba(10,8,6,0) 55%),
+    radial-gradient(ellipse at 50% 100%, rgba(0,0,0,0.9) 0%, rgba(10,8,6,0) 60%),
+    #0a0806;
+}
+
+.polaroid-tilt {
+  transition: transform 400ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.polaroid-tilt:hover {
+  transform: rotate(-1deg) translateY(-6px);
+}
+
+.kraft {
+  background:
+    linear-gradient(135deg, #8a6f45 0%, #6b5638 45%, #4b3d29 100%);
+  box-shadow:
+    inset 0 0 30px rgba(0,0,0,0.35),
+    0 12px 30px -12px rgba(0,0,0,0.65);
+}
+
+.hand-underline {
+  background-image: linear-gradient(120deg, rgba(201,169,97,0.35), rgba(201,169,97,0.15));
+  background-repeat: no-repeat;
+  background-position: 0 90%;
+  background-size: 100% 30%;
+  padding: 0 2px;
+}
+
+/* Clerk styling to match brand */
+.cl-formButtonPrimary {
+  background: #c9a961 !important;
+  color: #0a0806 !important;
+  font-family: 'Inter', sans-serif !important;
+  font-weight: 500 !important;
+}
+.cl-formButtonPrimary:hover {
+  background: #e3c885 !important;
+}
