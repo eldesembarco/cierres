@@ -1,5 +1,5 @@
 {
-    "updatedAt": "2026-07-28T12:14:16.916Z",
+    "updatedAt": "2026-07-28T12:23:42.730Z",
     "createdAt": "2026-07-28T12:07:57.406Z",
     "id": "LHbJVS18ZULzqToG",
     "name": "WA Requerimientos - Trello Sync (mesa de ayuda + resueltos)",
@@ -80,7 +80,7 @@
                 -120
             ],
             "parameters": {
-                "jsCode": "// Mesas de ayuda por columna de Trello. Destinos HOY apuntan al mail de Pablo\n// hasta tener las casillas reales (Tango/Axoft y Ayres IT).\nconst MESAS = {\n  '6a689b2b078eec227dc02ea5': { mesa: 'Mesa de Ayuda Tango', destino: 'mesadeayuda@seincomp.com.ar' },\n  '6a689bcabc131c785ef97206': { mesa: 'Mesa de Ayuda Ayres IT', destino: 'polejavetzky@eldesembarco.com' }\n};\nconst out = [];\nfor (const item of $input.all()) {\n  const c = item.json;\n  if (!c || !c.id) continue;\n  const cfg = MESAS[c.idList] || { mesa: 'Mesa de ayuda', destino: 'polejavetzky@eldesembarco.com' };\n  const att = (c.attachments || []).find(a => a.url) || null;\n  const nombre = (c.name || '').replace(/^[^0-9A-Za-z\\[\u00c3\u20ac-\u00c5\u00bf]+\\s*/, '');\n  const cuerpo = [\n    'Estimados,',\n    '',\n    'Solicitamos asistencia por el siguiente requerimiento:',\n    '',\n    (c.desc || '').split('\\n---')[0].trim(),\n    '',\n    `Referencia interna: ${c.shortUrl}`,\n    '',\n    'Gracias,',\n    'Sistemas El Desembarco'\n  ].join('\\n');\n  out.push({ json: {\n    cardId: c.id,\n    cardName: c.name,\n    shortUrl: c.shortUrl,\n    mesa: cfg.mesa,\n    destino: cfg.destino,\n    asunto: ('[El Desembarco] ' + nombre).slice(0, 120),\n    cuerpo,\n    attUrl: att ? att.url : '',\n    attName: att ? (att.fileName || att.name || 'adjunto') : '',\n    attMime: att ? (att.mimeType || 'application/octet-stream') : ''\n  } });\n}\nreturn out;"
+                "jsCode": "// Mesas de ayuda por columna de Trello. Destinos HOY apuntan al mail de Pablo\n// hasta tener las casillas reales (Tango/Axoft y Ayres IT).\nconst MESAS = {\n  '6a689b2b078eec227dc02ea5': { mesa: 'Mesa de Ayuda Tango', destino: 'mesadeayuda@seincomp.com.ar' },\n  '6a689bcabc131c785ef97206': { mesa: 'Mesa de Ayuda Ayres IT', destino: 'polejavetzky@eldesembarco.com' }\n};\nconst out = [];\nfor (const item of $input.all()) {\n  const c = item.json;\n  if (!c || !c.id) continue;\n  const cfg = MESAS[c.idList] || { mesa: 'Mesa de ayuda', destino: 'polejavetzky@eldesembarco.com' };\n  const atts = (c.attachments || []).filter(a => a.url && a.isUpload !== false);\n  const nombre = (c.name || '').replace(/^[^0-9A-Za-z\\[\u00c3\u20ac-\u00c5\u00bf]+\\s*/, '');\n  const cuerpo = [\n    'Estimados,',\n    '',\n    'Solicitamos asistencia por el siguiente requerimiento:',\n    '',\n    (c.desc || '').split('\\n---')[0].trim(),\n    '',\n    `Referencia interna: ${c.shortUrl}`,\n    '',\n    'Gracias,',\n    'Sistemas El Desembarco'\n  ].join('\\n');\n  out.push({ json: {\n    cardId: c.id,\n    cardName: c.name,\n    shortUrl: c.shortUrl,\n    mesa: cfg.mesa,\n    destino: cfg.destino,\n    asunto: ('[El Desembarco] ' + nombre).slice(0, 120),\n    cuerpo,\n    attUrl: atts.length ? atts[0].url : '',\n    attList: atts.map(a => ({ url: a.url, name: a.fileName || a.name || 'adjunto', mime: a.mimeType || 'application/octet-stream' }))\n  } });\n}\nreturn out;"
             }
         },
         {
@@ -116,40 +116,6 @@
             }
         },
         {
-            "id": "http-att-mesa",
-            "name": "Bajar Adjunto Mesa",
-            "type": "n8n-nodes-base.httpRequest",
-            "typeVersion": 4.4,
-            "position": [
-                880,
-                -220
-            ],
-            "parameters": {
-                "method": "GET",
-                "url": "={{ $json.attUrl }}",
-                "sendHeaders": true,
-                "headerParameters": {
-                    "parameters": [
-                        {
-                            "name": "Authorization",
-                            "value": "OAuth oauth_consumer_key=\"0e2126dbfd8ca7c38318c2570e7bf532\", oauth_token=\"ATTAac89aa35c1107c9ad5684977c731d18e375ec585f2e3e3bfbf84606bedaa3793FE3A3525\""
-                        }
-                    ]
-                },
-                "options": {
-                    "response": {
-                        "response": {
-                            "responseFormat": "file"
-                        }
-                    },
-                    "timeout": 60000
-                }
-            },
-            "retryOnFail": true,
-            "maxTries": 2,
-            "waitBetweenTries": 3000
-        },
-        {
             "id": "gmail-att",
             "name": "Email con Adjunto",
             "type": "n8n-nodes-base.gmail",
@@ -167,11 +133,13 @@
                     "attachmentsUi": {
                         "attachmentsBinary": [
                             {
-                                "property": "data"
+                                "property": "={{ $json.binaryProps }}"
                             }
                         ]
                     },
-                    "appendAttribution": false
+                    "appendAttribution": false,
+                    "replyTo": "lrecchini@eldesembarco.com",
+                    "senderName": "Luciano Recchini - El Desembarco"
                 }
             },
             "credentials": {
@@ -199,7 +167,9 @@
                 "emailType": "text",
                 "message": "={{ $json.cuerpo }}",
                 "options": {
-                    "appendAttribution": false
+                    "appendAttribution": false,
+                    "replyTo": "lrecchini@eldesembarco.com",
+                    "senderName": "Luciano Recchini - El Desembarco"
                 }
             },
             "credentials": {
@@ -459,6 +429,19 @@
                     "name": "Trello Desembarco"
                 }
             }
+        },
+        {
+            "id": "code-bajar-adjuntos",
+            "name": "Bajar Adjuntos Mesa",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                880,
+                -220
+            ],
+            "parameters": {
+                "jsCode": "// Descarga TODOS los adjuntos de la card y los deja como binarios data0..dataN.\nconst OAUTH = 'OAuth oauth_consumer_key=\"0e2126dbfd8ca7c38318c2570e7bf532\", oauth_token=\"ATTAac89aa35c1107c9ad5684977c731d18e375ec585f2e3e3bfbf84606bedaa3793FE3A3525\"';\nconst out = [];\nfor (const item of $input.all()) {\n  const j = item.json;\n  const binary = {};\n  const props = [];\n  for (let i = 0; i < (j.attList || []).length; i++) {\n    const a = j.attList[i];\n    try {\n      const resp = await this.helpers.httpRequest({ method: 'GET', url: a.url, headers: { Authorization: OAUTH }, encoding: 'arraybuffer', timeout: 60000 });\n      binary['data' + i] = await this.helpers.prepareBinaryData(Buffer.from(resp), a.name, a.mime);\n      props.push('data' + i);\n    } catch (e) { /* adjunto que no baja no frena el email */ }\n  }\n  out.push({ json: { ...j, binaryProps: props.join(',') }, binary });\n}\nreturn out;"
+            }
         }
     ],
     "connections": {
@@ -509,7 +492,7 @@
             "main": [
                 [
                     {
-                        "node": "Bajar Adjunto Mesa",
+                        "node": "Bajar Adjuntos Mesa",
                         "type": "main",
                         "index": 0
                     }
@@ -517,17 +500,6 @@
                 [
                     {
                         "node": "Email sin Adjunto",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Bajar Adjunto Mesa": {
-            "main": [
-                [
-                    {
-                        "node": "Email con Adjunto",
                         "type": "main",
                         "index": 0
                     }
@@ -610,6 +582,17 @@
                     }
                 ]
             ]
+        },
+        "Bajar Adjuntos Mesa": {
+            "main": [
+                [
+                    {
+                        "node": "Email con Adjunto",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
         }
     },
     "settings": {
@@ -633,9 +616,9 @@
     },
     "meta": null,
     "pinData": null,
-    "versionId": "76657cda-c986-46f3-8210-1b5a6c515d8d",
-    "activeVersionId": "76657cda-c986-46f3-8210-1b5a6c515d8d",
-    "versionCounter": 10,
+    "versionId": "984adc7a-7f42-4d75-9dd0-1d4613b491fa",
+    "activeVersionId": "984adc7a-7f42-4d75-9dd0-1d4613b491fa",
+    "versionCounter": 16,
     "triggerCount": 1,
     "shared": [
         {
@@ -658,9 +641,9 @@
     ],
     "tags": [],
     "activeVersion": {
-        "updatedAt": "2026-07-28T12:14:16.917Z",
-        "createdAt": "2026-07-28T12:14:16.917Z",
-        "versionId": "76657cda-c986-46f3-8210-1b5a6c515d8d",
+        "updatedAt": "2026-07-28T12:23:42.731Z",
+        "createdAt": "2026-07-28T12:23:42.731Z",
+        "versionId": "984adc7a-7f42-4d75-9dd0-1d4613b491fa",
         "workflowId": "LHbJVS18ZULzqToG",
         "nodes": [
             {
@@ -736,7 +719,7 @@
                     -120
                 ],
                 "parameters": {
-                    "jsCode": "// Mesas de ayuda por columna de Trello. Destinos HOY apuntan al mail de Pablo\n// hasta tener las casillas reales (Tango/Axoft y Ayres IT).\nconst MESAS = {\n  '6a689b2b078eec227dc02ea5': { mesa: 'Mesa de Ayuda Tango', destino: 'mesadeayuda@seincomp.com.ar' },\n  '6a689bcabc131c785ef97206': { mesa: 'Mesa de Ayuda Ayres IT', destino: 'polejavetzky@eldesembarco.com' }\n};\nconst out = [];\nfor (const item of $input.all()) {\n  const c = item.json;\n  if (!c || !c.id) continue;\n  const cfg = MESAS[c.idList] || { mesa: 'Mesa de ayuda', destino: 'polejavetzky@eldesembarco.com' };\n  const att = (c.attachments || []).find(a => a.url) || null;\n  const nombre = (c.name || '').replace(/^[^0-9A-Za-z\\[\u00c3\u20ac-\u00c5\u00bf]+\\s*/, '');\n  const cuerpo = [\n    'Estimados,',\n    '',\n    'Solicitamos asistencia por el siguiente requerimiento:',\n    '',\n    (c.desc || '').split('\\n---')[0].trim(),\n    '',\n    `Referencia interna: ${c.shortUrl}`,\n    '',\n    'Gracias,',\n    'Sistemas El Desembarco'\n  ].join('\\n');\n  out.push({ json: {\n    cardId: c.id,\n    cardName: c.name,\n    shortUrl: c.shortUrl,\n    mesa: cfg.mesa,\n    destino: cfg.destino,\n    asunto: ('[El Desembarco] ' + nombre).slice(0, 120),\n    cuerpo,\n    attUrl: att ? att.url : '',\n    attName: att ? (att.fileName || att.name || 'adjunto') : '',\n    attMime: att ? (att.mimeType || 'application/octet-stream') : ''\n  } });\n}\nreturn out;"
+                    "jsCode": "// Mesas de ayuda por columna de Trello. Destinos HOY apuntan al mail de Pablo\n// hasta tener las casillas reales (Tango/Axoft y Ayres IT).\nconst MESAS = {\n  '6a689b2b078eec227dc02ea5': { mesa: 'Mesa de Ayuda Tango', destino: 'mesadeayuda@seincomp.com.ar' },\n  '6a689bcabc131c785ef97206': { mesa: 'Mesa de Ayuda Ayres IT', destino: 'polejavetzky@eldesembarco.com' }\n};\nconst out = [];\nfor (const item of $input.all()) {\n  const c = item.json;\n  if (!c || !c.id) continue;\n  const cfg = MESAS[c.idList] || { mesa: 'Mesa de ayuda', destino: 'polejavetzky@eldesembarco.com' };\n  const atts = (c.attachments || []).filter(a => a.url && a.isUpload !== false);\n  const nombre = (c.name || '').replace(/^[^0-9A-Za-z\\[\u00c3\u20ac-\u00c5\u00bf]+\\s*/, '');\n  const cuerpo = [\n    'Estimados,',\n    '',\n    'Solicitamos asistencia por el siguiente requerimiento:',\n    '',\n    (c.desc || '').split('\\n---')[0].trim(),\n    '',\n    `Referencia interna: ${c.shortUrl}`,\n    '',\n    'Gracias,',\n    'Sistemas El Desembarco'\n  ].join('\\n');\n  out.push({ json: {\n    cardId: c.id,\n    cardName: c.name,\n    shortUrl: c.shortUrl,\n    mesa: cfg.mesa,\n    destino: cfg.destino,\n    asunto: ('[El Desembarco] ' + nombre).slice(0, 120),\n    cuerpo,\n    attUrl: atts.length ? atts[0].url : '',\n    attList: atts.map(a => ({ url: a.url, name: a.fileName || a.name || 'adjunto', mime: a.mimeType || 'application/octet-stream' }))\n  } });\n}\nreturn out;"
                 }
             },
             {
@@ -772,40 +755,6 @@
                 }
             },
             {
-                "id": "http-att-mesa",
-                "name": "Bajar Adjunto Mesa",
-                "type": "n8n-nodes-base.httpRequest",
-                "typeVersion": 4.4,
-                "position": [
-                    880,
-                    -220
-                ],
-                "parameters": {
-                    "method": "GET",
-                    "url": "={{ $json.attUrl }}",
-                    "sendHeaders": true,
-                    "headerParameters": {
-                        "parameters": [
-                            {
-                                "name": "Authorization",
-                                "value": "OAuth oauth_consumer_key=\"0e2126dbfd8ca7c38318c2570e7bf532\", oauth_token=\"ATTAac89aa35c1107c9ad5684977c731d18e375ec585f2e3e3bfbf84606bedaa3793FE3A3525\""
-                            }
-                        ]
-                    },
-                    "options": {
-                        "response": {
-                            "response": {
-                                "responseFormat": "file"
-                            }
-                        },
-                        "timeout": 60000
-                    }
-                },
-                "retryOnFail": true,
-                "maxTries": 2,
-                "waitBetweenTries": 3000
-            },
-            {
                 "id": "gmail-att",
                 "name": "Email con Adjunto",
                 "type": "n8n-nodes-base.gmail",
@@ -823,11 +772,13 @@
                         "attachmentsUi": {
                             "attachmentsBinary": [
                                 {
-                                    "property": "data"
+                                    "property": "={{ $json.binaryProps }}"
                                 }
                             ]
                         },
-                        "appendAttribution": false
+                        "appendAttribution": false,
+                        "replyTo": "lrecchini@eldesembarco.com",
+                        "senderName": "Luciano Recchini - El Desembarco"
                     }
                 },
                 "credentials": {
@@ -855,7 +806,9 @@
                     "emailType": "text",
                     "message": "={{ $json.cuerpo }}",
                     "options": {
-                        "appendAttribution": false
+                        "appendAttribution": false,
+                        "replyTo": "lrecchini@eldesembarco.com",
+                        "senderName": "Luciano Recchini - El Desembarco"
                     }
                 },
                 "credentials": {
@@ -1115,6 +1068,19 @@
                         "name": "Trello Desembarco"
                     }
                 }
+            },
+            {
+                "id": "code-bajar-adjuntos",
+                "name": "Bajar Adjuntos Mesa",
+                "type": "n8n-nodes-base.code",
+                "typeVersion": 2,
+                "position": [
+                    880,
+                    -220
+                ],
+                "parameters": {
+                    "jsCode": "// Descarga TODOS los adjuntos de la card y los deja como binarios data0..dataN.\nconst OAUTH = 'OAuth oauth_consumer_key=\"0e2126dbfd8ca7c38318c2570e7bf532\", oauth_token=\"ATTAac89aa35c1107c9ad5684977c731d18e375ec585f2e3e3bfbf84606bedaa3793FE3A3525\"';\nconst out = [];\nfor (const item of $input.all()) {\n  const j = item.json;\n  const binary = {};\n  const props = [];\n  for (let i = 0; i < (j.attList || []).length; i++) {\n    const a = j.attList[i];\n    try {\n      const resp = await this.helpers.httpRequest({ method: 'GET', url: a.url, headers: { Authorization: OAUTH }, encoding: 'arraybuffer', timeout: 60000 });\n      binary['data' + i] = await this.helpers.prepareBinaryData(Buffer.from(resp), a.name, a.mime);\n      props.push('data' + i);\n    } catch (e) { /* adjunto que no baja no frena el email */ }\n  }\n  out.push({ json: { ...j, binaryProps: props.join(',') }, binary });\n}\nreturn out;"
+                }
             }
         ],
         "connections": {
@@ -1165,7 +1131,7 @@
                 "main": [
                     [
                         {
-                            "node": "Bajar Adjunto Mesa",
+                            "node": "Bajar Adjuntos Mesa",
                             "type": "main",
                             "index": 0
                         }
@@ -1173,17 +1139,6 @@
                     [
                         {
                             "node": "Email sin Adjunto",
-                            "type": "main",
-                            "index": 0
-                        }
-                    ]
-                ]
-            },
-            "Bajar Adjunto Mesa": {
-                "main": [
-                    [
-                        {
-                            "node": "Email con Adjunto",
                             "type": "main",
                             "index": 0
                         }
@@ -1266,6 +1221,17 @@
                         }
                     ]
                 ]
+            },
+            "Bajar Adjuntos Mesa": {
+                "main": [
+                    [
+                        {
+                            "node": "Email con Adjunto",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
             }
         },
         "authors": "Sistemas Desembarco",
@@ -1274,18 +1240,18 @@
         "autosaved": false,
         "workflowPublishHistory": [
             {
-                "createdAt": "2026-07-28T12:14:16.954Z",
-                "id": 241,
+                "createdAt": "2026-07-28T12:23:42.780Z",
+                "id": 245,
                 "workflowId": "LHbJVS18ZULzqToG",
-                "versionId": "76657cda-c986-46f3-8210-1b5a6c515d8d",
+                "versionId": "984adc7a-7f42-4d75-9dd0-1d4613b491fa",
                 "event": "activated",
                 "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
             },
             {
-                "createdAt": "2026-07-28T12:14:16.942Z",
-                "id": 240,
+                "createdAt": "2026-07-28T12:23:42.767Z",
+                "id": 244,
                 "workflowId": "LHbJVS18ZULzqToG",
-                "versionId": "76657cda-c986-46f3-8210-1b5a6c515d8d",
+                "versionId": "984adc7a-7f42-4d75-9dd0-1d4613b491fa",
                 "event": "deactivated",
                 "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
             }
