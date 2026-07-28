@@ -1,5 +1,5 @@
 {
-    "updatedAt": "2026-07-28T19:13:43.435Z",
+    "updatedAt": "2026-07-28T19:15:32.713Z",
     "createdAt": "2026-07-28T14:13:32.784Z",
     "id": "JPYTBT00v78HcBsB",
     "name": "WA Requerimientos - Respuestas Mesa de Ayuda",
@@ -394,7 +394,7 @@
                     "parameters": [
                         {
                             "name": "query",
-                            "value": "={{ '#' + $json.ticketNum }}"
+                            "value": "={{ $json.ticketNum }}"
                         },
                         {
                             "name": "modelTypes",
@@ -444,6 +444,19 @@
                 "mode": "runOnceForEachItem",
                 "jsCode": "const src = $('Parsear Respuesta').item.json;\nconst cards = ($json && $json.cards) || [];\nconst cardShort = cards.length ? (cards[0].shortLink || cards[0].id) : '';\nif (cardShort && src.ticketNum) {\n  const sd = $getWorkflowStaticData('global');\n  if (!sd.ticketMap) sd.ticketMap = {};\n  sd.ticketMap[src.ticketNum] = cardShort;\n}\nreturn { json: { ...src, cardShort } };"
             }
+        },
+        {
+            "id": "code-alerta-nomatch",
+            "name": "Alerta Sin Match",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1060,
+                160
+            ],
+            "parameters": {
+                "jsCode": "// Aviso de mesa que no se pudo vincular a ninguna card: alerta a Pablo para revision manual.\nconst out = [];\nfor (const item of $input.all()) {\n  const j = item.json;\n  out.push({ json: {\n    recipient: '5491157935007@s.whatsapp.net',\n    message: `\u00e2\u0161\u00a0\u00ef\u00b8\udc8f Aviso de la mesa de ayuda SIN ticket vinculado \u00e2\u20ac\u201d revisar a mano:\\nDe: ${j.from}\\nAsunto: ${j.subject}${j.ticketNum ? '\\nTicket mesa: #' + j.ticketNum : ''}\\n\\n${(j.resumen || '').slice(0, 200)}`\n  } });\n}\nreturn out;"
+            }
         }
     ],
     "connections": {
@@ -474,6 +487,13 @@
                 [
                     {
                         "node": "Ver Card Lista",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Alerta Sin Match",
                         "type": "main",
                         "index": 0
                     }
@@ -590,6 +610,17 @@
                     }
                 ]
             ]
+        },
+        "Alerta Sin Match": {
+            "main": [
+                [
+                    {
+                        "node": "Outbox Aviso",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
         }
     },
     "settings": {
@@ -617,9 +648,9 @@
     },
     "meta": null,
     "pinData": null,
-    "versionId": "d79f7686-42f3-4a06-9f93-494afcb34b14",
-    "activeVersionId": "d79f7686-42f3-4a06-9f93-494afcb34b14",
-    "versionCounter": 54,
+    "versionId": "2242cd48-4c13-4d10-86cd-f4dd81dc0bab",
+    "activeVersionId": "2242cd48-4c13-4d10-86cd-f4dd81dc0bab",
+    "versionCounter": 58,
     "triggerCount": 1,
     "shared": [
         {
@@ -642,9 +673,9 @@
     ],
     "tags": [],
     "activeVersion": {
-        "updatedAt": "2026-07-28T19:13:43.435Z",
-        "createdAt": "2026-07-28T19:13:43.435Z",
-        "versionId": "d79f7686-42f3-4a06-9f93-494afcb34b14",
+        "updatedAt": "2026-07-28T19:15:32.715Z",
+        "createdAt": "2026-07-28T19:15:32.715Z",
+        "versionId": "2242cd48-4c13-4d10-86cd-f4dd81dc0bab",
         "workflowId": "JPYTBT00v78HcBsB",
         "nodes": [
             {
@@ -1034,7 +1065,7 @@
                         "parameters": [
                             {
                                 "name": "query",
-                                "value": "={{ '#' + $json.ticketNum }}"
+                                "value": "={{ $json.ticketNum }}"
                             },
                             {
                                 "name": "modelTypes",
@@ -1084,6 +1115,19 @@
                     "mode": "runOnceForEachItem",
                     "jsCode": "const src = $('Parsear Respuesta').item.json;\nconst cards = ($json && $json.cards) || [];\nconst cardShort = cards.length ? (cards[0].shortLink || cards[0].id) : '';\nif (cardShort && src.ticketNum) {\n  const sd = $getWorkflowStaticData('global');\n  if (!sd.ticketMap) sd.ticketMap = {};\n  sd.ticketMap[src.ticketNum] = cardShort;\n}\nreturn { json: { ...src, cardShort } };"
                 }
+            },
+            {
+                "id": "code-alerta-nomatch",
+                "name": "Alerta Sin Match",
+                "type": "n8n-nodes-base.code",
+                "typeVersion": 2,
+                "position": [
+                    1060,
+                    160
+                ],
+                "parameters": {
+                    "jsCode": "// Aviso de mesa que no se pudo vincular a ninguna card: alerta a Pablo para revision manual.\nconst out = [];\nfor (const item of $input.all()) {\n  const j = item.json;\n  out.push({ json: {\n    recipient: '5491157935007@s.whatsapp.net',\n    message: `\u00e2\u0161\u00a0\u00ef\u00b8\udc8f Aviso de la mesa de ayuda SIN ticket vinculado \u00e2\u20ac\u201d revisar a mano:\\nDe: ${j.from}\\nAsunto: ${j.subject}${j.ticketNum ? '\\nTicket mesa: #' + j.ticketNum : ''}\\n\\n${(j.resumen || '').slice(0, 200)}`\n  } });\n}\nreturn out;"
+                }
             }
         ],
         "connections": {
@@ -1114,6 +1158,13 @@
                     [
                         {
                             "node": "Ver Card Lista",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ],
+                    [
+                        {
+                            "node": "Alerta Sin Match",
                             "type": "main",
                             "index": 0
                         }
@@ -1230,6 +1281,17 @@
                         }
                     ]
                 ]
+            },
+            "Alerta Sin Match": {
+                "main": [
+                    [
+                        {
+                            "node": "Outbox Aviso",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
             }
         },
         "authors": "Sistemas Desembarco",
@@ -1238,18 +1300,18 @@
         "autosaved": false,
         "workflowPublishHistory": [
             {
-                "createdAt": "2026-07-28T19:13:44.456Z",
-                "id": 285,
+                "createdAt": "2026-07-28T19:15:33.812Z",
+                "id": 287,
                 "workflowId": "JPYTBT00v78HcBsB",
-                "versionId": "d79f7686-42f3-4a06-9f93-494afcb34b14",
+                "versionId": "2242cd48-4c13-4d10-86cd-f4dd81dc0bab",
                 "event": "activated",
                 "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
             },
             {
-                "createdAt": "2026-07-28T19:13:43.475Z",
-                "id": 284,
+                "createdAt": "2026-07-28T19:15:32.828Z",
+                "id": 286,
                 "workflowId": "JPYTBT00v78HcBsB",
-                "versionId": "d79f7686-42f3-4a06-9f93-494afcb34b14",
+                "versionId": "2242cd48-4c13-4d10-86cd-f4dd81dc0bab",
                 "event": "deactivated",
                 "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
             }
