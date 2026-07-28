@@ -1,5 +1,5 @@
 {
-    "updatedAt": "2026-07-28T16:52:04.713Z",
+    "updatedAt": "2026-07-28T19:25:12.847Z",
     "createdAt": "2026-07-28T12:07:57.406Z",
     "id": "LHbJVS18ZULzqToG",
     "name": "WA Requerimientos - Trello Sync (mesa de ayuda + resueltos)",
@@ -80,7 +80,7 @@
                 -120
             ],
             "parameters": {
-                "jsCode": "// Mesas de ayuda por columna de Trello. Destinos HOY apuntan al mail de Pablo\n// hasta tener las casillas reales (Tango/Axoft y Ayres IT).\nconst MESAS = {\n  '6a689b2b078eec227dc02ea5': { mesa: 'Mesa de Ayuda Tango', destino: 'mesadeayuda@seincomp.com.ar' },\n  '6a689bcabc131c785ef97206': { mesa: 'Mesa de Ayuda Ayres IT', destino: '' } // SIN CASILLA AUN: no envia nada hasta configurarla\n};\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.sentMesa)) sd.sentMesa = [];\nconst out = [];\nfor (const item of $input.all()) {\n  const c = item.json;\n  if (!c || !c.id) continue;\n  if (sd.sentMesa.includes(c.id)) continue; // ya enviado: la card se queda en la columna sin reenviar\n  const cfg = MESAS[c.idList] || { mesa: 'Mesa de ayuda', destino: '' };\n  if (!cfg.destino) continue; // mesa sin casilla configurada: la card queda sin enviar\n  const atts = (c.attachments || []).filter(a => a.url && a.isUpload !== false);\n  const nombre = (c.name || '').replace(/^[^0-9A-Za-z\\[\u00c3\u20ac-\u00c5\u00bf]+\\s*/, '');\n  const cuerpo = [\n    'Estimados,',\n    '',\n    'Solicitamos asistencia por el siguiente requerimiento:',\n    '',\n    (c.desc || '').split('\\n---')[0].trim(),\n    '',\n    'Gracias,',\n    'Sistemas El Desembarco'\n  ].join('\\n');\n  out.push({ json: {\n    cardId: c.id,\n    cardName: c.name,\n    shortUrl: c.shortUrl,\n    mesa: cfg.mesa,\n    destino: cfg.destino,\n    asunto: ('[El Desembarco] ' + nombre).slice(0, 100) + ' (Ref ' + (((c.shortUrl || '').split('/c/')[1]) || c.id) + ')',\n    cuerpo,\n    attUrl: atts.length ? atts[0].url : '',\n    attList: atts.map(a => ({ url: a.url, name: a.fileName || a.name || 'adjunto', mime: a.mimeType || 'application/octet-stream' }))\n  } });\n}\nreturn out;"
+                "jsCode": "// Mesas de ayuda por columna de Trello. Tango va por EMAIL; Ayres va por WHATSAPP.\n// Cuando Pablo pase el chat de Ayres (JID), cargarlo en AYRES_CHAT_WA y la columna se activa.\nconst AYRES_CHAT_WA = ''; // ej: '549...@s.whatsapp.net' o '1203...@g.us'\nconst MESAS = {\n  '6a689b2b078eec227dc02ea5': { mesa: 'Mesa de Ayuda Tango', via: 'email', destino: 'mesadeayuda@seincomp.com.ar' },\n  '6a689bcabc131c785ef97206': { mesa: 'Mesa de Ayuda Ayres IT', via: 'wa', destino: AYRES_CHAT_WA }\n};\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.sentMesa)) sd.sentMesa = [];\nconst out = [];\nfor (const item of $input.all()) {\n  const c = item.json;\n  if (!c || !c.id) continue;\n  if (sd.sentMesa.includes(c.id)) continue; // ya enviado: la card queda en la columna sin reenviar\n  const cfg = MESAS[c.idList] || { mesa: 'Mesa de ayuda', via: 'email', destino: '' };\n  if (!cfg.destino) continue; // mesa sin canal configurado: la card queda sin enviar\n  const atts = (c.attachments || []).filter(a => a.url && a.isUpload !== false);\n  const nombre = (c.name || '').replace(/^[^0-9A-Za-z\\[\u00c3\u20ac-\u00c5\u00bf]+\\s*/, '');\n  const ref = (((c.shortUrl || '').split('/c/')[1]) || c.id);\n  const detalle = (c.desc || '').split('\\n---')[0].trim();\n  const cuerpo = ['Estimados,', '', 'Solicitamos asistencia por el siguiente requerimiento:', '', detalle, '', 'Gracias,', 'Sistemas El Desembarco'].join('\\n');\n  const waMessage = `\u00f0\u0178\u2020\u2022 *Requerimiento El Desembarco* (Ref ${ref})\\n\\n${nombre}\\n\\n${detalle}\\n\\n_Por favor responder citando este mensaje._`;\n  out.push({ json: {\n    cardId: c.id, cardName: c.name, shortUrl: c.shortUrl,\n    mesa: cfg.mesa, via: cfg.via, destino: cfg.destino,\n    asunto: ('[El Desembarco] ' + nombre).slice(0, 100) + ' (Ref ' + ref + ')',\n    cuerpo, waMessage,\n    attUrl: atts.length ? atts[0].url : '',\n    attList: atts.map(a => ({ url: a.url, name: a.fileName || a.name || 'adjunto', mime: a.mimeType || 'application/octet-stream' }))\n  } });\n}\nreturn out;"
             }
         },
         {
@@ -413,6 +413,81 @@
                 "mode": "runOnceForEachItem",
                 "jsCode": "// La card se queda en la columna 'Pas\u00c3\u00b3 a...'; este registro evita reenv\u00c3\u00ados del cron.\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.sentMesa)) sd.sentMesa = [];\nconst src = $('Preparar Email').item.json;\nif (!sd.sentMesa.includes(src.cardId)) sd.sentMesa.push(src.cardId);\nif (sd.sentMesa.length > 300) sd.sentMesa = sd.sentMesa.slice(-200);\nreturn { json: src };"
             }
+        },
+        {
+            "id": "if-via-wa",
+            "name": "Va por WhatsApp",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2.2,
+            "position": [
+                560,
+                -240
+            ],
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "version": 2,
+                        "leftValue": "",
+                        "caseSensitive": true,
+                        "typeValidation": "loose"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                        {
+                            "leftValue": "={{ $json.via }}",
+                            "rightValue": "wa",
+                            "operator": {
+                                "type": "string",
+                                "operation": "equals"
+                            },
+                            "id": "condition-1785266713286-h3gkvyxbz"
+                        }
+                    ]
+                },
+                "options": {}
+            }
+        },
+        {
+            "id": "http-outbox-mesa-wa",
+            "name": "Outbox Mesa WA",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.4,
+            "position": [
+                780,
+                -340
+            ],
+            "parameters": {
+                "method": "POST",
+                "url": "https://n8n.srv1312396.hstgr.cloud/api/v1/data-tables/W7rPitDcioXfqBfb/rows",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "X-N8N-API-KEY",
+                            "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJiNjBkNWU1YS1lYjNmLTQ4ZTItYTZlOC1iYzUyMTUzZTFhYzMiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiZDFhY2E0YWYtYjExMS00ZmU2LTlkZTItZmIyNWE3ODk1ZDRkIiwiaWF0IjoxNzc2OTUwMjc3fQ.K3a87ubNNw-N_ri3Q7mnYgDD2etP2l9OyoMA9Ut3L5Y"
+                        },
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ JSON.stringify({ data: [{ recipient: $json.destino, message: $json.waMessage, quoted_message_id: '', quoted_sender_jid: '', quoted_content: '', status: 'pending' }] }) }}",
+                "options": {
+                    "response": {
+                        "response": {
+                            "responseFormat": "json"
+                        }
+                    },
+                    "timeout": 20000
+                }
+            },
+            "onError": "continueRegularOutput",
+            "retryOnFail": true,
+            "maxTries": 2,
+            "waitBetweenTries": 3000
         }
     ],
     "connections": {
@@ -442,17 +517,6 @@
                 [
                     {
                         "node": "Preparar Email",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Preparar Email": {
-            "main": [
-                [
-                    {
-                        "node": "Tiene Adjunto",
                         "type": "main",
                         "index": 0
                     }
@@ -564,6 +628,46 @@
                     }
                 ]
             ]
+        },
+        "Preparar Email": {
+            "main": [
+                [
+                    {
+                        "node": "Va por WhatsApp",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Va por WhatsApp": {
+            "main": [
+                [
+                    {
+                        "node": "Outbox Mesa WA",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Tiene Adjunto",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Outbox Mesa WA": {
+            "main": [
+                [
+                    {
+                        "node": "Marcar Enviado",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
         }
     },
     "settings": {
@@ -581,19 +685,21 @@
         },
         "global": {
             "notified": [
-                "6a689c015de378b6b56ec13f"
+                "6a689c015de378b6b56ec13f",
+                "6a68ca46a1a832d6a2e360ac"
             ],
             "sentMesa": [
                 "6a68dc2f5209629993edcc67",
-                "6a68ca46a1a832d6a2e360ac"
+                "6a68ca46a1a832d6a2e360ac",
+                "6a68d760896a1b709d5fc894"
             ]
         }
     },
     "meta": null,
     "pinData": null,
-    "versionId": "fa4cd0c6-7d2c-4e7a-aa33-e729467b2263",
-    "activeVersionId": "fa4cd0c6-7d2c-4e7a-aa33-e729467b2263",
-    "versionCounter": 30,
+    "versionId": "e6382cdc-5058-46fa-b7af-501a883ac126",
+    "activeVersionId": "e6382cdc-5058-46fa-b7af-501a883ac126",
+    "versionCounter": 35,
     "triggerCount": 1,
     "shared": [
         {
@@ -616,9 +722,9 @@
     ],
     "tags": [],
     "activeVersion": {
-        "updatedAt": "2026-07-28T16:52:04.716Z",
-        "createdAt": "2026-07-28T16:52:04.716Z",
-        "versionId": "fa4cd0c6-7d2c-4e7a-aa33-e729467b2263",
+        "updatedAt": "2026-07-28T19:25:12.848Z",
+        "createdAt": "2026-07-28T19:25:12.848Z",
+        "versionId": "e6382cdc-5058-46fa-b7af-501a883ac126",
         "workflowId": "LHbJVS18ZULzqToG",
         "nodes": [
             {
@@ -694,7 +800,7 @@
                     -120
                 ],
                 "parameters": {
-                    "jsCode": "// Mesas de ayuda por columna de Trello. Destinos HOY apuntan al mail de Pablo\n// hasta tener las casillas reales (Tango/Axoft y Ayres IT).\nconst MESAS = {\n  '6a689b2b078eec227dc02ea5': { mesa: 'Mesa de Ayuda Tango', destino: 'mesadeayuda@seincomp.com.ar' },\n  '6a689bcabc131c785ef97206': { mesa: 'Mesa de Ayuda Ayres IT', destino: '' } // SIN CASILLA AUN: no envia nada hasta configurarla\n};\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.sentMesa)) sd.sentMesa = [];\nconst out = [];\nfor (const item of $input.all()) {\n  const c = item.json;\n  if (!c || !c.id) continue;\n  if (sd.sentMesa.includes(c.id)) continue; // ya enviado: la card se queda en la columna sin reenviar\n  const cfg = MESAS[c.idList] || { mesa: 'Mesa de ayuda', destino: '' };\n  if (!cfg.destino) continue; // mesa sin casilla configurada: la card queda sin enviar\n  const atts = (c.attachments || []).filter(a => a.url && a.isUpload !== false);\n  const nombre = (c.name || '').replace(/^[^0-9A-Za-z\\[\u00c3\u20ac-\u00c5\u00bf]+\\s*/, '');\n  const cuerpo = [\n    'Estimados,',\n    '',\n    'Solicitamos asistencia por el siguiente requerimiento:',\n    '',\n    (c.desc || '').split('\\n---')[0].trim(),\n    '',\n    'Gracias,',\n    'Sistemas El Desembarco'\n  ].join('\\n');\n  out.push({ json: {\n    cardId: c.id,\n    cardName: c.name,\n    shortUrl: c.shortUrl,\n    mesa: cfg.mesa,\n    destino: cfg.destino,\n    asunto: ('[El Desembarco] ' + nombre).slice(0, 100) + ' (Ref ' + (((c.shortUrl || '').split('/c/')[1]) || c.id) + ')',\n    cuerpo,\n    attUrl: atts.length ? atts[0].url : '',\n    attList: atts.map(a => ({ url: a.url, name: a.fileName || a.name || 'adjunto', mime: a.mimeType || 'application/octet-stream' }))\n  } });\n}\nreturn out;"
+                    "jsCode": "// Mesas de ayuda por columna de Trello. Tango va por EMAIL; Ayres va por WHATSAPP.\n// Cuando Pablo pase el chat de Ayres (JID), cargarlo en AYRES_CHAT_WA y la columna se activa.\nconst AYRES_CHAT_WA = ''; // ej: '549...@s.whatsapp.net' o '1203...@g.us'\nconst MESAS = {\n  '6a689b2b078eec227dc02ea5': { mesa: 'Mesa de Ayuda Tango', via: 'email', destino: 'mesadeayuda@seincomp.com.ar' },\n  '6a689bcabc131c785ef97206': { mesa: 'Mesa de Ayuda Ayres IT', via: 'wa', destino: AYRES_CHAT_WA }\n};\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.sentMesa)) sd.sentMesa = [];\nconst out = [];\nfor (const item of $input.all()) {\n  const c = item.json;\n  if (!c || !c.id) continue;\n  if (sd.sentMesa.includes(c.id)) continue; // ya enviado: la card queda en la columna sin reenviar\n  const cfg = MESAS[c.idList] || { mesa: 'Mesa de ayuda', via: 'email', destino: '' };\n  if (!cfg.destino) continue; // mesa sin canal configurado: la card queda sin enviar\n  const atts = (c.attachments || []).filter(a => a.url && a.isUpload !== false);\n  const nombre = (c.name || '').replace(/^[^0-9A-Za-z\\[\u00c3\u20ac-\u00c5\u00bf]+\\s*/, '');\n  const ref = (((c.shortUrl || '').split('/c/')[1]) || c.id);\n  const detalle = (c.desc || '').split('\\n---')[0].trim();\n  const cuerpo = ['Estimados,', '', 'Solicitamos asistencia por el siguiente requerimiento:', '', detalle, '', 'Gracias,', 'Sistemas El Desembarco'].join('\\n');\n  const waMessage = `\u00f0\u0178\u2020\u2022 *Requerimiento El Desembarco* (Ref ${ref})\\n\\n${nombre}\\n\\n${detalle}\\n\\n_Por favor responder citando este mensaje._`;\n  out.push({ json: {\n    cardId: c.id, cardName: c.name, shortUrl: c.shortUrl,\n    mesa: cfg.mesa, via: cfg.via, destino: cfg.destino,\n    asunto: ('[El Desembarco] ' + nombre).slice(0, 100) + ' (Ref ' + ref + ')',\n    cuerpo, waMessage,\n    attUrl: atts.length ? atts[0].url : '',\n    attList: atts.map(a => ({ url: a.url, name: a.fileName || a.name || 'adjunto', mime: a.mimeType || 'application/octet-stream' }))\n  } });\n}\nreturn out;"
                 }
             },
             {
@@ -1027,6 +1133,81 @@
                     "mode": "runOnceForEachItem",
                     "jsCode": "// La card se queda en la columna 'Pas\u00c3\u00b3 a...'; este registro evita reenv\u00c3\u00ados del cron.\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.sentMesa)) sd.sentMesa = [];\nconst src = $('Preparar Email').item.json;\nif (!sd.sentMesa.includes(src.cardId)) sd.sentMesa.push(src.cardId);\nif (sd.sentMesa.length > 300) sd.sentMesa = sd.sentMesa.slice(-200);\nreturn { json: src };"
                 }
+            },
+            {
+                "id": "if-via-wa",
+                "name": "Va por WhatsApp",
+                "type": "n8n-nodes-base.if",
+                "typeVersion": 2.2,
+                "position": [
+                    560,
+                    -240
+                ],
+                "parameters": {
+                    "conditions": {
+                        "options": {
+                            "version": 2,
+                            "leftValue": "",
+                            "caseSensitive": true,
+                            "typeValidation": "loose"
+                        },
+                        "combinator": "and",
+                        "conditions": [
+                            {
+                                "leftValue": "={{ $json.via }}",
+                                "rightValue": "wa",
+                                "operator": {
+                                    "type": "string",
+                                    "operation": "equals"
+                                },
+                                "id": "condition-1785266713286-h3gkvyxbz"
+                            }
+                        ]
+                    },
+                    "options": {}
+                }
+            },
+            {
+                "id": "http-outbox-mesa-wa",
+                "name": "Outbox Mesa WA",
+                "type": "n8n-nodes-base.httpRequest",
+                "typeVersion": 4.4,
+                "position": [
+                    780,
+                    -340
+                ],
+                "parameters": {
+                    "method": "POST",
+                    "url": "https://n8n.srv1312396.hstgr.cloud/api/v1/data-tables/W7rPitDcioXfqBfb/rows",
+                    "sendHeaders": true,
+                    "headerParameters": {
+                        "parameters": [
+                            {
+                                "name": "X-N8N-API-KEY",
+                                "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJiNjBkNWU1YS1lYjNmLTQ4ZTItYTZlOC1iYzUyMTUzZTFhYzMiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiZDFhY2E0YWYtYjExMS00ZmU2LTlkZTItZmIyNWE3ODk1ZDRkIiwiaWF0IjoxNzc2OTUwMjc3fQ.K3a87ubNNw-N_ri3Q7mnYgDD2etP2l9OyoMA9Ut3L5Y"
+                            },
+                            {
+                                "name": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ]
+                    },
+                    "sendBody": true,
+                    "specifyBody": "json",
+                    "jsonBody": "={{ JSON.stringify({ data: [{ recipient: $json.destino, message: $json.waMessage, quoted_message_id: '', quoted_sender_jid: '', quoted_content: '', status: 'pending' }] }) }}",
+                    "options": {
+                        "response": {
+                            "response": {
+                                "responseFormat": "json"
+                            }
+                        },
+                        "timeout": 20000
+                    }
+                },
+                "onError": "continueRegularOutput",
+                "retryOnFail": true,
+                "maxTries": 2,
+                "waitBetweenTries": 3000
             }
         ],
         "connections": {
@@ -1056,17 +1237,6 @@
                     [
                         {
                             "node": "Preparar Email",
-                            "type": "main",
-                            "index": 0
-                        }
-                    ]
-                ]
-            },
-            "Preparar Email": {
-                "main": [
-                    [
-                        {
-                            "node": "Tiene Adjunto",
                             "type": "main",
                             "index": 0
                         }
@@ -1178,6 +1348,46 @@
                         }
                     ]
                 ]
+            },
+            "Preparar Email": {
+                "main": [
+                    [
+                        {
+                            "node": "Va por WhatsApp",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Va por WhatsApp": {
+                "main": [
+                    [
+                        {
+                            "node": "Outbox Mesa WA",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ],
+                    [
+                        {
+                            "node": "Tiene Adjunto",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Outbox Mesa WA": {
+                "main": [
+                    [
+                        {
+                            "node": "Marcar Enviado",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
             }
         },
         "authors": "Sistemas Desembarco",
@@ -1186,18 +1396,18 @@
         "autosaved": false,
         "workflowPublishHistory": [
             {
-                "createdAt": "2026-07-28T16:52:04.801Z",
-                "id": 262,
+                "createdAt": "2026-07-28T19:25:12.934Z",
+                "id": 289,
                 "workflowId": "LHbJVS18ZULzqToG",
-                "versionId": "fa4cd0c6-7d2c-4e7a-aa33-e729467b2263",
+                "versionId": "e6382cdc-5058-46fa-b7af-501a883ac126",
                 "event": "activated",
                 "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
             },
             {
-                "createdAt": "2026-07-28T16:52:04.778Z",
-                "id": 261,
+                "createdAt": "2026-07-28T19:25:12.904Z",
+                "id": 288,
                 "workflowId": "LHbJVS18ZULzqToG",
-                "versionId": "fa4cd0c6-7d2c-4e7a-aa33-e729467b2263",
+                "versionId": "e6382cdc-5058-46fa-b7af-501a883ac126",
                 "event": "deactivated",
                 "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
             }

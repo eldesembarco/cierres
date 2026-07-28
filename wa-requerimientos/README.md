@@ -60,9 +60,14 @@ guardan; errores sí). Flujo operado por Pablo arrastrando cards:
   staticData `sentMesa` — una card se envía UNA vez; para reenviar hay que
   limpiar ese registro). El mail va SIN link de Trello: la referencia viaja en
   el asunto como `(Ref <shortlink>)`.
-- Card en **"Pasó a Mesa de Ayuda Ayres"** → mismo circuito. ⚠️ PENDIENTE: casilla
-  real de Ayres IT — hoy apunta a `polejavetzky@eldesembarco.com` (placeholder).
-  Cambiar en el mapa `MESAS` del nodo `Preparar Email`.
+- Card en **"Pasó a Mesa de Ayuda Ayres"** → Ayres atiende por WHATSAPP: el
+  requerimiento sale como mensaje de WhatsApp (vía wa_outbox → bridge) con
+  `(Ref XXXX)` al chat de Ayres. ⚠️ PREPARADO PERO INACTIVO: falta el JID del
+  chat de Ayres. Activación = cargar `AYRES_CHAT_WA` en DOS lugares: nodo
+  `Preparar Email` (workflow Trello Sync) y nodo `Filtrar y Normalizar`
+  (workflow principal). Las respuestas de Ayres en ese chat (citando el
+  mensaje) comentan la card, la mueven a "Lo tomó Ayres" (o Resuelto si dicen
+  resuelto/listo), avisan al solicitante; sin cita → alerta ⚠️ a Pablo.
 - Cuando la mesa RESPONDE, la card se mueve sola de "Pasó a..." a **"Lo tomó
   Tango"** / **"Lo tomó Ayres"** con comentario 🎫 + nro de ticket (ver Workflow 3).
 - Card en **"Resuelto"** → notifica ✅ por WhatsApp al chat de origen (parsea

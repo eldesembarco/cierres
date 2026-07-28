@@ -1,5 +1,5 @@
 {
-    "updatedAt": "2026-07-28T18:15:25.919Z",
+    "updatedAt": "2026-07-28T19:26:03.408Z",
     "createdAt": "2026-07-27T17:19:45.942Z",
     "id": "G3YDTzNlb8i1x1Z4",
     "name": "WA Requerimientos \u00e2\u2020\u2019 Trello",
@@ -34,7 +34,7 @@
                 0
             ],
             "parameters": {
-                "jsCode": "// Router de eventos del bridge: token, trigger #req, continuacion de foto, reacciones, dedupe.\nconst TOKEN = '660085b0160db3effde5cbb8fe4b6fc5cda3fe70ef79dfe7d959a419f2913d68';\nconst ALWAYS_CHATS = ['120363410062969047@g.us']; // SOPORTE SISTEMAS\nconst RE_TRIGGER = /^\\s*#(req|ticket|requerimiento)\\b[:\\-]?\\s*/i;\nconst WINDOW_MS = 5 * 60 * 1000; // ventana de continuacion foto\n\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.seen)) sd.seen = [];\nif (!sd.lastTicket) sd.lastTicket = {};\nif (!sd.pendingUndo) sd.pendingUndo = {};\nconst out = [];\n\nfor (const item of $input.all()) {\n  const headers = item.json.headers || {};\n  const p = item.json.body || {};\n  if ((headers['x-bridge-token'] || '') !== TOKEN) continue;\n  const chat = p.chatJID || '';\n  const sender = p.sender || '';\n  const key = chat + '|' + sender;\n\n  if (p.eventType === 'reaction') {\n    const emoji = p.reactionEmoji || p.content || '';\n    if (p.reactionRemoved) continue;\n    out.push({ json: { ruta: 'reaccion', chatJID: chat, sender, emoji, recibido: new Date().toISOString() } });\n    continue;\n  }\n\n  const content = (p.content || '').trim();\n  const m = content.match(RE_TRIGGER);\n  const isAlways = ALWAYS_CHATS.includes(chat);\n  const hasMedia = !!p.mediaBase64;\n  const texto = m ? content.replace(RE_TRIGGER, '').trim() : content;\n  const lt = sd.lastTicket[key];\n  const fresh = lt && (Date.now() - lt.ts) < WINDOW_MS;\n\n  let ruta = null;\n  if (hasMedia && fresh && !m && (!texto || texto.length < 20)) {\n    ruta = 'continuacion'; // foto suelta poco despues de un ticket del mismo remitente\n  } else if (m || isAlways) {\n    if (!texto && !hasMedia) continue;\n    // texto dentro de la ventana del ultimo ticket del remitente: Gemini decide si es el mismo tema\n    ruta = (fresh && !hasMedia && texto) ? 'merge' : 'ticket';\n  } else {\n    continue;\n  }\n\n  // Dedupe: por messageId si existe, sino hash de dia+chat+sender+contenido\n  let dedupeKey = p.messageId;\n  if (!dedupeKey) {\n    const k = `${new Date().toISOString().slice(0, 10)}|${chat}|${sender}|${content}`.slice(0, 500);\n    let h = 0;\n    for (let i = 0; i < k.length; i++) h = ((h << 5) - h + k.charCodeAt(i)) | 0;\n    dedupeKey = 'h' + h;\n  }\n  if (sd.seen.includes(dedupeKey)) continue;\n  sd.seen.push(dedupeKey);\n  if (sd.seen.length > 300) sd.seen = sd.seen.slice(-200);\n\n  const base = {\n    ruta,\n    texto,\n    sender,\n    chatJID: chat,\n    isFromMe: !!p.isFromMe,\n    msgId: p.messageId || '',\n    quotedContent: p.quotedContent || '',\n    quotedSender: p.quotedSender || '',\n    mediaBase64: p.mediaBase64 || '',\n    mimeType: p.mimeType || '',\n    mediaFilename: p.mediaFilename || '',\n    recibido: new Date().toISOString()\n  };\n  if (ruta === 'continuacion') {\n    out.push({ json: { ...base, cardId: lt.cardId, cardName: lt.cardName, shortUrl: lt.shortUrl } });\n  } else if (ruta === 'merge') {\n    out.push({ json: { ...base, cardId: lt.cardId, cardName: lt.cardName, shortUrl: lt.shortUrl, prevTextos: (lt.textos || []).join('\\n') } });\n  } else {\n    out.push({ json: base });\n  }\n}\nreturn out;"
+                "jsCode": "// Router de eventos del bridge: token, trigger #req, continuacion de foto, reacciones, dedupe.\nconst TOKEN = '660085b0160db3effde5cbb8fe4b6fc5cda3fe70ef79dfe7d959a419f2913d68';\nconst ALWAYS_CHATS = ['120363410062969047@g.us']; // SOPORTE SISTEMAS\n// Chat de soporte de Ayres IT (atienden por WhatsApp). Cargar el JID para activar la mesa Ayres.\nconst AYRES_CHAT_WA = '';\nconst RE_TRIGGER = /^\\s*#(req|ticket|requerimiento)\\b[:\\-]?\\s*/i;\nconst WINDOW_MS = 5 * 60 * 1000; // ventana de continuacion foto\n\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.seen)) sd.seen = [];\nif (!sd.lastTicket) sd.lastTicket = {};\nif (!sd.pendingUndo) sd.pendingUndo = {};\nconst out = [];\n\nfor (const item of $input.all()) {\n  const headers = item.json.headers || {};\n  const p = item.json.body || {};\n  if ((headers['x-bridge-token'] || '') !== TOKEN) continue;\n  const chat = p.chatJID || '';\n  const sender = p.sender || '';\n  const key = chat + '|' + sender;\n\n  if (p.eventType === 'reaction') {\n    const emoji = p.reactionEmoji || p.content || '';\n    if (p.reactionRemoved) continue;\n    out.push({ json: { ruta: 'reaccion', chatJID: chat, sender, emoji, recibido: new Date().toISOString() } });\n    continue;\n  }\n\n  if (AYRES_CHAT_WA && chat === AYRES_CHAT_WA) {\n    const contentA = (p.content || '').trim();\n    if (!contentA) continue;\n    out.push({ json: { ruta: 'mesa_ayres', texto: contentA, quotedContent: p.quotedContent || '', sender, chatJID: chat, recibido: new Date().toISOString() } });\n    continue;\n  }\n\n  const content = (p.content || '').trim();\n  const m = content.match(RE_TRIGGER);\n  const isAlways = ALWAYS_CHATS.includes(chat);\n  const hasMedia = !!p.mediaBase64;\n  const texto = m ? content.replace(RE_TRIGGER, '').trim() : content;\n  const lt = sd.lastTicket[key];\n  const fresh = lt && (Date.now() - lt.ts) < WINDOW_MS;\n\n  let ruta = null;\n  if (hasMedia && fresh && !m && (!texto || texto.length < 20)) {\n    ruta = 'continuacion'; // foto suelta poco despues de un ticket del mismo remitente\n  } else if (m || isAlways) {\n    if (!texto && !hasMedia) continue;\n    // texto dentro de la ventana del ultimo ticket del remitente: Gemini decide si es el mismo tema\n    ruta = (fresh && !hasMedia && texto) ? 'merge' : 'ticket';\n  } else {\n    continue;\n  }\n\n  // Dedupe: por messageId si existe, sino hash de dia+chat+sender+contenido\n  let dedupeKey = p.messageId;\n  if (!dedupeKey) {\n    const k = `${new Date().toISOString().slice(0, 10)}|${chat}|${sender}|${content}`.slice(0, 500);\n    let h = 0;\n    for (let i = 0; i < k.length; i++) h = ((h << 5) - h + k.charCodeAt(i)) | 0;\n    dedupeKey = 'h' + h;\n  }\n  if (sd.seen.includes(dedupeKey)) continue;\n  sd.seen.push(dedupeKey);\n  if (sd.seen.length > 300) sd.seen = sd.seen.slice(-200);\n\n  const base = {\n    ruta,\n    texto,\n    sender,\n    chatJID: chat,\n    isFromMe: !!p.isFromMe,\n    msgId: p.messageId || '',\n    quotedContent: p.quotedContent || '',\n    quotedSender: p.quotedSender || '',\n    mediaBase64: p.mediaBase64 || '',\n    mimeType: p.mimeType || '',\n    mediaFilename: p.mediaFilename || '',\n    recibido: new Date().toISOString()\n  };\n  if (ruta === 'continuacion') {\n    out.push({ json: { ...base, cardId: lt.cardId, cardName: lt.cardName, shortUrl: lt.shortUrl } });\n  } else if (ruta === 'merge') {\n    out.push({ json: { ...base, cardId: lt.cardId, cardName: lt.cardName, shortUrl: lt.shortUrl, prevTextos: (lt.textos || []).join('\\n') } });\n  } else {\n    out.push({ json: base });\n  }\n}\nreturn out;"
             }
         },
         {
@@ -782,6 +782,302 @@
             "retryOnFail": true,
             "maxTries": 2,
             "waitBetweenTries": 3000
+        },
+        {
+            "id": "if-mesa-ayres",
+            "name": "Es Mesa Ayres",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2.2,
+            "position": [
+                560,
+                160
+            ],
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "version": 2,
+                        "leftValue": "",
+                        "caseSensitive": true,
+                        "typeValidation": "loose"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                        {
+                            "leftValue": "={{ $json.ruta }}",
+                            "rightValue": "mesa_ayres",
+                            "operator": {
+                                "type": "string",
+                                "operation": "equals"
+                            },
+                            "id": "condition-1785266763824-f814mbwoy"
+                        }
+                    ]
+                },
+                "options": {}
+            }
+        },
+        {
+            "id": "code-parse-ayres",
+            "name": "Parsear Resp Ayres",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                760,
+                560
+            ],
+            "parameters": {
+                "jsCode": "// Respuesta de Ayres por WhatsApp: el Ref viene en la cita (o en el texto).\nconst out = [];\nfor (const item of $input.all()) {\n  const j = item.json;\n  const fuente = (j.quotedContent || '') + '\\n' + (j.texto || '');\n  const mRef = fuente.match(/\\(Ref[:\\s]+([A-Za-z0-9]{6,12})\\)/i);\n  const esResuelto = /(resuelt|solucionad|cerrad|finalizad|\\blisto\\b)/i.test(j.texto || '');\n  if (!mRef) {\n    out.push({ json: { alerta: true, recipient: '5491157935007@s.whatsapp.net', message: `\u00e2\u0161\u00a0\u00ef\u00b8\udc8f Respuesta de Ayres IT sin vincular (no cita ning\u00c3\u00ban requerimiento):\\nDe: ${j.sender}\\n\\\"${(j.texto || '').slice(0, 200)}\\\"` } });\n  } else {\n    out.push({ json: { alerta: false, cardShort: mRef[1], esResuelto, texto: j.texto, sender: j.sender } });\n  }\n}\nreturn out;"
+            }
+        },
+        {
+            "id": "if-ayres-nomatch",
+            "name": "Ayres Sin Match",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2.2,
+            "position": [
+                960,
+                560
+            ],
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "version": 2,
+                        "leftValue": "",
+                        "caseSensitive": true,
+                        "typeValidation": "loose"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                        {
+                            "leftValue": "={{ $json.alerta }}",
+                            "rightValue": "true",
+                            "operator": {
+                                "type": "boolean",
+                                "operation": "true",
+                                "singleValue": true
+                            },
+                            "id": "condition-1785266763825-frjdv75ff"
+                        }
+                    ]
+                },
+                "options": {}
+            }
+        },
+        {
+            "id": "http-ver-card-ayres",
+            "name": "Ver Card Ayres",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.4,
+            "position": [
+                1160,
+                620
+            ],
+            "parameters": {
+                "method": "GET",
+                "url": "=https://api.trello.com/1/cards/{{ $json.cardShort }}",
+                "authentication": "predefinedCredentialType",
+                "nodeCredentialType": "trelloApi",
+                "sendQuery": true,
+                "queryParameters": {
+                    "parameters": [
+                        {
+                            "name": "fields",
+                            "value": "idList,desc,name"
+                        }
+                    ]
+                },
+                "options": {
+                    "response": {
+                        "response": {
+                            "responseFormat": "json"
+                        }
+                    },
+                    "timeout": 20000
+                }
+            },
+            "credentials": {
+                "trelloApi": {
+                    "id": "MUcIdiWUZ1Vhdf2h",
+                    "name": "Trello Desembarco"
+                }
+            },
+            "onError": "continueRegularOutput"
+        },
+        {
+            "id": "code-novedad-ayres",
+            "name": "Armar Novedad Ayres",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1360,
+                620
+            ],
+            "parameters": {
+                "mode": "runOnceForEachItem",
+                "jsCode": "const src = $('Parsear Resp Ayres').item.json;\nconst card = $json;\nconst PASO_AYRES = '6a689bcabc131c785ef97206', LO_TOMO = '6a68db9427fa9384d7e8b3d0', RESUELTO = '6a688f083afd2addaf2f570e';\nlet moveTo = '';\nif (src.esResuelto) { if (card.idList && card.idList !== RESUELTO) moveTo = RESUELTO; }\nelse if (card.idList === PASO_AYRES) moveTo = LO_TOMO;\nconst comentario = `${src.esResuelto ? '\u00e2\u0153\u2026 Ayres IT dio por RESUELTO el caso' : '\u00f0\u0178\u017d\u00ab Respuesta de Ayres IT (WhatsApp)'}\\n\\nDe: ${src.sender}\\n\\n${(src.texto || '').slice(0, 400)}`;\nconst mChat = (card.desc || '').match(/\\*\\*Chat:\\*\\* ([^\\s\\n]+)/);\nconst nombre = (card.name || '').replace(/^[^0-9A-Za-z\\[\u00c3\u20ac-\u00c5\u00bf]+\\s*/, '');\nconst aviso = (!src.esResuelto && mChat) ? { recipient: mChat[1], message: `\u00f0\u0178\u201c\u2039 Novedad de Ayres IT sobre tu requerimiento \\\"${nombre}\\\":\\n${(src.texto || '').slice(0, 250)}` } : null;\nreturn { json: { cardShort: src.cardShort, comentario, moveTo, tieneAviso: !!aviso, recipient: aviso ? aviso.recipient : '', message: aviso ? aviso.message : '' } };"
+            }
+        },
+        {
+            "id": "http-comentar-ayres",
+            "name": "Comentar Card Ayres",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.4,
+            "position": [
+                1560,
+                620
+            ],
+            "parameters": {
+                "method": "POST",
+                "url": "=https://api.trello.com/1/cards/{{ $json.cardShort }}/actions/comments",
+                "authentication": "predefinedCredentialType",
+                "nodeCredentialType": "trelloApi",
+                "sendQuery": true,
+                "queryParameters": {
+                    "parameters": [
+                        {
+                            "name": "text",
+                            "value": "={{ $json.comentario }}"
+                        }
+                    ]
+                },
+                "options": {
+                    "timeout": 20000
+                }
+            },
+            "credentials": {
+                "trelloApi": {
+                    "id": "MUcIdiWUZ1Vhdf2h",
+                    "name": "Trello Desembarco"
+                }
+            },
+            "onError": "continueRegularOutput",
+            "retryOnFail": true,
+            "maxTries": 2,
+            "waitBetweenTries": 3000
+        },
+        {
+            "id": "if-mover-ayres",
+            "name": "Mover Card Ayres IF",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2.2,
+            "position": [
+                1760,
+                560
+            ],
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "version": 2,
+                        "leftValue": "",
+                        "caseSensitive": true,
+                        "typeValidation": "loose"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                        {
+                            "leftValue": "={{ $('Armar Novedad Ayres').item.json.moveTo }}",
+                            "rightValue": "",
+                            "operator": {
+                                "type": "string",
+                                "operation": "notEmpty",
+                                "singleValue": true
+                            },
+                            "id": "condition-1785266763825-ipnutxs98"
+                        }
+                    ]
+                },
+                "options": {}
+            }
+        },
+        {
+            "id": "http-mover-ayres",
+            "name": "Mover Card Ayres",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.4,
+            "position": [
+                1960,
+                520
+            ],
+            "parameters": {
+                "method": "PUT",
+                "url": "=https://api.trello.com/1/cards/{{ $('Armar Novedad Ayres').item.json.cardShort }}",
+                "authentication": "predefinedCredentialType",
+                "nodeCredentialType": "trelloApi",
+                "sendQuery": true,
+                "queryParameters": {
+                    "parameters": [
+                        {
+                            "name": "idList",
+                            "value": "={{ $('Armar Novedad Ayres').item.json.moveTo }}"
+                        },
+                        {
+                            "name": "pos",
+                            "value": "top"
+                        }
+                    ]
+                },
+                "options": {
+                    "timeout": 20000
+                }
+            },
+            "credentials": {
+                "trelloApi": {
+                    "id": "MUcIdiWUZ1Vhdf2h",
+                    "name": "Trello Desembarco"
+                }
+            },
+            "onError": "continueRegularOutput",
+            "retryOnFail": true,
+            "maxTries": 2,
+            "waitBetweenTries": 3000
+        },
+        {
+            "id": "code-cargar-aviso",
+            "name": "Cargar Aviso Ayres",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1960,
+                700
+            ],
+            "parameters": {
+                "mode": "runOnceForEachItem",
+                "jsCode": "const n = $('Armar Novedad Ayres').item.json;\nif (!n.tieneAviso) return { json: { recipient: '', message: '' } };\nreturn { json: { recipient: n.recipient, message: n.message } };"
+            }
+        },
+        {
+            "id": "if-aviso-ayres",
+            "name": "Aviso Ayres IF",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2.2,
+            "position": [
+                2160,
+                700
+            ],
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "version": 2,
+                        "leftValue": "",
+                        "caseSensitive": true,
+                        "typeValidation": "loose"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                        {
+                            "leftValue": "={{ $json.recipient }}",
+                            "rightValue": "",
+                            "operator": {
+                                "type": "string",
+                                "operation": "notEmpty",
+                                "singleValue": true
+                            },
+                            "id": "condition-1785266763825-30gyqb4st"
+                        }
+                    ]
+                },
+                "options": {}
+            }
         }
     ],
     "connections": {
@@ -818,7 +1114,7 @@
                 ],
                 [
                     {
-                        "node": "Es Continuacion",
+                        "node": "Es Mesa Ayres",
                         "type": "main",
                         "index": 0
                     }
@@ -1134,6 +1430,124 @@
                     }
                 ]
             ]
+        },
+        "Es Mesa Ayres": {
+            "main": [
+                [
+                    {
+                        "node": "Parsear Resp Ayres",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Es Continuacion",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Parsear Resp Ayres": {
+            "main": [
+                [
+                    {
+                        "node": "Ayres Sin Match",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Ayres Sin Match": {
+            "main": [
+                [
+                    {
+                        "node": "Outbox Insert",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Ver Card Ayres",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Ver Card Ayres": {
+            "main": [
+                [
+                    {
+                        "node": "Armar Novedad Ayres",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Armar Novedad Ayres": {
+            "main": [
+                [
+                    {
+                        "node": "Comentar Card Ayres",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Comentar Card Ayres": {
+            "main": [
+                [
+                    {
+                        "node": "Mover Card Ayres IF",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Cargar Aviso Ayres",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Mover Card Ayres IF": {
+            "main": [
+                [
+                    {
+                        "node": "Mover Card Ayres",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Cargar Aviso Ayres": {
+            "main": [
+                [
+                    {
+                        "node": "Aviso Ayres IF",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Aviso Ayres IF": {
+            "main": [
+                [
+                    {
+                        "node": "Outbox Insert",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
         }
     },
     "settings": {
@@ -1210,9 +1624,9 @@
     },
     "meta": null,
     "pinData": null,
-    "versionId": "0675031d-37b8-4785-bd10-2e2be326e502",
-    "activeVersionId": "0675031d-37b8-4785-bd10-2e2be326e502",
-    "versionCounter": 46,
+    "versionId": "40d64b6f-f4aa-4df8-a97d-088ee729e20b",
+    "activeVersionId": "40d64b6f-f4aa-4df8-a97d-088ee729e20b",
+    "versionCounter": 49,
     "triggerCount": 1,
     "shared": [
         {
@@ -1235,9 +1649,9 @@
     ],
     "tags": [],
     "activeVersion": {
-        "updatedAt": "2026-07-28T18:15:25.920Z",
-        "createdAt": "2026-07-28T18:15:25.920Z",
-        "versionId": "0675031d-37b8-4785-bd10-2e2be326e502",
+        "updatedAt": "2026-07-28T19:26:03.411Z",
+        "createdAt": "2026-07-28T19:26:03.411Z",
+        "versionId": "40d64b6f-f4aa-4df8-a97d-088ee729e20b",
         "workflowId": "G3YDTzNlb8i1x1Z4",
         "nodes": [
             {
@@ -1267,7 +1681,7 @@
                     0
                 ],
                 "parameters": {
-                    "jsCode": "// Router de eventos del bridge: token, trigger #req, continuacion de foto, reacciones, dedupe.\nconst TOKEN = '660085b0160db3effde5cbb8fe4b6fc5cda3fe70ef79dfe7d959a419f2913d68';\nconst ALWAYS_CHATS = ['120363410062969047@g.us']; // SOPORTE SISTEMAS\nconst RE_TRIGGER = /^\\s*#(req|ticket|requerimiento)\\b[:\\-]?\\s*/i;\nconst WINDOW_MS = 5 * 60 * 1000; // ventana de continuacion foto\n\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.seen)) sd.seen = [];\nif (!sd.lastTicket) sd.lastTicket = {};\nif (!sd.pendingUndo) sd.pendingUndo = {};\nconst out = [];\n\nfor (const item of $input.all()) {\n  const headers = item.json.headers || {};\n  const p = item.json.body || {};\n  if ((headers['x-bridge-token'] || '') !== TOKEN) continue;\n  const chat = p.chatJID || '';\n  const sender = p.sender || '';\n  const key = chat + '|' + sender;\n\n  if (p.eventType === 'reaction') {\n    const emoji = p.reactionEmoji || p.content || '';\n    if (p.reactionRemoved) continue;\n    out.push({ json: { ruta: 'reaccion', chatJID: chat, sender, emoji, recibido: new Date().toISOString() } });\n    continue;\n  }\n\n  const content = (p.content || '').trim();\n  const m = content.match(RE_TRIGGER);\n  const isAlways = ALWAYS_CHATS.includes(chat);\n  const hasMedia = !!p.mediaBase64;\n  const texto = m ? content.replace(RE_TRIGGER, '').trim() : content;\n  const lt = sd.lastTicket[key];\n  const fresh = lt && (Date.now() - lt.ts) < WINDOW_MS;\n\n  let ruta = null;\n  if (hasMedia && fresh && !m && (!texto || texto.length < 20)) {\n    ruta = 'continuacion'; // foto suelta poco despues de un ticket del mismo remitente\n  } else if (m || isAlways) {\n    if (!texto && !hasMedia) continue;\n    // texto dentro de la ventana del ultimo ticket del remitente: Gemini decide si es el mismo tema\n    ruta = (fresh && !hasMedia && texto) ? 'merge' : 'ticket';\n  } else {\n    continue;\n  }\n\n  // Dedupe: por messageId si existe, sino hash de dia+chat+sender+contenido\n  let dedupeKey = p.messageId;\n  if (!dedupeKey) {\n    const k = `${new Date().toISOString().slice(0, 10)}|${chat}|${sender}|${content}`.slice(0, 500);\n    let h = 0;\n    for (let i = 0; i < k.length; i++) h = ((h << 5) - h + k.charCodeAt(i)) | 0;\n    dedupeKey = 'h' + h;\n  }\n  if (sd.seen.includes(dedupeKey)) continue;\n  sd.seen.push(dedupeKey);\n  if (sd.seen.length > 300) sd.seen = sd.seen.slice(-200);\n\n  const base = {\n    ruta,\n    texto,\n    sender,\n    chatJID: chat,\n    isFromMe: !!p.isFromMe,\n    msgId: p.messageId || '',\n    quotedContent: p.quotedContent || '',\n    quotedSender: p.quotedSender || '',\n    mediaBase64: p.mediaBase64 || '',\n    mimeType: p.mimeType || '',\n    mediaFilename: p.mediaFilename || '',\n    recibido: new Date().toISOString()\n  };\n  if (ruta === 'continuacion') {\n    out.push({ json: { ...base, cardId: lt.cardId, cardName: lt.cardName, shortUrl: lt.shortUrl } });\n  } else if (ruta === 'merge') {\n    out.push({ json: { ...base, cardId: lt.cardId, cardName: lt.cardName, shortUrl: lt.shortUrl, prevTextos: (lt.textos || []).join('\\n') } });\n  } else {\n    out.push({ json: base });\n  }\n}\nreturn out;"
+                    "jsCode": "// Router de eventos del bridge: token, trigger #req, continuacion de foto, reacciones, dedupe.\nconst TOKEN = '660085b0160db3effde5cbb8fe4b6fc5cda3fe70ef79dfe7d959a419f2913d68';\nconst ALWAYS_CHATS = ['120363410062969047@g.us']; // SOPORTE SISTEMAS\n// Chat de soporte de Ayres IT (atienden por WhatsApp). Cargar el JID para activar la mesa Ayres.\nconst AYRES_CHAT_WA = '';\nconst RE_TRIGGER = /^\\s*#(req|ticket|requerimiento)\\b[:\\-]?\\s*/i;\nconst WINDOW_MS = 5 * 60 * 1000; // ventana de continuacion foto\n\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.seen)) sd.seen = [];\nif (!sd.lastTicket) sd.lastTicket = {};\nif (!sd.pendingUndo) sd.pendingUndo = {};\nconst out = [];\n\nfor (const item of $input.all()) {\n  const headers = item.json.headers || {};\n  const p = item.json.body || {};\n  if ((headers['x-bridge-token'] || '') !== TOKEN) continue;\n  const chat = p.chatJID || '';\n  const sender = p.sender || '';\n  const key = chat + '|' + sender;\n\n  if (p.eventType === 'reaction') {\n    const emoji = p.reactionEmoji || p.content || '';\n    if (p.reactionRemoved) continue;\n    out.push({ json: { ruta: 'reaccion', chatJID: chat, sender, emoji, recibido: new Date().toISOString() } });\n    continue;\n  }\n\n  if (AYRES_CHAT_WA && chat === AYRES_CHAT_WA) {\n    const contentA = (p.content || '').trim();\n    if (!contentA) continue;\n    out.push({ json: { ruta: 'mesa_ayres', texto: contentA, quotedContent: p.quotedContent || '', sender, chatJID: chat, recibido: new Date().toISOString() } });\n    continue;\n  }\n\n  const content = (p.content || '').trim();\n  const m = content.match(RE_TRIGGER);\n  const isAlways = ALWAYS_CHATS.includes(chat);\n  const hasMedia = !!p.mediaBase64;\n  const texto = m ? content.replace(RE_TRIGGER, '').trim() : content;\n  const lt = sd.lastTicket[key];\n  const fresh = lt && (Date.now() - lt.ts) < WINDOW_MS;\n\n  let ruta = null;\n  if (hasMedia && fresh && !m && (!texto || texto.length < 20)) {\n    ruta = 'continuacion'; // foto suelta poco despues de un ticket del mismo remitente\n  } else if (m || isAlways) {\n    if (!texto && !hasMedia) continue;\n    // texto dentro de la ventana del ultimo ticket del remitente: Gemini decide si es el mismo tema\n    ruta = (fresh && !hasMedia && texto) ? 'merge' : 'ticket';\n  } else {\n    continue;\n  }\n\n  // Dedupe: por messageId si existe, sino hash de dia+chat+sender+contenido\n  let dedupeKey = p.messageId;\n  if (!dedupeKey) {\n    const k = `${new Date().toISOString().slice(0, 10)}|${chat}|${sender}|${content}`.slice(0, 500);\n    let h = 0;\n    for (let i = 0; i < k.length; i++) h = ((h << 5) - h + k.charCodeAt(i)) | 0;\n    dedupeKey = 'h' + h;\n  }\n  if (sd.seen.includes(dedupeKey)) continue;\n  sd.seen.push(dedupeKey);\n  if (sd.seen.length > 300) sd.seen = sd.seen.slice(-200);\n\n  const base = {\n    ruta,\n    texto,\n    sender,\n    chatJID: chat,\n    isFromMe: !!p.isFromMe,\n    msgId: p.messageId || '',\n    quotedContent: p.quotedContent || '',\n    quotedSender: p.quotedSender || '',\n    mediaBase64: p.mediaBase64 || '',\n    mimeType: p.mimeType || '',\n    mediaFilename: p.mediaFilename || '',\n    recibido: new Date().toISOString()\n  };\n  if (ruta === 'continuacion') {\n    out.push({ json: { ...base, cardId: lt.cardId, cardName: lt.cardName, shortUrl: lt.shortUrl } });\n  } else if (ruta === 'merge') {\n    out.push({ json: { ...base, cardId: lt.cardId, cardName: lt.cardName, shortUrl: lt.shortUrl, prevTextos: (lt.textos || []).join('\\n') } });\n  } else {\n    out.push({ json: base });\n  }\n}\nreturn out;"
                 }
             },
             {
@@ -2015,6 +2429,302 @@
                 "retryOnFail": true,
                 "maxTries": 2,
                 "waitBetweenTries": 3000
+            },
+            {
+                "id": "if-mesa-ayres",
+                "name": "Es Mesa Ayres",
+                "type": "n8n-nodes-base.if",
+                "typeVersion": 2.2,
+                "position": [
+                    560,
+                    160
+                ],
+                "parameters": {
+                    "conditions": {
+                        "options": {
+                            "version": 2,
+                            "leftValue": "",
+                            "caseSensitive": true,
+                            "typeValidation": "loose"
+                        },
+                        "combinator": "and",
+                        "conditions": [
+                            {
+                                "leftValue": "={{ $json.ruta }}",
+                                "rightValue": "mesa_ayres",
+                                "operator": {
+                                    "type": "string",
+                                    "operation": "equals"
+                                },
+                                "id": "condition-1785266763824-f814mbwoy"
+                            }
+                        ]
+                    },
+                    "options": {}
+                }
+            },
+            {
+                "id": "code-parse-ayres",
+                "name": "Parsear Resp Ayres",
+                "type": "n8n-nodes-base.code",
+                "typeVersion": 2,
+                "position": [
+                    760,
+                    560
+                ],
+                "parameters": {
+                    "jsCode": "// Respuesta de Ayres por WhatsApp: el Ref viene en la cita (o en el texto).\nconst out = [];\nfor (const item of $input.all()) {\n  const j = item.json;\n  const fuente = (j.quotedContent || '') + '\\n' + (j.texto || '');\n  const mRef = fuente.match(/\\(Ref[:\\s]+([A-Za-z0-9]{6,12})\\)/i);\n  const esResuelto = /(resuelt|solucionad|cerrad|finalizad|\\blisto\\b)/i.test(j.texto || '');\n  if (!mRef) {\n    out.push({ json: { alerta: true, recipient: '5491157935007@s.whatsapp.net', message: `\u00e2\u0161\u00a0\u00ef\u00b8\udc8f Respuesta de Ayres IT sin vincular (no cita ning\u00c3\u00ban requerimiento):\\nDe: ${j.sender}\\n\\\"${(j.texto || '').slice(0, 200)}\\\"` } });\n  } else {\n    out.push({ json: { alerta: false, cardShort: mRef[1], esResuelto, texto: j.texto, sender: j.sender } });\n  }\n}\nreturn out;"
+                }
+            },
+            {
+                "id": "if-ayres-nomatch",
+                "name": "Ayres Sin Match",
+                "type": "n8n-nodes-base.if",
+                "typeVersion": 2.2,
+                "position": [
+                    960,
+                    560
+                ],
+                "parameters": {
+                    "conditions": {
+                        "options": {
+                            "version": 2,
+                            "leftValue": "",
+                            "caseSensitive": true,
+                            "typeValidation": "loose"
+                        },
+                        "combinator": "and",
+                        "conditions": [
+                            {
+                                "leftValue": "={{ $json.alerta }}",
+                                "rightValue": "true",
+                                "operator": {
+                                    "type": "boolean",
+                                    "operation": "true",
+                                    "singleValue": true
+                                },
+                                "id": "condition-1785266763825-frjdv75ff"
+                            }
+                        ]
+                    },
+                    "options": {}
+                }
+            },
+            {
+                "id": "http-ver-card-ayres",
+                "name": "Ver Card Ayres",
+                "type": "n8n-nodes-base.httpRequest",
+                "typeVersion": 4.4,
+                "position": [
+                    1160,
+                    620
+                ],
+                "parameters": {
+                    "method": "GET",
+                    "url": "=https://api.trello.com/1/cards/{{ $json.cardShort }}",
+                    "authentication": "predefinedCredentialType",
+                    "nodeCredentialType": "trelloApi",
+                    "sendQuery": true,
+                    "queryParameters": {
+                        "parameters": [
+                            {
+                                "name": "fields",
+                                "value": "idList,desc,name"
+                            }
+                        ]
+                    },
+                    "options": {
+                        "response": {
+                            "response": {
+                                "responseFormat": "json"
+                            }
+                        },
+                        "timeout": 20000
+                    }
+                },
+                "credentials": {
+                    "trelloApi": {
+                        "id": "MUcIdiWUZ1Vhdf2h",
+                        "name": "Trello Desembarco"
+                    }
+                },
+                "onError": "continueRegularOutput"
+            },
+            {
+                "id": "code-novedad-ayres",
+                "name": "Armar Novedad Ayres",
+                "type": "n8n-nodes-base.code",
+                "typeVersion": 2,
+                "position": [
+                    1360,
+                    620
+                ],
+                "parameters": {
+                    "mode": "runOnceForEachItem",
+                    "jsCode": "const src = $('Parsear Resp Ayres').item.json;\nconst card = $json;\nconst PASO_AYRES = '6a689bcabc131c785ef97206', LO_TOMO = '6a68db9427fa9384d7e8b3d0', RESUELTO = '6a688f083afd2addaf2f570e';\nlet moveTo = '';\nif (src.esResuelto) { if (card.idList && card.idList !== RESUELTO) moveTo = RESUELTO; }\nelse if (card.idList === PASO_AYRES) moveTo = LO_TOMO;\nconst comentario = `${src.esResuelto ? '\u00e2\u0153\u2026 Ayres IT dio por RESUELTO el caso' : '\u00f0\u0178\u017d\u00ab Respuesta de Ayres IT (WhatsApp)'}\\n\\nDe: ${src.sender}\\n\\n${(src.texto || '').slice(0, 400)}`;\nconst mChat = (card.desc || '').match(/\\*\\*Chat:\\*\\* ([^\\s\\n]+)/);\nconst nombre = (card.name || '').replace(/^[^0-9A-Za-z\\[\u00c3\u20ac-\u00c5\u00bf]+\\s*/, '');\nconst aviso = (!src.esResuelto && mChat) ? { recipient: mChat[1], message: `\u00f0\u0178\u201c\u2039 Novedad de Ayres IT sobre tu requerimiento \\\"${nombre}\\\":\\n${(src.texto || '').slice(0, 250)}` } : null;\nreturn { json: { cardShort: src.cardShort, comentario, moveTo, tieneAviso: !!aviso, recipient: aviso ? aviso.recipient : '', message: aviso ? aviso.message : '' } };"
+                }
+            },
+            {
+                "id": "http-comentar-ayres",
+                "name": "Comentar Card Ayres",
+                "type": "n8n-nodes-base.httpRequest",
+                "typeVersion": 4.4,
+                "position": [
+                    1560,
+                    620
+                ],
+                "parameters": {
+                    "method": "POST",
+                    "url": "=https://api.trello.com/1/cards/{{ $json.cardShort }}/actions/comments",
+                    "authentication": "predefinedCredentialType",
+                    "nodeCredentialType": "trelloApi",
+                    "sendQuery": true,
+                    "queryParameters": {
+                        "parameters": [
+                            {
+                                "name": "text",
+                                "value": "={{ $json.comentario }}"
+                            }
+                        ]
+                    },
+                    "options": {
+                        "timeout": 20000
+                    }
+                },
+                "credentials": {
+                    "trelloApi": {
+                        "id": "MUcIdiWUZ1Vhdf2h",
+                        "name": "Trello Desembarco"
+                    }
+                },
+                "onError": "continueRegularOutput",
+                "retryOnFail": true,
+                "maxTries": 2,
+                "waitBetweenTries": 3000
+            },
+            {
+                "id": "if-mover-ayres",
+                "name": "Mover Card Ayres IF",
+                "type": "n8n-nodes-base.if",
+                "typeVersion": 2.2,
+                "position": [
+                    1760,
+                    560
+                ],
+                "parameters": {
+                    "conditions": {
+                        "options": {
+                            "version": 2,
+                            "leftValue": "",
+                            "caseSensitive": true,
+                            "typeValidation": "loose"
+                        },
+                        "combinator": "and",
+                        "conditions": [
+                            {
+                                "leftValue": "={{ $('Armar Novedad Ayres').item.json.moveTo }}",
+                                "rightValue": "",
+                                "operator": {
+                                    "type": "string",
+                                    "operation": "notEmpty",
+                                    "singleValue": true
+                                },
+                                "id": "condition-1785266763825-ipnutxs98"
+                            }
+                        ]
+                    },
+                    "options": {}
+                }
+            },
+            {
+                "id": "http-mover-ayres",
+                "name": "Mover Card Ayres",
+                "type": "n8n-nodes-base.httpRequest",
+                "typeVersion": 4.4,
+                "position": [
+                    1960,
+                    520
+                ],
+                "parameters": {
+                    "method": "PUT",
+                    "url": "=https://api.trello.com/1/cards/{{ $('Armar Novedad Ayres').item.json.cardShort }}",
+                    "authentication": "predefinedCredentialType",
+                    "nodeCredentialType": "trelloApi",
+                    "sendQuery": true,
+                    "queryParameters": {
+                        "parameters": [
+                            {
+                                "name": "idList",
+                                "value": "={{ $('Armar Novedad Ayres').item.json.moveTo }}"
+                            },
+                            {
+                                "name": "pos",
+                                "value": "top"
+                            }
+                        ]
+                    },
+                    "options": {
+                        "timeout": 20000
+                    }
+                },
+                "credentials": {
+                    "trelloApi": {
+                        "id": "MUcIdiWUZ1Vhdf2h",
+                        "name": "Trello Desembarco"
+                    }
+                },
+                "onError": "continueRegularOutput",
+                "retryOnFail": true,
+                "maxTries": 2,
+                "waitBetweenTries": 3000
+            },
+            {
+                "id": "code-cargar-aviso",
+                "name": "Cargar Aviso Ayres",
+                "type": "n8n-nodes-base.code",
+                "typeVersion": 2,
+                "position": [
+                    1960,
+                    700
+                ],
+                "parameters": {
+                    "mode": "runOnceForEachItem",
+                    "jsCode": "const n = $('Armar Novedad Ayres').item.json;\nif (!n.tieneAviso) return { json: { recipient: '', message: '' } };\nreturn { json: { recipient: n.recipient, message: n.message } };"
+                }
+            },
+            {
+                "id": "if-aviso-ayres",
+                "name": "Aviso Ayres IF",
+                "type": "n8n-nodes-base.if",
+                "typeVersion": 2.2,
+                "position": [
+                    2160,
+                    700
+                ],
+                "parameters": {
+                    "conditions": {
+                        "options": {
+                            "version": 2,
+                            "leftValue": "",
+                            "caseSensitive": true,
+                            "typeValidation": "loose"
+                        },
+                        "combinator": "and",
+                        "conditions": [
+                            {
+                                "leftValue": "={{ $json.recipient }}",
+                                "rightValue": "",
+                                "operator": {
+                                    "type": "string",
+                                    "operation": "notEmpty",
+                                    "singleValue": true
+                                },
+                                "id": "condition-1785266763825-30gyqb4st"
+                            }
+                        ]
+                    },
+                    "options": {}
+                }
             }
         ],
         "connections": {
@@ -2051,7 +2761,7 @@
                     ],
                     [
                         {
-                            "node": "Es Continuacion",
+                            "node": "Es Mesa Ayres",
                             "type": "main",
                             "index": 0
                         }
@@ -2367,6 +3077,124 @@
                         }
                     ]
                 ]
+            },
+            "Es Mesa Ayres": {
+                "main": [
+                    [
+                        {
+                            "node": "Parsear Resp Ayres",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ],
+                    [
+                        {
+                            "node": "Es Continuacion",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Parsear Resp Ayres": {
+                "main": [
+                    [
+                        {
+                            "node": "Ayres Sin Match",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Ayres Sin Match": {
+                "main": [
+                    [
+                        {
+                            "node": "Outbox Insert",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ],
+                    [
+                        {
+                            "node": "Ver Card Ayres",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Ver Card Ayres": {
+                "main": [
+                    [
+                        {
+                            "node": "Armar Novedad Ayres",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Armar Novedad Ayres": {
+                "main": [
+                    [
+                        {
+                            "node": "Comentar Card Ayres",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Comentar Card Ayres": {
+                "main": [
+                    [
+                        {
+                            "node": "Mover Card Ayres IF",
+                            "type": "main",
+                            "index": 0
+                        },
+                        {
+                            "node": "Cargar Aviso Ayres",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Mover Card Ayres IF": {
+                "main": [
+                    [
+                        {
+                            "node": "Mover Card Ayres",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Cargar Aviso Ayres": {
+                "main": [
+                    [
+                        {
+                            "node": "Aviso Ayres IF",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Aviso Ayres IF": {
+                "main": [
+                    [
+                        {
+                            "node": "Outbox Insert",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
             }
         },
         "authors": "Sistemas Desembarco",
@@ -2375,18 +3203,18 @@
         "autosaved": false,
         "workflowPublishHistory": [
             {
-                "createdAt": "2026-07-28T18:15:26.016Z",
-                "id": 282,
+                "createdAt": "2026-07-28T19:26:03.570Z",
+                "id": 291,
                 "workflowId": "G3YDTzNlb8i1x1Z4",
-                "versionId": "0675031d-37b8-4785-bd10-2e2be326e502",
+                "versionId": "40d64b6f-f4aa-4df8-a97d-088ee729e20b",
                 "event": "activated",
                 "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
             },
             {
-                "createdAt": "2026-07-28T18:15:25.991Z",
-                "id": 281,
+                "createdAt": "2026-07-28T19:26:03.517Z",
+                "id": 290,
                 "workflowId": "G3YDTzNlb8i1x1Z4",
-                "versionId": "0675031d-37b8-4785-bd10-2e2be326e502",
+                "versionId": "40d64b6f-f4aa-4df8-a97d-088ee729e20b",
                 "event": "deactivated",
                 "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
             }
