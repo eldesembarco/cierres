@@ -56,7 +56,8 @@ n8n (n8n.srv1312396.hstgr.cloud) workflow "WA Requerimientos → Trello"  [G3YDT
 
 - **Agregar un grupo "siempre ticket"** (todo mensaje del grupo genera card sin
   `#req`): editar el nodo `Filtrar y Normalizar` del workflow y agregar el JID
-  del grupo al array `ALWAYS_CHATS`.
+  del grupo al array `ALWAYS_CHATS`. Configurado: grupo **"SOPORTE SISTEMAS"**
+  (`120363410062969047@g.us`).
 - **Cambiar lista destino**: query param `idList` del nodo `Crear Card Trello`.
 - **Prompt/categorías**: nodo `Armar Prompt Gemini`.
 

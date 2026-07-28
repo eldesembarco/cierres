@@ -1,5 +1,5 @@
 {
-    "updatedAt": "2026-07-28T11:14:40.971Z",
+    "updatedAt": "2026-07-28T11:32:04.786Z",
     "createdAt": "2026-07-27T17:19:45.942Z",
     "id": "G3YDTzNlb8i1x1Z4",
     "name": "WA Requerimientos \u00e2\u2020\u2019 Trello",
@@ -34,7 +34,7 @@
                 0
             ],
             "parameters": {
-                "jsCode": "// Recibe el push del bridge WhatsApp local. Filtra: token, trigger #req, dedupe.\nconst TOKEN = '660085b0160db3effde5cbb8fe4b6fc5cda3fe70ef79dfe7d959a419f2913d68';\n// Chats donde TODO mensaje es requerimiento (agregar JIDs de grupos dedicados aca):\nconst ALWAYS_CHATS = [];\nconst RE_TRIGGER = /^\\s*#(req|ticket|requerimiento)\\b[:\\-]?\\s*/i;\n\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.seen)) sd.seen = [];\nconst out = [];\n\nfor (const item of $input.all()) {\n  const headers = item.json.headers || {};\n  const p = item.json.body || {};\n  if ((headers['x-bridge-token'] || '') !== TOKEN) continue;\n  if (p.eventType === 'reaction') continue;\n  const content = (p.content || '').trim();\n  const isAlways = ALWAYS_CHATS.includes(p.chatJID);\n  const m = content.match(RE_TRIGGER);\n  if (!m && !isAlways) continue;\n  const texto = m ? content.replace(RE_TRIGGER, '').trim() : content;\n  if (!texto && !p.mediaBase64) continue;\n\n  // Dedupe: por messageId si existe, sino hash de dia+chat+sender+contenido\n  let dedupeKey = p.messageId;\n  if (!dedupeKey) {\n    const key = `${new Date().toISOString().slice(0, 10)}|${p.chatJID}|${p.sender}|${content}`.slice(0, 500);\n    let hash = 0;\n    for (let i = 0; i < key.length; i++) hash = ((hash << 5) - hash + key.charCodeAt(i)) | 0;\n    dedupeKey = `h${hash}`;\n  }\n  if (sd.seen.includes(dedupeKey)) continue;\n  sd.seen.push(dedupeKey);\n  if (sd.seen.length > 300) sd.seen = sd.seen.slice(-200);\n\n  out.push({ json: {\n    texto,\n    sender: p.sender || '',\n    chatJID: p.chatJID || '',\n    isFromMe: !!p.isFromMe,\n    quotedContent: p.quotedContent || '',\n    quotedSender: p.quotedSender || '',\n    mediaBase64: p.mediaBase64 || '',\n    mimeType: p.mimeType || '',\n    mediaFilename: p.mediaFilename || '',\n    recibido: new Date().toISOString()\n  }});\n}\nreturn out;"
+                "jsCode": "// Recibe el push del bridge WhatsApp local. Filtra: token, trigger #req, dedupe.\nconst TOKEN = '660085b0160db3effde5cbb8fe4b6fc5cda3fe70ef79dfe7d959a419f2913d68';\n// Chats donde TODO mensaje es requerimiento (agregar JIDs de grupos dedicados aca):\nconst ALWAYS_CHATS = ['120363410062969047@g.us']; // SOPORTE SISTEMAS\nconst RE_TRIGGER = /^\\s*#(req|ticket|requerimiento)\\b[:\\-]?\\s*/i;\n\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.seen)) sd.seen = [];\nconst out = [];\n\nfor (const item of $input.all()) {\n  const headers = item.json.headers || {};\n  const p = item.json.body || {};\n  if ((headers['x-bridge-token'] || '') !== TOKEN) continue;\n  if (p.eventType === 'reaction') continue;\n  const content = (p.content || '').trim();\n  const isAlways = ALWAYS_CHATS.includes(p.chatJID);\n  const m = content.match(RE_TRIGGER);\n  if (!m && !isAlways) continue;\n  const texto = m ? content.replace(RE_TRIGGER, '').trim() : content;\n  if (!texto && !p.mediaBase64) continue;\n\n  // Dedupe: por messageId si existe, sino hash de dia+chat+sender+contenido\n  let dedupeKey = p.messageId;\n  if (!dedupeKey) {\n    const key = `${new Date().toISOString().slice(0, 10)}|${p.chatJID}|${p.sender}|${content}`.slice(0, 500);\n    let hash = 0;\n    for (let i = 0; i < key.length; i++) hash = ((hash << 5) - hash + key.charCodeAt(i)) | 0;\n    dedupeKey = `h${hash}`;\n  }\n  if (sd.seen.includes(dedupeKey)) continue;\n  sd.seen.push(dedupeKey);\n  if (sd.seen.length > 300) sd.seen = sd.seen.slice(-200);\n\n  out.push({ json: {\n    texto,\n    sender: p.sender || '',\n    chatJID: p.chatJID || '',\n    isFromMe: !!p.isFromMe,\n    quotedContent: p.quotedContent || '',\n    quotedSender: p.quotedSender || '',\n    mediaBase64: p.mediaBase64 || '',\n    mimeType: p.mimeType || '',\n    mediaFilename: p.mediaFilename || '',\n    recibido: new Date().toISOString()\n  }});\n}\nreturn out;"
             }
         },
         {
@@ -411,15 +411,16 @@
         "global": {
             "seen": [
                 "TEST-E2E-001",
-                "TEST-E2E-002"
+                "TEST-E2E-002",
+                "h2132823952"
             ]
         }
     },
     "meta": null,
     "pinData": null,
-    "versionId": "e6afc77d-60ea-494b-90ca-dc30c66a2422",
-    "activeVersionId": "e6afc77d-60ea-494b-90ca-dc30c66a2422",
-    "versionCounter": 9,
+    "versionId": "cdda101a-7819-4b1c-8c99-33200e07b450",
+    "activeVersionId": "cdda101a-7819-4b1c-8c99-33200e07b450",
+    "versionCounter": 13,
     "triggerCount": 1,
     "shared": [
         {
@@ -442,9 +443,9 @@
     ],
     "tags": [],
     "activeVersion": {
-        "updatedAt": "2026-07-28T11:14:40.977Z",
-        "createdAt": "2026-07-28T11:14:40.977Z",
-        "versionId": "e6afc77d-60ea-494b-90ca-dc30c66a2422",
+        "updatedAt": "2026-07-28T11:32:04.788Z",
+        "createdAt": "2026-07-28T11:32:04.788Z",
+        "versionId": "cdda101a-7819-4b1c-8c99-33200e07b450",
         "workflowId": "G3YDTzNlb8i1x1Z4",
         "nodes": [
             {
@@ -474,7 +475,7 @@
                     0
                 ],
                 "parameters": {
-                    "jsCode": "// Recibe el push del bridge WhatsApp local. Filtra: token, trigger #req, dedupe.\nconst TOKEN = '660085b0160db3effde5cbb8fe4b6fc5cda3fe70ef79dfe7d959a419f2913d68';\n// Chats donde TODO mensaje es requerimiento (agregar JIDs de grupos dedicados aca):\nconst ALWAYS_CHATS = [];\nconst RE_TRIGGER = /^\\s*#(req|ticket|requerimiento)\\b[:\\-]?\\s*/i;\n\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.seen)) sd.seen = [];\nconst out = [];\n\nfor (const item of $input.all()) {\n  const headers = item.json.headers || {};\n  const p = item.json.body || {};\n  if ((headers['x-bridge-token'] || '') !== TOKEN) continue;\n  if (p.eventType === 'reaction') continue;\n  const content = (p.content || '').trim();\n  const isAlways = ALWAYS_CHATS.includes(p.chatJID);\n  const m = content.match(RE_TRIGGER);\n  if (!m && !isAlways) continue;\n  const texto = m ? content.replace(RE_TRIGGER, '').trim() : content;\n  if (!texto && !p.mediaBase64) continue;\n\n  // Dedupe: por messageId si existe, sino hash de dia+chat+sender+contenido\n  let dedupeKey = p.messageId;\n  if (!dedupeKey) {\n    const key = `${new Date().toISOString().slice(0, 10)}|${p.chatJID}|${p.sender}|${content}`.slice(0, 500);\n    let hash = 0;\n    for (let i = 0; i < key.length; i++) hash = ((hash << 5) - hash + key.charCodeAt(i)) | 0;\n    dedupeKey = `h${hash}`;\n  }\n  if (sd.seen.includes(dedupeKey)) continue;\n  sd.seen.push(dedupeKey);\n  if (sd.seen.length > 300) sd.seen = sd.seen.slice(-200);\n\n  out.push({ json: {\n    texto,\n    sender: p.sender || '',\n    chatJID: p.chatJID || '',\n    isFromMe: !!p.isFromMe,\n    quotedContent: p.quotedContent || '',\n    quotedSender: p.quotedSender || '',\n    mediaBase64: p.mediaBase64 || '',\n    mimeType: p.mimeType || '',\n    mediaFilename: p.mediaFilename || '',\n    recibido: new Date().toISOString()\n  }});\n}\nreturn out;"
+                    "jsCode": "// Recibe el push del bridge WhatsApp local. Filtra: token, trigger #req, dedupe.\nconst TOKEN = '660085b0160db3effde5cbb8fe4b6fc5cda3fe70ef79dfe7d959a419f2913d68';\n// Chats donde TODO mensaje es requerimiento (agregar JIDs de grupos dedicados aca):\nconst ALWAYS_CHATS = ['120363410062969047@g.us']; // SOPORTE SISTEMAS\nconst RE_TRIGGER = /^\\s*#(req|ticket|requerimiento)\\b[:\\-]?\\s*/i;\n\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.seen)) sd.seen = [];\nconst out = [];\n\nfor (const item of $input.all()) {\n  const headers = item.json.headers || {};\n  const p = item.json.body || {};\n  if ((headers['x-bridge-token'] || '') !== TOKEN) continue;\n  if (p.eventType === 'reaction') continue;\n  const content = (p.content || '').trim();\n  const isAlways = ALWAYS_CHATS.includes(p.chatJID);\n  const m = content.match(RE_TRIGGER);\n  if (!m && !isAlways) continue;\n  const texto = m ? content.replace(RE_TRIGGER, '').trim() : content;\n  if (!texto && !p.mediaBase64) continue;\n\n  // Dedupe: por messageId si existe, sino hash de dia+chat+sender+contenido\n  let dedupeKey = p.messageId;\n  if (!dedupeKey) {\n    const key = `${new Date().toISOString().slice(0, 10)}|${p.chatJID}|${p.sender}|${content}`.slice(0, 500);\n    let hash = 0;\n    for (let i = 0; i < key.length; i++) hash = ((hash << 5) - hash + key.charCodeAt(i)) | 0;\n    dedupeKey = `h${hash}`;\n  }\n  if (sd.seen.includes(dedupeKey)) continue;\n  sd.seen.push(dedupeKey);\n  if (sd.seen.length > 300) sd.seen = sd.seen.slice(-200);\n\n  out.push({ json: {\n    texto,\n    sender: p.sender || '',\n    chatJID: p.chatJID || '',\n    isFromMe: !!p.isFromMe,\n    quotedContent: p.quotedContent || '',\n    quotedSender: p.quotedSender || '',\n    mediaBase64: p.mediaBase64 || '',\n    mimeType: p.mimeType || '',\n    mediaFilename: p.mediaFilename || '',\n    recibido: new Date().toISOString()\n  }});\n}\nreturn out;"
                 }
             },
             {
@@ -845,18 +846,18 @@
         "autosaved": false,
         "workflowPublishHistory": [
             {
-                "createdAt": "2026-07-28T11:14:41.237Z",
-                "id": 234,
+                "createdAt": "2026-07-28T11:32:04.852Z",
+                "id": 236,
                 "workflowId": "G3YDTzNlb8i1x1Z4",
-                "versionId": "e6afc77d-60ea-494b-90ca-dc30c66a2422",
+                "versionId": "cdda101a-7819-4b1c-8c99-33200e07b450",
                 "event": "activated",
                 "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
             },
             {
-                "createdAt": "2026-07-28T11:14:41.193Z",
-                "id": 233,
+                "createdAt": "2026-07-28T11:32:04.838Z",
+                "id": 235,
                 "workflowId": "G3YDTzNlb8i1x1Z4",
-                "versionId": "e6afc77d-60ea-494b-90ca-dc30c66a2422",
+                "versionId": "cdda101a-7819-4b1c-8c99-33200e07b450",
                 "event": "deactivated",
                 "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
             }
