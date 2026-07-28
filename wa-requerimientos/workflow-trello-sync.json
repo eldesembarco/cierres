@@ -1,5 +1,5 @@
 {
-    "updatedAt": "2026-07-28T12:23:42.730Z",
+    "updatedAt": "2026-07-28T16:26:21.619Z",
     "createdAt": "2026-07-28T12:07:57.406Z",
     "id": "LHbJVS18ZULzqToG",
     "name": "WA Requerimientos - Trello Sync (mesa de ayuda + resueltos)",
@@ -138,14 +138,13 @@
                         ]
                     },
                     "appendAttribution": false,
-                    "replyTo": "lrecchini@eldesembarco.com",
                     "senderName": "Luciano Recchini - El Desembarco"
                 }
             },
             "credentials": {
                 "gmailOAuth2": {
-                    "id": "lF9yQ6QkP6CKsCB6",
-                    "name": "Gmail account"
+                    "id": "f1LNQxtkdbexNoiC",
+                    "name": "Gmail account 3"
                 }
             },
             "retryOnFail": true,
@@ -168,14 +167,13 @@
                 "message": "={{ $json.cuerpo }}",
                 "options": {
                     "appendAttribution": false,
-                    "replyTo": "lrecchini@eldesembarco.com",
                     "senderName": "Luciano Recchini - El Desembarco"
                 }
             },
             "credentials": {
                 "gmailOAuth2": {
-                    "id": "lF9yQ6QkP6CKsCB6",
-                    "name": "Gmail account"
+                    "id": "f1LNQxtkdbexNoiC",
+                    "name": "Gmail account 3"
                 }
             },
             "retryOnFail": true,
@@ -616,9 +614,9 @@
     },
     "meta": null,
     "pinData": null,
-    "versionId": "984adc7a-7f42-4d75-9dd0-1d4613b491fa",
-    "activeVersionId": "984adc7a-7f42-4d75-9dd0-1d4613b491fa",
-    "versionCounter": 16,
+    "versionId": "0d726f0c-e593-4291-8445-38632f748851",
+    "activeVersionId": "0d726f0c-e593-4291-8445-38632f748851",
+    "versionCounter": 22,
     "triggerCount": 1,
     "shared": [
         {
@@ -641,9 +639,9 @@
     ],
     "tags": [],
     "activeVersion": {
-        "updatedAt": "2026-07-28T12:23:42.731Z",
-        "createdAt": "2026-07-28T12:23:42.731Z",
-        "versionId": "984adc7a-7f42-4d75-9dd0-1d4613b491fa",
+        "updatedAt": "2026-07-28T16:26:21.620Z",
+        "createdAt": "2026-07-28T16:26:21.620Z",
+        "versionId": "0d726f0c-e593-4291-8445-38632f748851",
         "workflowId": "LHbJVS18ZULzqToG",
         "nodes": [
             {
@@ -777,14 +775,13 @@
                             ]
                         },
                         "appendAttribution": false,
-                        "replyTo": "lrecchini@eldesembarco.com",
                         "senderName": "Luciano Recchini - El Desembarco"
                     }
                 },
                 "credentials": {
                     "gmailOAuth2": {
-                        "id": "lF9yQ6QkP6CKsCB6",
-                        "name": "Gmail account"
+                        "id": "f1LNQxtkdbexNoiC",
+                        "name": "Gmail account 3"
                     }
                 },
                 "retryOnFail": true,
@@ -807,14 +804,13 @@
                     "message": "={{ $json.cuerpo }}",
                     "options": {
                         "appendAttribution": false,
-                        "replyTo": "lrecchini@eldesembarco.com",
                         "senderName": "Luciano Recchini - El Desembarco"
                     }
                 },
                 "credentials": {
                     "gmailOAuth2": {
-                        "id": "lF9yQ6QkP6CKsCB6",
-                        "name": "Gmail account"
+                        "id": "f1LNQxtkdbexNoiC",
+                        "name": "Gmail account 3"
                     }
                 },
                 "retryOnFail": true,
@@ -1240,18 +1236,18 @@
         "autosaved": false,
         "workflowPublishHistory": [
             {
-                "createdAt": "2026-07-28T12:23:42.780Z",
-                "id": 245,
+                "createdAt": "2026-07-28T16:26:21.707Z",
+                "id": 250,
                 "workflowId": "LHbJVS18ZULzqToG",
-                "versionId": "984adc7a-7f42-4d75-9dd0-1d4613b491fa",
+                "versionId": "0d726f0c-e593-4291-8445-38632f748851",
                 "event": "activated",
                 "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
             },
             {
-                "createdAt": "2026-07-28T12:23:42.767Z",
-                "id": 244,
+                "createdAt": "2026-07-28T16:26:21.684Z",
+                "id": 249,
                 "workflowId": "LHbJVS18ZULzqToG",
-                "versionId": "984adc7a-7f42-4d75-9dd0-1d4613b491fa",
+                "versionId": "0d726f0c-e593-4291-8445-38632f748851",
                 "event": "deactivated",
                 "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
             }

@@ -54,15 +54,41 @@ Workflow `LHbJVS18ZULzqToG` — cron cada 1 min (ejecuciones exitosas NO se
 guardan; errores sí). Flujo operado por Pablo arrastrando cards:
 
 - Card en **"Enviar a Mesa Tango"** → email a `mesadeayuda@seincomp.com.ar`
-  (Seincomp) con el requerimiento + primer adjunto, desde la Gmail de n8n
-  (`Gmail account`, cred `lF9yQ6QkP6CKsCB6`), la card pasa a **"Enviado a mesa
-  de ayuda"** con comentario 📧 de auditoría.
+  (Seincomp) con el requerimiento + TODOS los adjuntos, **desde
+  `lrecchini@eldesembarco.com`** (cred OAuth `f1LNQxtkdbexNoiC` "Gmail account 3"),
+  la card pasa a **"Enviado a mesa de ayuda"** con comentario 📧 de auditoría.
 - Card en **"Enviar a Mesa Ayres IT"** → mismo circuito. ⚠️ PENDIENTE: casilla
   real de Ayres IT — hoy apunta a `polejavetzky@eldesembarco.com` (placeholder).
   Cambiar en el mapa `MESAS` del nodo `Preparar Email`.
 - Card en **"Resuelto"** → notifica ✅ por WhatsApp al chat de origen (parsea
   `**Chat:**` de la descripción; cards manuales sin ese campo no notifican),
   comenta 🔔 en la card. Dedupe de notificaciones en staticData (`notified`).
+
+## Workflow 3: Respuestas de mesa de ayuda
+
+Workflow `JPYTBT00v78HcBsB` — Gmail Trigger (cada 1 min) sobre la bandeja de
+**lrecchini@eldesembarco.com**: query `(from:seincomp.com.ar OR subject:"[El
+Desembarco]") -from:lrecchini@...`. Por cada respuesta: busca el link
+`trello.com/c/XXX` en el cuerpo (viene de la "Referencia interna" del mail
+original), detecta el nro de ticket (`ticket|caso|#NNN`) y **comenta la card**
+(🎫 + remitente + asunto + resumen). La respuesta queda naturalmente en la
+bandeja de Luciano (ya no hay reenvío).
+
+## Identidad de correo (lrecchini@eldesembarco.com)
+
+- Los mails salen y las respuestas se leen con la credencial OAuth
+  **"Gmail account 3"** (`f1LNQxtkdbexNoiC`), cuenta `lrecchini@eldesembarco.com`.
+- Infra Google detrás: proyecto GCP **n8n-mail-desembarco** (bajo la cuenta
+  lrecchini, org eldesembarco.com), Gmail API habilitada, consent screen
+  interna "n8n Desembarco", cliente OAuth "n8n lrecchini" con redirect
+  `https://n8n.srv1312396.hstgr.cloud/rest/oauth2-credential/callback`.
+- Usuario n8n **lrecchini@eldesembarco.com** (member) creado vía invite API;
+  la credencial se creó bajo ese usuario y se transfirió al proyecto
+  "Sistemas Desembarco" vía `PUT /api/v1/credentials/:id/transfer`.
+- Gotcha: el panel de navegador de Claude bloquea popups → el flujo "Sign in
+  with Google" se resolvió interceptando `window.open` y navegando la URL de
+  consentimiento en la misma pestaña. NO navegar a mano `/rest/...` de n8n
+  logueado: invalida la sesión del UI.
 
 Columnas del board: Entrantes → En curso → Enviar a Mesa Tango → Enviar a Mesa
 Ayres IT → Enviado a mesa de ayuda → Resuelto.

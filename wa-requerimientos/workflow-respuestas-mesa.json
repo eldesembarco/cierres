@@ -1,0 +1,456 @@
+{
+    "updatedAt": "2026-07-28T16:35:25.717Z",
+    "createdAt": "2026-07-28T14:13:32.784Z",
+    "id": "JPYTBT00v78HcBsB",
+    "name": "WA Requerimientos - Respuestas Mesa de Ayuda",
+    "description": null,
+    "active": true,
+    "isArchived": false,
+    "nodes": [
+        {
+            "id": "trigger-gmail",
+            "name": "Nueva Respuesta Mesa",
+            "type": "n8n-nodes-base.gmailTrigger",
+            "typeVersion": 1.2,
+            "position": [
+                0,
+                0
+            ],
+            "parameters": {
+                "pollTimes": {
+                    "item": [
+                        {
+                            "mode": "everyMinute"
+                        }
+                    ]
+                },
+                "simple": true,
+                "filters": {
+                    "q": "(from:seincomp.com.ar OR subject:\"[El Desembarco]\") -from:lrecchini@eldesembarco.com"
+                },
+                "options": {}
+            },
+            "credentials": {
+                "gmailOAuth2": {
+                    "id": "f1LNQxtkdbexNoiC",
+                    "name": "Gmail account 3"
+                }
+            }
+        },
+        {
+            "id": "gmail-get",
+            "name": "Leer Mail Completo",
+            "type": "n8n-nodes-base.gmail",
+            "typeVersion": 2.1,
+            "position": [
+                220,
+                0
+            ],
+            "parameters": {
+                "resource": "message",
+                "operation": "get",
+                "messageId": "={{ $json.id }}",
+                "simple": false,
+                "options": {}
+            },
+            "credentials": {
+                "gmailOAuth2": {
+                    "id": "f1LNQxtkdbexNoiC",
+                    "name": "Gmail account 3"
+                }
+            },
+            "retryOnFail": true,
+            "maxTries": 2,
+            "waitBetweenTries": 3000
+        },
+        {
+            "id": "code-parsear",
+            "name": "Parsear Respuesta",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                440,
+                0
+            ],
+            "parameters": {
+                "jsCode": "// Extrae texto del mail, busca la referencia a la card de Trello y el nro de ticket de la mesa.\nfunction b64url(s) {\n  try { return Buffer.from((s || '').replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8'); } catch (e) { return ''; }\n}\nfunction collectText(payload, out) {\n  if (!payload) return;\n  if (payload.mimeType === 'text/plain' && payload.body && payload.body.data) out.plain.push(b64url(payload.body.data));\n  if (payload.mimeType === 'text/html' && payload.body && payload.body.data) out.html.push(b64url(payload.body.data));\n  for (const p of payload.parts || []) collectText(p, out);\n}\nconst out = [];\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  const raw = items[i].json;\n  const meta = $('Nueva Respuesta Mesa').all()[i] ? $('Nueva Respuesta Mesa').all()[i].json : {};\n  const buf = { plain: [], html: [] };\n  collectText(raw.payload, buf);\n  let texto = buf.plain.join('\\n');\n  if (!texto && typeof raw.text === 'string' && raw.text) texto = raw.text;\n  if (!texto && typeof raw.textPlain === 'string' && raw.textPlain) texto = raw.textPlain;\n  if (!texto) {\n    const h = buf.html.join('\\n') || raw.html || raw.textHtml || raw.textAsHtml || '';\n    if (h) texto = String(h).replace(/<style[\\s\\S]*?<\\/style>/gi, '').replace(/<[^>]+>/g, ' ');\n  }\n  if (!texto) texto = raw.snippet || meta.snippet || '';\n  const headers = {};\n  for (const h of (raw.payload && raw.payload.headers) || []) headers[h.name.toLowerCase()] = h.value;\n  const subject = headers['subject'] || meta.Subject || meta.subject || '(sin asunto)';\n  const from = headers['from'] || meta.From || meta.from || '';\n  const mCard = texto.match(/https:\\/\\/trello\\.com\\/c\\/([A-Za-z0-9]+)/);\n  const mTicket = (subject + '\\n' + texto).match(/(?:ticket|caso|incidente|solicitud|nro\\.?|n\u00c2\u00b0|#)\\s*[:#]?\\s*(\\d{3,10})/i);\n  const resumen = texto.replace(/\\s+/g, ' ').trim().slice(0, 500);\n  out.push({ json: {\n    cardShort: mCard ? mCard[1] : '',\n    ticketNum: mTicket ? mTicket[1] : '',\n    from,\n    subject,\n    resumen\n  } });\n}\nreturn out;"
+            }
+        },
+        {
+            "id": "if-card",
+            "name": "Hay Card",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2.2,
+            "position": [
+                660,
+                0
+            ],
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "typeValidation": "loose",
+                        "version": 2
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                        {
+                            "leftValue": "={{ $json.cardShort }}",
+                            "rightValue": "",
+                            "operator": {
+                                "type": "string",
+                                "operation": "notEmpty",
+                                "singleValue": true
+                            }
+                        }
+                    ]
+                },
+                "options": {}
+            }
+        },
+        {
+            "id": "http-comentar-resp",
+            "name": "Comentar Card Respuesta",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.4,
+            "position": [
+                880,
+                -100
+            ],
+            "parameters": {
+                "method": "POST",
+                "url": "=https://api.trello.com/1/cards/{{ $json.cardShort }}/actions/comments",
+                "authentication": "predefinedCredentialType",
+                "nodeCredentialType": "trelloApi",
+                "sendQuery": true,
+                "queryParameters": {
+                    "parameters": [
+                        {
+                            "name": "text",
+                            "value": "={{ '\u00f0\u0178\u017d\u00ab Respuesta de la mesa de ayuda' + ($json.ticketNum ? ' \u00e2\u20ac\u201d Ticket #' + $json.ticketNum : '') + '\\n\\nDe: ' + $json.from + '\\nAsunto: ' + $json.subject + '\\n\\n' + $json.resumen }}"
+                        }
+                    ]
+                },
+                "options": {
+                    "timeout": 20000
+                }
+            },
+            "credentials": {
+                "trelloApi": {
+                    "id": "MUcIdiWUZ1Vhdf2h",
+                    "name": "Trello Desembarco"
+                }
+            },
+            "retryOnFail": true,
+            "maxTries": 2,
+            "waitBetweenTries": 3000,
+            "onError": "continueRegularOutput"
+        }
+    ],
+    "connections": {
+        "Nueva Respuesta Mesa": {
+            "main": [
+                [
+                    {
+                        "node": "Leer Mail Completo",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Leer Mail Completo": {
+            "main": [
+                [
+                    {
+                        "node": "Parsear Respuesta",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Parsear Respuesta": {
+            "main": [
+                [
+                    {
+                        "node": "Hay Card",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Hay Card": {
+            "main": [
+                [
+                    {
+                        "node": "Comentar Card Respuesta",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1",
+        "timezone": "America/Argentina/Buenos_Aires",
+        "saveDataErrorExecution": "all",
+        "saveDataSuccessExecution": "all",
+        "callerPolicy": "workflowsFromSameOwner",
+        "availableInMCP": false
+    },
+    "staticData": {
+        "node:Nueva Respuesta Mesa": {
+            "Nueva Respuesta Mesa": {
+                "lastTimeChecked": 1785256536,
+                "possibleDuplicates": [
+                    "19fa994ed84259c1",
+                    "19fa98e7b8e2090f"
+                ]
+            }
+        }
+    },
+    "meta": null,
+    "pinData": null,
+    "versionId": "7dd53623-05f7-40c8-91c8-a0d6d2be2f96",
+    "activeVersionId": "7dd53623-05f7-40c8-91c8-a0d6d2be2f96",
+    "versionCounter": 14,
+    "triggerCount": 1,
+    "shared": [
+        {
+            "updatedAt": "2026-07-28T14:13:32.800Z",
+            "createdAt": "2026-07-28T14:13:32.800Z",
+            "role": "workflow:owner",
+            "workflowId": "JPYTBT00v78HcBsB",
+            "projectId": "ocPw9pE4DMpA2RZi",
+            "project": {
+                "updatedAt": "2026-01-30T16:50:53.225Z",
+                "createdAt": "2026-01-30T16:46:45.454Z",
+                "id": "ocPw9pE4DMpA2RZi",
+                "name": "Sistemas Desembarco <sistemas.desembarco@gmail.com>",
+                "type": "personal",
+                "icon": null,
+                "description": null,
+                "creatorId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
+            }
+        }
+    ],
+    "tags": [],
+    "activeVersion": {
+        "updatedAt": "2026-07-28T16:35:25.720Z",
+        "createdAt": "2026-07-28T16:35:25.720Z",
+        "versionId": "7dd53623-05f7-40c8-91c8-a0d6d2be2f96",
+        "workflowId": "JPYTBT00v78HcBsB",
+        "nodes": [
+            {
+                "id": "trigger-gmail",
+                "name": "Nueva Respuesta Mesa",
+                "type": "n8n-nodes-base.gmailTrigger",
+                "typeVersion": 1.2,
+                "position": [
+                    0,
+                    0
+                ],
+                "parameters": {
+                    "pollTimes": {
+                        "item": [
+                            {
+                                "mode": "everyMinute"
+                            }
+                        ]
+                    },
+                    "simple": true,
+                    "filters": {
+                        "q": "(from:seincomp.com.ar OR subject:\"[El Desembarco]\") -from:lrecchini@eldesembarco.com"
+                    },
+                    "options": {}
+                },
+                "credentials": {
+                    "gmailOAuth2": {
+                        "id": "f1LNQxtkdbexNoiC",
+                        "name": "Gmail account 3"
+                    }
+                }
+            },
+            {
+                "id": "gmail-get",
+                "name": "Leer Mail Completo",
+                "type": "n8n-nodes-base.gmail",
+                "typeVersion": 2.1,
+                "position": [
+                    220,
+                    0
+                ],
+                "parameters": {
+                    "resource": "message",
+                    "operation": "get",
+                    "messageId": "={{ $json.id }}",
+                    "simple": false,
+                    "options": {}
+                },
+                "credentials": {
+                    "gmailOAuth2": {
+                        "id": "f1LNQxtkdbexNoiC",
+                        "name": "Gmail account 3"
+                    }
+                },
+                "retryOnFail": true,
+                "maxTries": 2,
+                "waitBetweenTries": 3000
+            },
+            {
+                "id": "code-parsear",
+                "name": "Parsear Respuesta",
+                "type": "n8n-nodes-base.code",
+                "typeVersion": 2,
+                "position": [
+                    440,
+                    0
+                ],
+                "parameters": {
+                    "jsCode": "// Extrae texto del mail, busca la referencia a la card de Trello y el nro de ticket de la mesa.\nfunction b64url(s) {\n  try { return Buffer.from((s || '').replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8'); } catch (e) { return ''; }\n}\nfunction collectText(payload, out) {\n  if (!payload) return;\n  if (payload.mimeType === 'text/plain' && payload.body && payload.body.data) out.plain.push(b64url(payload.body.data));\n  if (payload.mimeType === 'text/html' && payload.body && payload.body.data) out.html.push(b64url(payload.body.data));\n  for (const p of payload.parts || []) collectText(p, out);\n}\nconst out = [];\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  const raw = items[i].json;\n  const meta = $('Nueva Respuesta Mesa').all()[i] ? $('Nueva Respuesta Mesa').all()[i].json : {};\n  const buf = { plain: [], html: [] };\n  collectText(raw.payload, buf);\n  let texto = buf.plain.join('\\n');\n  if (!texto && typeof raw.text === 'string' && raw.text) texto = raw.text;\n  if (!texto && typeof raw.textPlain === 'string' && raw.textPlain) texto = raw.textPlain;\n  if (!texto) {\n    const h = buf.html.join('\\n') || raw.html || raw.textHtml || raw.textAsHtml || '';\n    if (h) texto = String(h).replace(/<style[\\s\\S]*?<\\/style>/gi, '').replace(/<[^>]+>/g, ' ');\n  }\n  if (!texto) texto = raw.snippet || meta.snippet || '';\n  const headers = {};\n  for (const h of (raw.payload && raw.payload.headers) || []) headers[h.name.toLowerCase()] = h.value;\n  const subject = headers['subject'] || meta.Subject || meta.subject || '(sin asunto)';\n  const from = headers['from'] || meta.From || meta.from || '';\n  const mCard = texto.match(/https:\\/\\/trello\\.com\\/c\\/([A-Za-z0-9]+)/);\n  const mTicket = (subject + '\\n' + texto).match(/(?:ticket|caso|incidente|solicitud|nro\\.?|n\u00c2\u00b0|#)\\s*[:#]?\\s*(\\d{3,10})/i);\n  const resumen = texto.replace(/\\s+/g, ' ').trim().slice(0, 500);\n  out.push({ json: {\n    cardShort: mCard ? mCard[1] : '',\n    ticketNum: mTicket ? mTicket[1] : '',\n    from,\n    subject,\n    resumen\n  } });\n}\nreturn out;"
+                }
+            },
+            {
+                "id": "if-card",
+                "name": "Hay Card",
+                "type": "n8n-nodes-base.if",
+                "typeVersion": 2.2,
+                "position": [
+                    660,
+                    0
+                ],
+                "parameters": {
+                    "conditions": {
+                        "options": {
+                            "caseSensitive": true,
+                            "typeValidation": "loose",
+                            "version": 2
+                        },
+                        "combinator": "and",
+                        "conditions": [
+                            {
+                                "leftValue": "={{ $json.cardShort }}",
+                                "rightValue": "",
+                                "operator": {
+                                    "type": "string",
+                                    "operation": "notEmpty",
+                                    "singleValue": true
+                                }
+                            }
+                        ]
+                    },
+                    "options": {}
+                }
+            },
+            {
+                "id": "http-comentar-resp",
+                "name": "Comentar Card Respuesta",
+                "type": "n8n-nodes-base.httpRequest",
+                "typeVersion": 4.4,
+                "position": [
+                    880,
+                    -100
+                ],
+                "parameters": {
+                    "method": "POST",
+                    "url": "=https://api.trello.com/1/cards/{{ $json.cardShort }}/actions/comments",
+                    "authentication": "predefinedCredentialType",
+                    "nodeCredentialType": "trelloApi",
+                    "sendQuery": true,
+                    "queryParameters": {
+                        "parameters": [
+                            {
+                                "name": "text",
+                                "value": "={{ '\u00f0\u0178\u017d\u00ab Respuesta de la mesa de ayuda' + ($json.ticketNum ? ' \u00e2\u20ac\u201d Ticket #' + $json.ticketNum : '') + '\\n\\nDe: ' + $json.from + '\\nAsunto: ' + $json.subject + '\\n\\n' + $json.resumen }}"
+                            }
+                        ]
+                    },
+                    "options": {
+                        "timeout": 20000
+                    }
+                },
+                "credentials": {
+                    "trelloApi": {
+                        "id": "MUcIdiWUZ1Vhdf2h",
+                        "name": "Trello Desembarco"
+                    }
+                },
+                "retryOnFail": true,
+                "maxTries": 2,
+                "waitBetweenTries": 3000,
+                "onError": "continueRegularOutput"
+            }
+        ],
+        "connections": {
+            "Nueva Respuesta Mesa": {
+                "main": [
+                    [
+                        {
+                            "node": "Leer Mail Completo",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Leer Mail Completo": {
+                "main": [
+                    [
+                        {
+                            "node": "Parsear Respuesta",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Parsear Respuesta": {
+                "main": [
+                    [
+                        {
+                            "node": "Hay Card",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Hay Card": {
+                "main": [
+                    [
+                        {
+                            "node": "Comentar Card Respuesta",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            }
+        },
+        "authors": "Sistemas Desembarco",
+        "name": null,
+        "description": null,
+        "autosaved": false,
+        "workflowPublishHistory": [
+            {
+                "createdAt": "2026-07-28T16:35:26.811Z",
+                "id": 255,
+                "workflowId": "JPYTBT00v78HcBsB",
+                "versionId": "7dd53623-05f7-40c8-91c8-a0d6d2be2f96",
+                "event": "activated",
+                "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
+            },
+            {
+                "createdAt": "2026-07-28T16:35:25.767Z",
+                "id": 254,
+                "workflowId": "JPYTBT00v78HcBsB",
+                "versionId": "7dd53623-05f7-40c8-91c8-a0d6d2be2f96",
+                "event": "deactivated",
+                "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
+            }
+        ]
+    }
+}
