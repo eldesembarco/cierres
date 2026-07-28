@@ -24,16 +24,29 @@ La card sale en el board **Requerimientos** → lista **Entrantes**, con:
 
 ```
 WhatsApp ── bridge Go local (whatsapp-mcp-vgp, tarea "WhatsAppBridge")
-                │  POST cada mensaje (header X-Bridge-Token)
+                │  POST cada mensaje/reacción (header X-Bridge-Token)
                 ▼
 n8n (n8n.srv1312396.hstgr.cloud) workflow "WA Requerimientos → Trello"  [G3YDTzNlb8i1x1Z4]
    Webhook /webhook/wa-requerimientos
-   → Filtrar y Normalizar (token + trigger #req + dedupe en staticData)
-   → Gemini 2.5 Flash Lite (Vertex, cred G57aSdJ8sznWrlnP) → {titulo, descripcion, categoria, prioridad, local}
-   →(si falla Gemini: fallback con texto crudo)
-   → Crear card Trello (cred trelloApi MUcIdiWUZ1Vhdf2h "Trello Desembarco")
-   → si había imagen: adjuntarla a la card
+   → Filtrar y Normalizar (token + router: ticket | continuacion | reaccion + dedupe)
+   ├─ ticket:       Gemini (Vertex) → card Trello + adjunto → confirmación ✅ por WhatsApp
+   ├─ continuacion: foto suelta <5min del último ticket del remitente
+   │                → se ADJUNTA a esa card + aviso 📎 con opción 👎
+   └─ reaccion 👎:  (ventana 15min) mueve la foto a un ticket NUEVO
+                    (baja adjunto, crea card vía Gemini vision, borra el viejo)
+
+Salida WhatsApp (confirmaciones/avisos):
+   workflow inserta filas en Data Table `wa_outbox` (W7rPitDcioXfqBfb, append-only)
+   → poller local "WhatsAppOutbox" (wa-outbox-poller.ps1, cada 5s, puntero en
+     bridge/outbox-lastid.txt) → bridge /api/send → WhatsApp
 ```
+
+Reglas de UX:
+- Grupo SOPORTE SISTEMAS: todo mensaje = ticket. Otros chats: prefijo `#req`.
+- Foto + texto en el MISMO mensaje (caption) = un solo ticket con adjunto.
+- Foto suelta hasta 5 min después de tu ticket = se adjunta a ese ticket; el
+  bot avisa y con reaccionar 👎 a la foto se separa en ticket propio.
+- Toda card creada se confirma en el chat con el link de Trello.
 
 ## IDs / referencias
 
@@ -49,6 +62,8 @@ n8n (n8n.srv1312396.hstgr.cloud) workflow "WA Requerimientos → Trello"  [G3YDT
 | Power-Up Trello | "WA Requerimientos n8n" (admin en trello.com/power-ups/admin de esa cuenta) |
 | Bridge | `C:\Users\ferra\dev\whatsapp-mcp-vgp\whatsapp-bridge\whatsapp-bridge.exe` |
 | Tarea programada | `WhatsAppBridge` (al logon, loop de reinicio) |
+| Tarea poller salida | `WhatsAppOutbox` (al logon; `wa-outbox-poller.ps1`, log `bridge/outbox.log`) |
+| Data Table outbox | `wa_outbox` = `W7rPitDcioXfqBfb` (API `/api/v1/data-tables/.../rows`) |
 | Log bridge | `wa-requerimientos/bridge/bridge.log` |
 | Token bridge | `whatsapp-bridge/store/.bridge-token` (mismo valor hardcodeado en nodo "Filtrar y Normalizar") |
 
@@ -89,6 +104,12 @@ n8n (n8n.srv1312396.hstgr.cloud) workflow "WA Requerimientos → Trello"  [G3YDT
   Pablo. Si los tickets deben verse desde otra cuenta, invitarla al board.
 - Prueba E2E 2026-07-28: cards de prueba `TEST-E2E-001/002` (freidora Palermo,
   cartel Recoleta con adjunto) creadas OK.
+- QA v2 2026-07-28 (3 casos, payloads simulados hacia el chat propio): (1) ticket
+  texto + confirmación ✅ enviada; (2) foto suelta adjuntada al ticket previo +
+  aviso 📎; (3) reacción 👎 movió la foto a card nueva (Gemini vision tituló
+  desde la imagen) y la borró de la vieja. Cards QA archivadas.
+- Gotcha QA: curl desde Bash/Windows destroza emojis inline (`👎`→`??`) — para
+  simular reacciones usar `--data-binary @archivo`. El bridge real no sufre esto.
 
 ## Fase 2 (ideas)
 

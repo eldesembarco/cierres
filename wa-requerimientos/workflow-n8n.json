@@ -1,5 +1,5 @@
 {
-    "updatedAt": "2026-07-28T11:32:04.786Z",
+    "updatedAt": "2026-07-28T11:50:50.469Z",
     "createdAt": "2026-07-27T17:19:45.942Z",
     "id": "G3YDTzNlb8i1x1Z4",
     "name": "WA Requerimientos \u00e2\u2020\u2019 Trello",
@@ -16,13 +16,13 @@
                 0,
                 0
             ],
+            "webhookId": "d2189177-e9bd-440b-ae99-b9ef13aa8660",
             "parameters": {
                 "httpMethod": "POST",
                 "path": "wa-requerimientos",
                 "responseMode": "onReceived",
                 "options": {}
-            },
-            "webhookId": "d2189177-e9bd-440b-ae99-b9ef13aa8660"
+            }
         },
         {
             "id": "code-filtrar",
@@ -30,11 +30,73 @@
             "type": "n8n-nodes-base.code",
             "typeVersion": 2,
             "position": [
-                220,
+                200,
                 0
             ],
             "parameters": {
-                "jsCode": "// Recibe el push del bridge WhatsApp local. Filtra: token, trigger #req, dedupe.\nconst TOKEN = '660085b0160db3effde5cbb8fe4b6fc5cda3fe70ef79dfe7d959a419f2913d68';\n// Chats donde TODO mensaje es requerimiento (agregar JIDs de grupos dedicados aca):\nconst ALWAYS_CHATS = ['120363410062969047@g.us']; // SOPORTE SISTEMAS\nconst RE_TRIGGER = /^\\s*#(req|ticket|requerimiento)\\b[:\\-]?\\s*/i;\n\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.seen)) sd.seen = [];\nconst out = [];\n\nfor (const item of $input.all()) {\n  const headers = item.json.headers || {};\n  const p = item.json.body || {};\n  if ((headers['x-bridge-token'] || '') !== TOKEN) continue;\n  if (p.eventType === 'reaction') continue;\n  const content = (p.content || '').trim();\n  const isAlways = ALWAYS_CHATS.includes(p.chatJID);\n  const m = content.match(RE_TRIGGER);\n  if (!m && !isAlways) continue;\n  const texto = m ? content.replace(RE_TRIGGER, '').trim() : content;\n  if (!texto && !p.mediaBase64) continue;\n\n  // Dedupe: por messageId si existe, sino hash de dia+chat+sender+contenido\n  let dedupeKey = p.messageId;\n  if (!dedupeKey) {\n    const key = `${new Date().toISOString().slice(0, 10)}|${p.chatJID}|${p.sender}|${content}`.slice(0, 500);\n    let hash = 0;\n    for (let i = 0; i < key.length; i++) hash = ((hash << 5) - hash + key.charCodeAt(i)) | 0;\n    dedupeKey = `h${hash}`;\n  }\n  if (sd.seen.includes(dedupeKey)) continue;\n  sd.seen.push(dedupeKey);\n  if (sd.seen.length > 300) sd.seen = sd.seen.slice(-200);\n\n  out.push({ json: {\n    texto,\n    sender: p.sender || '',\n    chatJID: p.chatJID || '',\n    isFromMe: !!p.isFromMe,\n    quotedContent: p.quotedContent || '',\n    quotedSender: p.quotedSender || '',\n    mediaBase64: p.mediaBase64 || '',\n    mimeType: p.mimeType || '',\n    mediaFilename: p.mediaFilename || '',\n    recibido: new Date().toISOString()\n  }});\n}\nreturn out;"
+                "jsCode": "// Router de eventos del bridge: token, trigger #req, continuacion de foto, reacciones, dedupe.\nconst TOKEN = '660085b0160db3effde5cbb8fe4b6fc5cda3fe70ef79dfe7d959a419f2913d68';\nconst ALWAYS_CHATS = ['120363410062969047@g.us']; // SOPORTE SISTEMAS\nconst RE_TRIGGER = /^\\s*#(req|ticket|requerimiento)\\b[:\\-]?\\s*/i;\nconst WINDOW_MS = 5 * 60 * 1000; // ventana de continuacion foto\n\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.seen)) sd.seen = [];\nif (!sd.lastTicket) sd.lastTicket = {};\nif (!sd.pendingUndo) sd.pendingUndo = {};\nconst out = [];\n\nfor (const item of $input.all()) {\n  const headers = item.json.headers || {};\n  const p = item.json.body || {};\n  if ((headers['x-bridge-token'] || '') !== TOKEN) continue;\n  const chat = p.chatJID || '';\n  const sender = p.sender || '';\n  const key = chat + '|' + sender;\n\n  if (p.eventType === 'reaction') {\n    const emoji = p.reactionEmoji || p.content || '';\n    if (p.reactionRemoved) continue;\n    out.push({ json: { ruta: 'reaccion', chatJID: chat, sender, emoji, recibido: new Date().toISOString() } });\n    continue;\n  }\n\n  const content = (p.content || '').trim();\n  const m = content.match(RE_TRIGGER);\n  const isAlways = ALWAYS_CHATS.includes(chat);\n  const hasMedia = !!p.mediaBase64;\n  const texto = m ? content.replace(RE_TRIGGER, '').trim() : content;\n  const lt = sd.lastTicket[key];\n  const fresh = lt && (Date.now() - lt.ts) < WINDOW_MS;\n\n  let ruta = null;\n  if (hasMedia && fresh && !m && (!texto || texto.length < 20)) {\n    ruta = 'continuacion'; // foto suelta poco despues de un ticket del mismo remitente\n  } else if (m || isAlways) {\n    if (!texto && !hasMedia) continue;\n    ruta = 'ticket';\n  } else {\n    continue;\n  }\n\n  // Dedupe: por messageId si existe, sino hash de dia+chat+sender+contenido\n  let dedupeKey = p.messageId;\n  if (!dedupeKey) {\n    const k = `${new Date().toISOString().slice(0, 10)}|${chat}|${sender}|${content}`.slice(0, 500);\n    let h = 0;\n    for (let i = 0; i < k.length; i++) h = ((h << 5) - h + k.charCodeAt(i)) | 0;\n    dedupeKey = 'h' + h;\n  }\n  if (sd.seen.includes(dedupeKey)) continue;\n  sd.seen.push(dedupeKey);\n  if (sd.seen.length > 300) sd.seen = sd.seen.slice(-200);\n\n  const base = {\n    ruta,\n    texto,\n    sender,\n    chatJID: chat,\n    isFromMe: !!p.isFromMe,\n    msgId: p.messageId || '',\n    quotedContent: p.quotedContent || '',\n    quotedSender: p.quotedSender || '',\n    mediaBase64: p.mediaBase64 || '',\n    mimeType: p.mimeType || '',\n    mediaFilename: p.mediaFilename || '',\n    recibido: new Date().toISOString()\n  };\n  if (ruta === 'continuacion') {\n    out.push({ json: { ...base, cardId: lt.cardId, cardName: lt.cardName, shortUrl: lt.shortUrl } });\n  } else {\n    out.push({ json: base });\n  }\n}\nreturn out;"
+            }
+        },
+        {
+            "id": "if-reaccion",
+            "name": "Es Reaccion",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2.2,
+            "position": [
+                400,
+                0
+            ],
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "typeValidation": "loose",
+                        "version": 2
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                        {
+                            "leftValue": "={{ $json.ruta }}",
+                            "rightValue": "reaccion",
+                            "operator": {
+                                "type": "string",
+                                "operation": "equals"
+                            }
+                        }
+                    ]
+                },
+                "options": {}
+            }
+        },
+        {
+            "id": "if-continuacion",
+            "name": "Es Continuacion",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2.2,
+            "position": [
+                600,
+                100
+            ],
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "typeValidation": "loose",
+                        "version": 2
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                        {
+                            "leftValue": "={{ $json.ruta }}",
+                            "rightValue": "continuacion",
+                            "operator": {
+                                "type": "string",
+                                "operation": "equals"
+                            }
+                        }
+                    ]
+                },
+                "options": {}
             }
         },
         {
@@ -43,8 +105,8 @@
             "type": "n8n-nodes-base.code",
             "typeVersion": 2,
             "position": [
-                440,
-                0
+                820,
+                200
             ],
             "parameters": {
                 "jsCode": "const out = [];\nfor (const item of $input.all()) {\n  const j = item.json;\n  const parts = [];\n  if (j.mediaBase64 && (j.mimeType || '').startsWith('image/')) {\n    parts.push({ inline_data: { mime_type: j.mimeType, data: j.mediaBase64 } });\n  }\n  const ctx = j.quotedContent ? `\\n\\nMensaje citado (contexto): \\\"${j.quotedContent}\\\"` : '';\n  parts.push({ text: `Sos el asistente de sistemas del grupo gastronomico El Desembarco (hamburgueserias: El Desembarco, Mr Tasty, Mila&Go; ~18 locales propios en Buenos Aires). Convertis requerimientos que llegan por WhatsApp en tickets de trabajo.\\n\\nRequerimiento recibido de ${j.sender}:\\n\\\"\\\"\\\"${j.texto}\\\"\\\"\\\"${ctx}\\n\\nSi hay una imagen adjunta, usala como contexto (ej: foto de equipo roto, pantalla con error, comprobante).\\n\\nDevolve SOLO JSON con:\\n- titulo: resumen imperativo, max 70 caracteres (ej: \\\"Reparar freidora en Palermo\\\")\\n- descripcion: el requerimiento completo, redactado claro, sin perder ningun detalle\\n- categoria: \\\"Mantenimiento\\\" | \\\"Equipamiento\\\" | \\\"Sistemas\\\" | \\\"Compras\\\" | \\\"RRHH\\\" | \\\"Proveedores\\\" | \\\"Otro\\\"\\n- prioridad: \\\"Alta\\\" (urgente / bloquea la operacion) | \\\"Media\\\" | \\\"Baja\\\"\\n- local: nombre del local/sucursal si se menciona (ej: Palermo, Nunez, Recoleta, Devoto, San Telmo, Caballito, Olivos, Pacheco, Quilmes, Nordelta, Microcentro, Hurlingham, Ramos, Martinez, Merlo, San Fernando, San Martin, Belgrano, Boedo, Pacifico), sino \\\"\\\"` });\n  const geminiBody = {\n    contents: [{ role: 'user', parts }],\n    generationConfig: {\n      responseMimeType: 'application/json',\n      responseSchema: {\n        type: 'object',\n        properties: {\n          titulo: { type: 'string' },\n          descripcion: { type: 'string' },\n          categoria: { type: 'string', enum: ['Mantenimiento', 'Equipamiento', 'Sistemas', 'Compras', 'RRHH', 'Proveedores', 'Otro'] },\n          prioridad: { type: 'string', enum: ['Alta', 'Media', 'Baja'] },\n          local: { type: 'string' }\n        },\n        required: ['titulo', 'descripcion', 'prioridad']\n      }\n    }\n  };\n  out.push({ json: { ...j, geminiBody } });\n}\nreturn out;"
@@ -56,8 +118,8 @@
             "type": "n8n-nodes-base.httpRequest",
             "typeVersion": 4.4,
             "position": [
-                660,
-                0
+                1040,
+                200
             ],
             "parameters": {
                 "method": "POST",
@@ -91,10 +153,10 @@
                     "name": "Vertex AI - n8n-vertex-ai-495115"
                 }
             },
+            "onError": "continueErrorOutput",
             "retryOnFail": true,
             "maxTries": 2,
-            "waitBetweenTries": 5000,
-            "onError": "continueErrorOutput"
+            "waitBetweenTries": 5000
         },
         {
             "id": "code-parsear",
@@ -102,8 +164,8 @@
             "type": "n8n-nodes-base.code",
             "typeVersion": 2,
             "position": [
-                880,
-                -100
+                1260,
+                100
             ],
             "parameters": {
                 "mode": "runOnceForEachItem",
@@ -116,8 +178,8 @@
             "type": "n8n-nodes-base.code",
             "typeVersion": 2,
             "position": [
-                880,
-                140
+                1260,
+                340
             ],
             "parameters": {
                 "mode": "runOnceForEachItem",
@@ -130,8 +192,8 @@
             "type": "n8n-nodes-base.code",
             "typeVersion": 2,
             "position": [
-                1100,
-                0
+                1480,
+                200
             ],
             "parameters": {
                 "mode": "runOnceForEachItem",
@@ -144,8 +206,8 @@
             "type": "n8n-nodes-base.httpRequest",
             "typeVersion": 4.4,
             "position": [
-                1320,
-                0
+                1700,
+                200
             ],
             "parameters": {
                 "method": "POST",
@@ -198,8 +260,8 @@
             "type": "n8n-nodes-base.if",
             "typeVersion": 2.2,
             "position": [
-                1540,
-                0
+                1920,
+                200
             ],
             "parameters": {
                 "conditions": {
@@ -230,8 +292,8 @@
             "type": "n8n-nodes-base.code",
             "typeVersion": 2,
             "position": [
-                1760,
-                -100
+                2140,
+                100
             ],
             "parameters": {
                 "mode": "runOnceForEachItem",
@@ -244,8 +306,8 @@
             "type": "n8n-nodes-base.httpRequest",
             "typeVersion": 4.4,
             "position": [
-                1980,
-                -100
+                2360,
+                100
             ],
             "parameters": {
                 "method": "POST",
@@ -277,6 +339,270 @@
             "maxTries": 2,
             "waitBetweenTries": 5000,
             "onError": "continueRegularOutput"
+        },
+        {
+            "id": "code-registrar",
+            "name": "Registrar y Confirmar",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                2580,
+                200
+            ],
+            "parameters": {
+                "mode": "runOnceForEachItem",
+                "jsCode": "// Guarda el ultimo ticket por chat+sender (para continuacion de fotos) y arma la confirmacion WhatsApp.\nconst card = $('Crear Card Trello').item.json;\nconst src = $('Armar Card').item.json;\nconst sd = $getWorkflowStaticData('global');\nif (!sd.lastTicket) sd.lastTicket = {};\nconst key = src.chatJID + '|' + src.sender;\nsd.lastTicket[key] = { cardId: card.id, cardName: src.cardName, shortUrl: card.shortUrl, ts: Date.now() };\nconst keys = Object.keys(sd.lastTicket);\nif (keys.length > 100) { for (const k of keys.slice(0, keys.length - 100)) delete sd.lastTicket[k]; }\nconst senderJid = src.sender.includes('@') ? src.sender : src.sender + '@s.whatsapp.net';\nreturn { json: {\n  recipient: src.chatJID,\n  message: `\u00e2\u0153\u2026 Ticket creado: ${src.cardName}\\n${card.shortUrl}`,\n  quoted_message_id: src.msgId || '',\n  quoted_sender_jid: src.msgId ? senderJid : '',\n  quoted_content: src.msgId ? (src.texto || '').slice(0, 100) : ''\n} };"
+            }
+        },
+        {
+            "id": "http-outbox",
+            "name": "Outbox Insert",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.4,
+            "position": [
+                2800,
+                200
+            ],
+            "parameters": {
+                "method": "POST",
+                "url": "https://n8n.srv1312396.hstgr.cloud/api/v1/data-tables/W7rPitDcioXfqBfb/rows",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "X-N8N-API-KEY",
+                            "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJiNjBkNWU1YS1lYjNmLTQ4ZTItYTZlOC1iYzUyMTUzZTFhYzMiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiZDFhY2E0YWYtYjExMS00ZmU2LTlkZTItZmIyNWE3ODk1ZDRkIiwiaWF0IjoxNzc2OTUwMjc3fQ.K3a87ubNNw-N_ri3Q7mnYgDD2etP2l9OyoMA9Ut3L5Y"
+                        },
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ JSON.stringify({ data: [{ recipient: $json.recipient, message: $json.message, quoted_message_id: $json.quoted_message_id || '', quoted_sender_jid: $json.quoted_sender_jid || '', quoted_content: $json.quoted_content || '', status: 'pending' }] }) }}",
+                "options": {
+                    "response": {
+                        "response": {
+                            "responseFormat": "json"
+                        }
+                    },
+                    "timeout": 20000
+                }
+            },
+            "onError": "continueRegularOutput",
+            "retryOnFail": true,
+            "maxTries": 2,
+            "waitBetweenTries": 3000
+        },
+        {
+            "id": "code-prep-cont",
+            "name": "Preparar Continuacion",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                820,
+                -100
+            ],
+            "parameters": {
+                "mode": "runOnceForEachItem",
+                "jsCode": "// Foto suelta dentro de la ventana: se adjunta al ultimo ticket del remitente.\nconst j = $json;\nconst buf = Buffer.from(j.mediaBase64, 'base64');\nconst bin = await this.helpers.prepareBinaryData(buf, j.mediaFilename || 'foto-continuacion', j.mimeType || 'application/octet-stream');\nreturn { json: { cardId: j.cardId, cardName: j.cardName, shortUrl: j.shortUrl, chatJID: j.chatJID, sender: j.sender, msgId: j.msgId, texto: j.texto }, binary: { data: bin } };"
+            }
+        },
+        {
+            "id": "http-adj-cont",
+            "name": "Adjuntar Continuacion",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.4,
+            "position": [
+                1040,
+                -100
+            ],
+            "parameters": {
+                "method": "POST",
+                "url": "=https://api.trello.com/1/cards/{{ $json.cardId }}/attachments",
+                "authentication": "predefinedCredentialType",
+                "nodeCredentialType": "trelloApi",
+                "sendBody": true,
+                "contentType": "multipart-form-data",
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "parameterType": "formBinaryData",
+                            "name": "file",
+                            "inputDataFieldName": "data"
+                        }
+                    ]
+                },
+                "options": {
+                    "response": {
+                        "response": {
+                            "responseFormat": "json"
+                        }
+                    },
+                    "timeout": 60000
+                }
+            },
+            "credentials": {
+                "trelloApi": {
+                    "id": "MUcIdiWUZ1Vhdf2h",
+                    "name": "Trello Desembarco"
+                }
+            },
+            "retryOnFail": true,
+            "maxTries": 2,
+            "waitBetweenTries": 5000
+        },
+        {
+            "id": "code-reg-undo",
+            "name": "Registrar Undo y Aviso",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1260,
+                -100
+            ],
+            "parameters": {
+                "mode": "runOnceForEachItem",
+                "jsCode": "// Deja pendiente el deshacer (\u00f0\u0178\u2018\u017d) y avisa por WhatsApp que la foto se adjunto.\nconst att = $json;\nconst src = $('Preparar Continuacion').item.json;\nconst sd = $getWorkflowStaticData('global');\nif (!sd.pendingUndo) sd.pendingUndo = {};\nconst key = src.chatJID + '|' + src.sender;\nsd.pendingUndo[key] = { cardId: src.cardId, attachmentId: att.id, cardName: src.cardName, shortUrl: src.shortUrl, ts: Date.now() };\nconst senderJid = src.sender.includes('@') ? src.sender : src.sender + '@s.whatsapp.net';\nreturn { json: {\n  recipient: src.chatJID,\n  message: `\u00f0\u0178\u201c\u017d Adjunt\u00c3\u00a9 tu foto al ticket: ${src.cardName}\\n${src.shortUrl}\\n\\n\u00c2\u00bfEra de otro tema? Reaccion\u00c3\u00a1 a tu foto con \u00f0\u0178\u2018\u017d y creo un ticket aparte.`,\n  quoted_message_id: src.msgId || '',\n  quoted_sender_jid: src.msgId ? senderJid : '',\n  quoted_content: ''\n} };"
+            }
+        },
+        {
+            "id": "code-reaccion",
+            "name": "Procesar Reaccion",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                620,
+                -260
+            ],
+            "parameters": {
+                "jsCode": "// \u00f0\u0178\u2018\u017d dentro de la ventana de undo: separar la foto en un ticket nuevo. \u00f0\u0178\u2018\udc8d confirma y limpia.\nconst sd = $getWorkflowStaticData('global');\nif (!sd.pendingUndo) sd.pendingUndo = {};\nconst out = [];\nfor (const item of $input.all()) {\n  const j = item.json;\n  const key = j.chatJID + '|' + j.sender;\n  const pu = sd.pendingUndo[key];\n  if (!pu) continue;\n  if (Date.now() - pu.ts > 15 * 60 * 1000) { delete sd.pendingUndo[key]; continue; }\n  const em = j.emoji || '';\n  if (em.includes('\u00f0\u0178\u2018\udc8d')) { delete sd.pendingUndo[key]; continue; }\n  if (!em.includes('\u00f0\u0178\u2018\u017d')) continue;\n  delete sd.pendingUndo[key];\n  out.push({ json: { cardId: pu.cardId, attachmentId: pu.attachmentId, cardName: pu.cardName, chatJID: j.chatJID, sender: j.sender } });\n}\nreturn out;"
+            }
+        },
+        {
+            "id": "http-att-meta",
+            "name": "Bajar Metadata Adjunto",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.4,
+            "position": [
+                840,
+                -260
+            ],
+            "parameters": {
+                "method": "GET",
+                "url": "=https://api.trello.com/1/cards/{{ $json.cardId }}/attachments/{{ $json.attachmentId }}",
+                "authentication": "predefinedCredentialType",
+                "nodeCredentialType": "trelloApi",
+                "options": {
+                    "response": {
+                        "response": {
+                            "responseFormat": "json"
+                        }
+                    },
+                    "timeout": 20000
+                }
+            },
+            "credentials": {
+                "trelloApi": {
+                    "id": "MUcIdiWUZ1Vhdf2h",
+                    "name": "Trello Desembarco"
+                }
+            },
+            "retryOnFail": true,
+            "maxTries": 2,
+            "waitBetweenTries": 3000
+        },
+        {
+            "id": "http-att-dl",
+            "name": "Descargar Adjunto",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.4,
+            "position": [
+                1060,
+                -260
+            ],
+            "parameters": {
+                "method": "GET",
+                "url": "={{ $json.url }}",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "Authorization",
+                            "value": "OAuth oauth_consumer_key=\"0e2126dbfd8ca7c38318c2570e7bf532\", oauth_token=\"ATTAac89aa35c1107c9ad5684977c731d18e375ec585f2e3e3bfbf84606bedaa3793FE3A3525\""
+                        }
+                    ]
+                },
+                "options": {
+                    "response": {
+                        "response": {
+                            "responseFormat": "file"
+                        }
+                    },
+                    "timeout": 60000
+                }
+            },
+            "retryOnFail": true,
+            "maxTries": 2,
+            "waitBetweenTries": 3000
+        },
+        {
+            "id": "code-foto-ticket",
+            "name": "Preparar Ticket desde Foto",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1280,
+                -260
+            ],
+            "parameters": {
+                "jsCode": "const out = [];\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  const meta = $('Bajar Metadata Adjunto').all()[i].json;\n  const orig = $('Procesar Reaccion').all()[i].json;\n  const buf = await this.helpers.getBinaryDataBuffer(i, 'data');\n  out.push({ json: {\n    ruta: 'ticket',\n    texto: 'El solicitante indico con \u00f0\u0178\u2018\u017d que esta foto es un requerimiento NUEVO, separado del ticket anterior. Genera el ticket a partir de lo que muestra la imagen.',\n    sender: orig.sender,\n    chatJID: orig.chatJID,\n    isFromMe: false,\n    msgId: '',\n    quotedContent: '',\n    quotedSender: '',\n    mediaBase64: buf.toString('base64'),\n    mimeType: meta.mimeType || 'image/jpeg',\n    mediaFilename: meta.fileName || 'foto',\n    recibido: new Date().toISOString()\n  } });\n}\nreturn out;"
+            }
+        },
+        {
+            "id": "http-att-del",
+            "name": "Borrar Adjunto Viejo",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.4,
+            "position": [
+                1500,
+                -260
+            ],
+            "parameters": {
+                "method": "DELETE",
+                "url": "=https://api.trello.com/1/cards/{{ $('Procesar Reaccion').item.json.cardId }}/attachments/{{ $('Procesar Reaccion').item.json.attachmentId }}",
+                "authentication": "predefinedCredentialType",
+                "nodeCredentialType": "trelloApi",
+                "options": {
+                    "timeout": 20000
+                }
+            },
+            "credentials": {
+                "trelloApi": {
+                    "id": "MUcIdiWUZ1Vhdf2h",
+                    "name": "Trello Desembarco"
+                }
+            },
+            "onError": "continueRegularOutput",
+            "retryOnFail": true,
+            "maxTries": 2,
+            "waitBetweenTries": 3000
+        },
+        {
+            "id": "code-recuperar",
+            "name": "Recuperar Payload",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1700,
+                -260
+            ],
+            "parameters": {
+                "mode": "runOnceForEachItem",
+                "jsCode": "return { json: $('Preparar Ticket desde Foto').item.json };"
+            }
         }
     ],
     "connections": {
@@ -293,6 +619,42 @@
         },
         "Filtrar y Normalizar": {
             "main": [
+                [
+                    {
+                        "node": "Es Reaccion",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Es Reaccion": {
+            "main": [
+                [
+                    {
+                        "node": "Procesar Reaccion",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Es Continuacion",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Es Continuacion": {
+            "main": [
+                [
+                    {
+                        "node": "Preparar Continuacion",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
                 [
                     {
                         "node": "Armar Prompt Gemini",
@@ -384,7 +746,13 @@
                         "index": 0
                     }
                 ],
-                []
+                [
+                    {
+                        "node": "Registrar y Confirmar",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
             ]
         },
         "Preparar Adjunto": {
@@ -392,6 +760,127 @@
                 [
                     {
                         "node": "Adjuntar a Card",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Adjuntar a Card": {
+            "main": [
+                [
+                    {
+                        "node": "Registrar y Confirmar",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Registrar y Confirmar": {
+            "main": [
+                [
+                    {
+                        "node": "Outbox Insert",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Preparar Continuacion": {
+            "main": [
+                [
+                    {
+                        "node": "Adjuntar Continuacion",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Adjuntar Continuacion": {
+            "main": [
+                [
+                    {
+                        "node": "Registrar Undo y Aviso",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Registrar Undo y Aviso": {
+            "main": [
+                [
+                    {
+                        "node": "Outbox Insert",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Procesar Reaccion": {
+            "main": [
+                [
+                    {
+                        "node": "Bajar Metadata Adjunto",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Bajar Metadata Adjunto": {
+            "main": [
+                [
+                    {
+                        "node": "Descargar Adjunto",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Descargar Adjunto": {
+            "main": [
+                [
+                    {
+                        "node": "Preparar Ticket desde Foto",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Preparar Ticket desde Foto": {
+            "main": [
+                [
+                    {
+                        "node": "Borrar Adjunto Viejo",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Borrar Adjunto Viejo": {
+            "main": [
+                [
+                    {
+                        "node": "Recuperar Payload",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Recuperar Payload": {
+            "main": [
+                [
+                    {
+                        "node": "Armar Prompt Gemini",
                         "type": "main",
                         "index": 0
                     }
@@ -412,15 +901,26 @@
             "seen": [
                 "TEST-E2E-001",
                 "TEST-E2E-002",
-                "h2132823952"
-            ]
+                "h2132823952",
+                "QA-100",
+                "QA-101"
+            ],
+            "lastTicket": {
+                "5491157935007@s.whatsapp.net|5491157935007": {
+                    "cardId": "6a6899204b5f33e104a75093",
+                    "cardName": "\u00f0\u0178\u0178\u00a2 Revisar pantalla con patr\u00c3\u00b3n de cuadros",
+                    "shortUrl": "https://trello.com/c/jSw7c5zn",
+                    "ts": 1785239841766
+                }
+            },
+            "pendingUndo": {}
         }
     },
     "meta": null,
     "pinData": null,
-    "versionId": "cdda101a-7819-4b1c-8c99-33200e07b450",
-    "activeVersionId": "cdda101a-7819-4b1c-8c99-33200e07b450",
-    "versionCounter": 13,
+    "versionId": "6b7253e2-8c8d-48b0-9ba0-b87c0fd9b18b",
+    "activeVersionId": "6b7253e2-8c8d-48b0-9ba0-b87c0fd9b18b",
+    "versionCounter": 19,
     "triggerCount": 1,
     "shared": [
         {
@@ -443,9 +943,9 @@
     ],
     "tags": [],
     "activeVersion": {
-        "updatedAt": "2026-07-28T11:32:04.788Z",
-        "createdAt": "2026-07-28T11:32:04.788Z",
-        "versionId": "cdda101a-7819-4b1c-8c99-33200e07b450",
+        "updatedAt": "2026-07-28T11:50:50.472Z",
+        "createdAt": "2026-07-28T11:50:50.472Z",
+        "versionId": "6b7253e2-8c8d-48b0-9ba0-b87c0fd9b18b",
         "workflowId": "G3YDTzNlb8i1x1Z4",
         "nodes": [
             {
@@ -457,13 +957,13 @@
                     0,
                     0
                 ],
+                "webhookId": "d2189177-e9bd-440b-ae99-b9ef13aa8660",
                 "parameters": {
                     "httpMethod": "POST",
                     "path": "wa-requerimientos",
                     "responseMode": "onReceived",
                     "options": {}
-                },
-                "webhookId": "d2189177-e9bd-440b-ae99-b9ef13aa8660"
+                }
             },
             {
                 "id": "code-filtrar",
@@ -471,11 +971,73 @@
                 "type": "n8n-nodes-base.code",
                 "typeVersion": 2,
                 "position": [
-                    220,
+                    200,
                     0
                 ],
                 "parameters": {
-                    "jsCode": "// Recibe el push del bridge WhatsApp local. Filtra: token, trigger #req, dedupe.\nconst TOKEN = '660085b0160db3effde5cbb8fe4b6fc5cda3fe70ef79dfe7d959a419f2913d68';\n// Chats donde TODO mensaje es requerimiento (agregar JIDs de grupos dedicados aca):\nconst ALWAYS_CHATS = ['120363410062969047@g.us']; // SOPORTE SISTEMAS\nconst RE_TRIGGER = /^\\s*#(req|ticket|requerimiento)\\b[:\\-]?\\s*/i;\n\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.seen)) sd.seen = [];\nconst out = [];\n\nfor (const item of $input.all()) {\n  const headers = item.json.headers || {};\n  const p = item.json.body || {};\n  if ((headers['x-bridge-token'] || '') !== TOKEN) continue;\n  if (p.eventType === 'reaction') continue;\n  const content = (p.content || '').trim();\n  const isAlways = ALWAYS_CHATS.includes(p.chatJID);\n  const m = content.match(RE_TRIGGER);\n  if (!m && !isAlways) continue;\n  const texto = m ? content.replace(RE_TRIGGER, '').trim() : content;\n  if (!texto && !p.mediaBase64) continue;\n\n  // Dedupe: por messageId si existe, sino hash de dia+chat+sender+contenido\n  let dedupeKey = p.messageId;\n  if (!dedupeKey) {\n    const key = `${new Date().toISOString().slice(0, 10)}|${p.chatJID}|${p.sender}|${content}`.slice(0, 500);\n    let hash = 0;\n    for (let i = 0; i < key.length; i++) hash = ((hash << 5) - hash + key.charCodeAt(i)) | 0;\n    dedupeKey = `h${hash}`;\n  }\n  if (sd.seen.includes(dedupeKey)) continue;\n  sd.seen.push(dedupeKey);\n  if (sd.seen.length > 300) sd.seen = sd.seen.slice(-200);\n\n  out.push({ json: {\n    texto,\n    sender: p.sender || '',\n    chatJID: p.chatJID || '',\n    isFromMe: !!p.isFromMe,\n    quotedContent: p.quotedContent || '',\n    quotedSender: p.quotedSender || '',\n    mediaBase64: p.mediaBase64 || '',\n    mimeType: p.mimeType || '',\n    mediaFilename: p.mediaFilename || '',\n    recibido: new Date().toISOString()\n  }});\n}\nreturn out;"
+                    "jsCode": "// Router de eventos del bridge: token, trigger #req, continuacion de foto, reacciones, dedupe.\nconst TOKEN = '660085b0160db3effde5cbb8fe4b6fc5cda3fe70ef79dfe7d959a419f2913d68';\nconst ALWAYS_CHATS = ['120363410062969047@g.us']; // SOPORTE SISTEMAS\nconst RE_TRIGGER = /^\\s*#(req|ticket|requerimiento)\\b[:\\-]?\\s*/i;\nconst WINDOW_MS = 5 * 60 * 1000; // ventana de continuacion foto\n\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.seen)) sd.seen = [];\nif (!sd.lastTicket) sd.lastTicket = {};\nif (!sd.pendingUndo) sd.pendingUndo = {};\nconst out = [];\n\nfor (const item of $input.all()) {\n  const headers = item.json.headers || {};\n  const p = item.json.body || {};\n  if ((headers['x-bridge-token'] || '') !== TOKEN) continue;\n  const chat = p.chatJID || '';\n  const sender = p.sender || '';\n  const key = chat + '|' + sender;\n\n  if (p.eventType === 'reaction') {\n    const emoji = p.reactionEmoji || p.content || '';\n    if (p.reactionRemoved) continue;\n    out.push({ json: { ruta: 'reaccion', chatJID: chat, sender, emoji, recibido: new Date().toISOString() } });\n    continue;\n  }\n\n  const content = (p.content || '').trim();\n  const m = content.match(RE_TRIGGER);\n  const isAlways = ALWAYS_CHATS.includes(chat);\n  const hasMedia = !!p.mediaBase64;\n  const texto = m ? content.replace(RE_TRIGGER, '').trim() : content;\n  const lt = sd.lastTicket[key];\n  const fresh = lt && (Date.now() - lt.ts) < WINDOW_MS;\n\n  let ruta = null;\n  if (hasMedia && fresh && !m && (!texto || texto.length < 20)) {\n    ruta = 'continuacion'; // foto suelta poco despues de un ticket del mismo remitente\n  } else if (m || isAlways) {\n    if (!texto && !hasMedia) continue;\n    ruta = 'ticket';\n  } else {\n    continue;\n  }\n\n  // Dedupe: por messageId si existe, sino hash de dia+chat+sender+contenido\n  let dedupeKey = p.messageId;\n  if (!dedupeKey) {\n    const k = `${new Date().toISOString().slice(0, 10)}|${chat}|${sender}|${content}`.slice(0, 500);\n    let h = 0;\n    for (let i = 0; i < k.length; i++) h = ((h << 5) - h + k.charCodeAt(i)) | 0;\n    dedupeKey = 'h' + h;\n  }\n  if (sd.seen.includes(dedupeKey)) continue;\n  sd.seen.push(dedupeKey);\n  if (sd.seen.length > 300) sd.seen = sd.seen.slice(-200);\n\n  const base = {\n    ruta,\n    texto,\n    sender,\n    chatJID: chat,\n    isFromMe: !!p.isFromMe,\n    msgId: p.messageId || '',\n    quotedContent: p.quotedContent || '',\n    quotedSender: p.quotedSender || '',\n    mediaBase64: p.mediaBase64 || '',\n    mimeType: p.mimeType || '',\n    mediaFilename: p.mediaFilename || '',\n    recibido: new Date().toISOString()\n  };\n  if (ruta === 'continuacion') {\n    out.push({ json: { ...base, cardId: lt.cardId, cardName: lt.cardName, shortUrl: lt.shortUrl } });\n  } else {\n    out.push({ json: base });\n  }\n}\nreturn out;"
+                }
+            },
+            {
+                "id": "if-reaccion",
+                "name": "Es Reaccion",
+                "type": "n8n-nodes-base.if",
+                "typeVersion": 2.2,
+                "position": [
+                    400,
+                    0
+                ],
+                "parameters": {
+                    "conditions": {
+                        "options": {
+                            "caseSensitive": true,
+                            "typeValidation": "loose",
+                            "version": 2
+                        },
+                        "combinator": "and",
+                        "conditions": [
+                            {
+                                "leftValue": "={{ $json.ruta }}",
+                                "rightValue": "reaccion",
+                                "operator": {
+                                    "type": "string",
+                                    "operation": "equals"
+                                }
+                            }
+                        ]
+                    },
+                    "options": {}
+                }
+            },
+            {
+                "id": "if-continuacion",
+                "name": "Es Continuacion",
+                "type": "n8n-nodes-base.if",
+                "typeVersion": 2.2,
+                "position": [
+                    600,
+                    100
+                ],
+                "parameters": {
+                    "conditions": {
+                        "options": {
+                            "caseSensitive": true,
+                            "typeValidation": "loose",
+                            "version": 2
+                        },
+                        "combinator": "and",
+                        "conditions": [
+                            {
+                                "leftValue": "={{ $json.ruta }}",
+                                "rightValue": "continuacion",
+                                "operator": {
+                                    "type": "string",
+                                    "operation": "equals"
+                                }
+                            }
+                        ]
+                    },
+                    "options": {}
                 }
             },
             {
@@ -484,8 +1046,8 @@
                 "type": "n8n-nodes-base.code",
                 "typeVersion": 2,
                 "position": [
-                    440,
-                    0
+                    820,
+                    200
                 ],
                 "parameters": {
                     "jsCode": "const out = [];\nfor (const item of $input.all()) {\n  const j = item.json;\n  const parts = [];\n  if (j.mediaBase64 && (j.mimeType || '').startsWith('image/')) {\n    parts.push({ inline_data: { mime_type: j.mimeType, data: j.mediaBase64 } });\n  }\n  const ctx = j.quotedContent ? `\\n\\nMensaje citado (contexto): \\\"${j.quotedContent}\\\"` : '';\n  parts.push({ text: `Sos el asistente de sistemas del grupo gastronomico El Desembarco (hamburgueserias: El Desembarco, Mr Tasty, Mila&Go; ~18 locales propios en Buenos Aires). Convertis requerimientos que llegan por WhatsApp en tickets de trabajo.\\n\\nRequerimiento recibido de ${j.sender}:\\n\\\"\\\"\\\"${j.texto}\\\"\\\"\\\"${ctx}\\n\\nSi hay una imagen adjunta, usala como contexto (ej: foto de equipo roto, pantalla con error, comprobante).\\n\\nDevolve SOLO JSON con:\\n- titulo: resumen imperativo, max 70 caracteres (ej: \\\"Reparar freidora en Palermo\\\")\\n- descripcion: el requerimiento completo, redactado claro, sin perder ningun detalle\\n- categoria: \\\"Mantenimiento\\\" | \\\"Equipamiento\\\" | \\\"Sistemas\\\" | \\\"Compras\\\" | \\\"RRHH\\\" | \\\"Proveedores\\\" | \\\"Otro\\\"\\n- prioridad: \\\"Alta\\\" (urgente / bloquea la operacion) | \\\"Media\\\" | \\\"Baja\\\"\\n- local: nombre del local/sucursal si se menciona (ej: Palermo, Nunez, Recoleta, Devoto, San Telmo, Caballito, Olivos, Pacheco, Quilmes, Nordelta, Microcentro, Hurlingham, Ramos, Martinez, Merlo, San Fernando, San Martin, Belgrano, Boedo, Pacifico), sino \\\"\\\"` });\n  const geminiBody = {\n    contents: [{ role: 'user', parts }],\n    generationConfig: {\n      responseMimeType: 'application/json',\n      responseSchema: {\n        type: 'object',\n        properties: {\n          titulo: { type: 'string' },\n          descripcion: { type: 'string' },\n          categoria: { type: 'string', enum: ['Mantenimiento', 'Equipamiento', 'Sistemas', 'Compras', 'RRHH', 'Proveedores', 'Otro'] },\n          prioridad: { type: 'string', enum: ['Alta', 'Media', 'Baja'] },\n          local: { type: 'string' }\n        },\n        required: ['titulo', 'descripcion', 'prioridad']\n      }\n    }\n  };\n  out.push({ json: { ...j, geminiBody } });\n}\nreturn out;"
@@ -497,8 +1059,8 @@
                 "type": "n8n-nodes-base.httpRequest",
                 "typeVersion": 4.4,
                 "position": [
-                    660,
-                    0
+                    1040,
+                    200
                 ],
                 "parameters": {
                     "method": "POST",
@@ -532,10 +1094,10 @@
                         "name": "Vertex AI - n8n-vertex-ai-495115"
                     }
                 },
+                "onError": "continueErrorOutput",
                 "retryOnFail": true,
                 "maxTries": 2,
-                "waitBetweenTries": 5000,
-                "onError": "continueErrorOutput"
+                "waitBetweenTries": 5000
             },
             {
                 "id": "code-parsear",
@@ -543,8 +1105,8 @@
                 "type": "n8n-nodes-base.code",
                 "typeVersion": 2,
                 "position": [
-                    880,
-                    -100
+                    1260,
+                    100
                 ],
                 "parameters": {
                     "mode": "runOnceForEachItem",
@@ -557,8 +1119,8 @@
                 "type": "n8n-nodes-base.code",
                 "typeVersion": 2,
                 "position": [
-                    880,
-                    140
+                    1260,
+                    340
                 ],
                 "parameters": {
                     "mode": "runOnceForEachItem",
@@ -571,8 +1133,8 @@
                 "type": "n8n-nodes-base.code",
                 "typeVersion": 2,
                 "position": [
-                    1100,
-                    0
+                    1480,
+                    200
                 ],
                 "parameters": {
                     "mode": "runOnceForEachItem",
@@ -585,8 +1147,8 @@
                 "type": "n8n-nodes-base.httpRequest",
                 "typeVersion": 4.4,
                 "position": [
-                    1320,
-                    0
+                    1700,
+                    200
                 ],
                 "parameters": {
                     "method": "POST",
@@ -639,8 +1201,8 @@
                 "type": "n8n-nodes-base.if",
                 "typeVersion": 2.2,
                 "position": [
-                    1540,
-                    0
+                    1920,
+                    200
                 ],
                 "parameters": {
                     "conditions": {
@@ -671,8 +1233,8 @@
                 "type": "n8n-nodes-base.code",
                 "typeVersion": 2,
                 "position": [
-                    1760,
-                    -100
+                    2140,
+                    100
                 ],
                 "parameters": {
                     "mode": "runOnceForEachItem",
@@ -685,8 +1247,8 @@
                 "type": "n8n-nodes-base.httpRequest",
                 "typeVersion": 4.4,
                 "position": [
-                    1980,
-                    -100
+                    2360,
+                    100
                 ],
                 "parameters": {
                     "method": "POST",
@@ -718,6 +1280,270 @@
                 "maxTries": 2,
                 "waitBetweenTries": 5000,
                 "onError": "continueRegularOutput"
+            },
+            {
+                "id": "code-registrar",
+                "name": "Registrar y Confirmar",
+                "type": "n8n-nodes-base.code",
+                "typeVersion": 2,
+                "position": [
+                    2580,
+                    200
+                ],
+                "parameters": {
+                    "mode": "runOnceForEachItem",
+                    "jsCode": "// Guarda el ultimo ticket por chat+sender (para continuacion de fotos) y arma la confirmacion WhatsApp.\nconst card = $('Crear Card Trello').item.json;\nconst src = $('Armar Card').item.json;\nconst sd = $getWorkflowStaticData('global');\nif (!sd.lastTicket) sd.lastTicket = {};\nconst key = src.chatJID + '|' + src.sender;\nsd.lastTicket[key] = { cardId: card.id, cardName: src.cardName, shortUrl: card.shortUrl, ts: Date.now() };\nconst keys = Object.keys(sd.lastTicket);\nif (keys.length > 100) { for (const k of keys.slice(0, keys.length - 100)) delete sd.lastTicket[k]; }\nconst senderJid = src.sender.includes('@') ? src.sender : src.sender + '@s.whatsapp.net';\nreturn { json: {\n  recipient: src.chatJID,\n  message: `\u00e2\u0153\u2026 Ticket creado: ${src.cardName}\\n${card.shortUrl}`,\n  quoted_message_id: src.msgId || '',\n  quoted_sender_jid: src.msgId ? senderJid : '',\n  quoted_content: src.msgId ? (src.texto || '').slice(0, 100) : ''\n} };"
+                }
+            },
+            {
+                "id": "http-outbox",
+                "name": "Outbox Insert",
+                "type": "n8n-nodes-base.httpRequest",
+                "typeVersion": 4.4,
+                "position": [
+                    2800,
+                    200
+                ],
+                "parameters": {
+                    "method": "POST",
+                    "url": "https://n8n.srv1312396.hstgr.cloud/api/v1/data-tables/W7rPitDcioXfqBfb/rows",
+                    "sendHeaders": true,
+                    "headerParameters": {
+                        "parameters": [
+                            {
+                                "name": "X-N8N-API-KEY",
+                                "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJiNjBkNWU1YS1lYjNmLTQ4ZTItYTZlOC1iYzUyMTUzZTFhYzMiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiZDFhY2E0YWYtYjExMS00ZmU2LTlkZTItZmIyNWE3ODk1ZDRkIiwiaWF0IjoxNzc2OTUwMjc3fQ.K3a87ubNNw-N_ri3Q7mnYgDD2etP2l9OyoMA9Ut3L5Y"
+                            },
+                            {
+                                "name": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ]
+                    },
+                    "sendBody": true,
+                    "specifyBody": "json",
+                    "jsonBody": "={{ JSON.stringify({ data: [{ recipient: $json.recipient, message: $json.message, quoted_message_id: $json.quoted_message_id || '', quoted_sender_jid: $json.quoted_sender_jid || '', quoted_content: $json.quoted_content || '', status: 'pending' }] }) }}",
+                    "options": {
+                        "response": {
+                            "response": {
+                                "responseFormat": "json"
+                            }
+                        },
+                        "timeout": 20000
+                    }
+                },
+                "onError": "continueRegularOutput",
+                "retryOnFail": true,
+                "maxTries": 2,
+                "waitBetweenTries": 3000
+            },
+            {
+                "id": "code-prep-cont",
+                "name": "Preparar Continuacion",
+                "type": "n8n-nodes-base.code",
+                "typeVersion": 2,
+                "position": [
+                    820,
+                    -100
+                ],
+                "parameters": {
+                    "mode": "runOnceForEachItem",
+                    "jsCode": "// Foto suelta dentro de la ventana: se adjunta al ultimo ticket del remitente.\nconst j = $json;\nconst buf = Buffer.from(j.mediaBase64, 'base64');\nconst bin = await this.helpers.prepareBinaryData(buf, j.mediaFilename || 'foto-continuacion', j.mimeType || 'application/octet-stream');\nreturn { json: { cardId: j.cardId, cardName: j.cardName, shortUrl: j.shortUrl, chatJID: j.chatJID, sender: j.sender, msgId: j.msgId, texto: j.texto }, binary: { data: bin } };"
+                }
+            },
+            {
+                "id": "http-adj-cont",
+                "name": "Adjuntar Continuacion",
+                "type": "n8n-nodes-base.httpRequest",
+                "typeVersion": 4.4,
+                "position": [
+                    1040,
+                    -100
+                ],
+                "parameters": {
+                    "method": "POST",
+                    "url": "=https://api.trello.com/1/cards/{{ $json.cardId }}/attachments",
+                    "authentication": "predefinedCredentialType",
+                    "nodeCredentialType": "trelloApi",
+                    "sendBody": true,
+                    "contentType": "multipart-form-data",
+                    "bodyParameters": {
+                        "parameters": [
+                            {
+                                "parameterType": "formBinaryData",
+                                "name": "file",
+                                "inputDataFieldName": "data"
+                            }
+                        ]
+                    },
+                    "options": {
+                        "response": {
+                            "response": {
+                                "responseFormat": "json"
+                            }
+                        },
+                        "timeout": 60000
+                    }
+                },
+                "credentials": {
+                    "trelloApi": {
+                        "id": "MUcIdiWUZ1Vhdf2h",
+                        "name": "Trello Desembarco"
+                    }
+                },
+                "retryOnFail": true,
+                "maxTries": 2,
+                "waitBetweenTries": 5000
+            },
+            {
+                "id": "code-reg-undo",
+                "name": "Registrar Undo y Aviso",
+                "type": "n8n-nodes-base.code",
+                "typeVersion": 2,
+                "position": [
+                    1260,
+                    -100
+                ],
+                "parameters": {
+                    "mode": "runOnceForEachItem",
+                    "jsCode": "// Deja pendiente el deshacer (\u00f0\u0178\u2018\u017d) y avisa por WhatsApp que la foto se adjunto.\nconst att = $json;\nconst src = $('Preparar Continuacion').item.json;\nconst sd = $getWorkflowStaticData('global');\nif (!sd.pendingUndo) sd.pendingUndo = {};\nconst key = src.chatJID + '|' + src.sender;\nsd.pendingUndo[key] = { cardId: src.cardId, attachmentId: att.id, cardName: src.cardName, shortUrl: src.shortUrl, ts: Date.now() };\nconst senderJid = src.sender.includes('@') ? src.sender : src.sender + '@s.whatsapp.net';\nreturn { json: {\n  recipient: src.chatJID,\n  message: `\u00f0\u0178\u201c\u017d Adjunt\u00c3\u00a9 tu foto al ticket: ${src.cardName}\\n${src.shortUrl}\\n\\n\u00c2\u00bfEra de otro tema? Reaccion\u00c3\u00a1 a tu foto con \u00f0\u0178\u2018\u017d y creo un ticket aparte.`,\n  quoted_message_id: src.msgId || '',\n  quoted_sender_jid: src.msgId ? senderJid : '',\n  quoted_content: ''\n} };"
+                }
+            },
+            {
+                "id": "code-reaccion",
+                "name": "Procesar Reaccion",
+                "type": "n8n-nodes-base.code",
+                "typeVersion": 2,
+                "position": [
+                    620,
+                    -260
+                ],
+                "parameters": {
+                    "jsCode": "// \u00f0\u0178\u2018\u017d dentro de la ventana de undo: separar la foto en un ticket nuevo. \u00f0\u0178\u2018\udc8d confirma y limpia.\nconst sd = $getWorkflowStaticData('global');\nif (!sd.pendingUndo) sd.pendingUndo = {};\nconst out = [];\nfor (const item of $input.all()) {\n  const j = item.json;\n  const key = j.chatJID + '|' + j.sender;\n  const pu = sd.pendingUndo[key];\n  if (!pu) continue;\n  if (Date.now() - pu.ts > 15 * 60 * 1000) { delete sd.pendingUndo[key]; continue; }\n  const em = j.emoji || '';\n  if (em.includes('\u00f0\u0178\u2018\udc8d')) { delete sd.pendingUndo[key]; continue; }\n  if (!em.includes('\u00f0\u0178\u2018\u017d')) continue;\n  delete sd.pendingUndo[key];\n  out.push({ json: { cardId: pu.cardId, attachmentId: pu.attachmentId, cardName: pu.cardName, chatJID: j.chatJID, sender: j.sender } });\n}\nreturn out;"
+                }
+            },
+            {
+                "id": "http-att-meta",
+                "name": "Bajar Metadata Adjunto",
+                "type": "n8n-nodes-base.httpRequest",
+                "typeVersion": 4.4,
+                "position": [
+                    840,
+                    -260
+                ],
+                "parameters": {
+                    "method": "GET",
+                    "url": "=https://api.trello.com/1/cards/{{ $json.cardId }}/attachments/{{ $json.attachmentId }}",
+                    "authentication": "predefinedCredentialType",
+                    "nodeCredentialType": "trelloApi",
+                    "options": {
+                        "response": {
+                            "response": {
+                                "responseFormat": "json"
+                            }
+                        },
+                        "timeout": 20000
+                    }
+                },
+                "credentials": {
+                    "trelloApi": {
+                        "id": "MUcIdiWUZ1Vhdf2h",
+                        "name": "Trello Desembarco"
+                    }
+                },
+                "retryOnFail": true,
+                "maxTries": 2,
+                "waitBetweenTries": 3000
+            },
+            {
+                "id": "http-att-dl",
+                "name": "Descargar Adjunto",
+                "type": "n8n-nodes-base.httpRequest",
+                "typeVersion": 4.4,
+                "position": [
+                    1060,
+                    -260
+                ],
+                "parameters": {
+                    "method": "GET",
+                    "url": "={{ $json.url }}",
+                    "sendHeaders": true,
+                    "headerParameters": {
+                        "parameters": [
+                            {
+                                "name": "Authorization",
+                                "value": "OAuth oauth_consumer_key=\"0e2126dbfd8ca7c38318c2570e7bf532\", oauth_token=\"ATTAac89aa35c1107c9ad5684977c731d18e375ec585f2e3e3bfbf84606bedaa3793FE3A3525\""
+                            }
+                        ]
+                    },
+                    "options": {
+                        "response": {
+                            "response": {
+                                "responseFormat": "file"
+                            }
+                        },
+                        "timeout": 60000
+                    }
+                },
+                "retryOnFail": true,
+                "maxTries": 2,
+                "waitBetweenTries": 3000
+            },
+            {
+                "id": "code-foto-ticket",
+                "name": "Preparar Ticket desde Foto",
+                "type": "n8n-nodes-base.code",
+                "typeVersion": 2,
+                "position": [
+                    1280,
+                    -260
+                ],
+                "parameters": {
+                    "jsCode": "const out = [];\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  const meta = $('Bajar Metadata Adjunto').all()[i].json;\n  const orig = $('Procesar Reaccion').all()[i].json;\n  const buf = await this.helpers.getBinaryDataBuffer(i, 'data');\n  out.push({ json: {\n    ruta: 'ticket',\n    texto: 'El solicitante indico con \u00f0\u0178\u2018\u017d que esta foto es un requerimiento NUEVO, separado del ticket anterior. Genera el ticket a partir de lo que muestra la imagen.',\n    sender: orig.sender,\n    chatJID: orig.chatJID,\n    isFromMe: false,\n    msgId: '',\n    quotedContent: '',\n    quotedSender: '',\n    mediaBase64: buf.toString('base64'),\n    mimeType: meta.mimeType || 'image/jpeg',\n    mediaFilename: meta.fileName || 'foto',\n    recibido: new Date().toISOString()\n  } });\n}\nreturn out;"
+                }
+            },
+            {
+                "id": "http-att-del",
+                "name": "Borrar Adjunto Viejo",
+                "type": "n8n-nodes-base.httpRequest",
+                "typeVersion": 4.4,
+                "position": [
+                    1500,
+                    -260
+                ],
+                "parameters": {
+                    "method": "DELETE",
+                    "url": "=https://api.trello.com/1/cards/{{ $('Procesar Reaccion').item.json.cardId }}/attachments/{{ $('Procesar Reaccion').item.json.attachmentId }}",
+                    "authentication": "predefinedCredentialType",
+                    "nodeCredentialType": "trelloApi",
+                    "options": {
+                        "timeout": 20000
+                    }
+                },
+                "credentials": {
+                    "trelloApi": {
+                        "id": "MUcIdiWUZ1Vhdf2h",
+                        "name": "Trello Desembarco"
+                    }
+                },
+                "onError": "continueRegularOutput",
+                "retryOnFail": true,
+                "maxTries": 2,
+                "waitBetweenTries": 3000
+            },
+            {
+                "id": "code-recuperar",
+                "name": "Recuperar Payload",
+                "type": "n8n-nodes-base.code",
+                "typeVersion": 2,
+                "position": [
+                    1700,
+                    -260
+                ],
+                "parameters": {
+                    "mode": "runOnceForEachItem",
+                    "jsCode": "return { json: $('Preparar Ticket desde Foto').item.json };"
+                }
             }
         ],
         "connections": {
@@ -734,6 +1560,42 @@
             },
             "Filtrar y Normalizar": {
                 "main": [
+                    [
+                        {
+                            "node": "Es Reaccion",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Es Reaccion": {
+                "main": [
+                    [
+                        {
+                            "node": "Procesar Reaccion",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ],
+                    [
+                        {
+                            "node": "Es Continuacion",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Es Continuacion": {
+                "main": [
+                    [
+                        {
+                            "node": "Preparar Continuacion",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ],
                     [
                         {
                             "node": "Armar Prompt Gemini",
@@ -825,7 +1687,13 @@
                             "index": 0
                         }
                     ],
-                    []
+                    [
+                        {
+                            "node": "Registrar y Confirmar",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
                 ]
             },
             "Preparar Adjunto": {
@@ -833,6 +1701,127 @@
                     [
                         {
                             "node": "Adjuntar a Card",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Adjuntar a Card": {
+                "main": [
+                    [
+                        {
+                            "node": "Registrar y Confirmar",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Registrar y Confirmar": {
+                "main": [
+                    [
+                        {
+                            "node": "Outbox Insert",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Preparar Continuacion": {
+                "main": [
+                    [
+                        {
+                            "node": "Adjuntar Continuacion",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Adjuntar Continuacion": {
+                "main": [
+                    [
+                        {
+                            "node": "Registrar Undo y Aviso",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Registrar Undo y Aviso": {
+                "main": [
+                    [
+                        {
+                            "node": "Outbox Insert",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Procesar Reaccion": {
+                "main": [
+                    [
+                        {
+                            "node": "Bajar Metadata Adjunto",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Bajar Metadata Adjunto": {
+                "main": [
+                    [
+                        {
+                            "node": "Descargar Adjunto",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Descargar Adjunto": {
+                "main": [
+                    [
+                        {
+                            "node": "Preparar Ticket desde Foto",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Preparar Ticket desde Foto": {
+                "main": [
+                    [
+                        {
+                            "node": "Borrar Adjunto Viejo",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Borrar Adjunto Viejo": {
+                "main": [
+                    [
+                        {
+                            "node": "Recuperar Payload",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Recuperar Payload": {
+                "main": [
+                    [
+                        {
+                            "node": "Armar Prompt Gemini",
                             "type": "main",
                             "index": 0
                         }
@@ -846,18 +1835,18 @@
         "autosaved": false,
         "workflowPublishHistory": [
             {
-                "createdAt": "2026-07-28T11:32:04.852Z",
-                "id": 236,
+                "createdAt": "2026-07-28T11:50:50.532Z",
+                "id": 238,
                 "workflowId": "G3YDTzNlb8i1x1Z4",
-                "versionId": "cdda101a-7819-4b1c-8c99-33200e07b450",
+                "versionId": "6b7253e2-8c8d-48b0-9ba0-b87c0fd9b18b",
                 "event": "activated",
                 "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
             },
             {
-                "createdAt": "2026-07-28T11:32:04.838Z",
-                "id": 235,
+                "createdAt": "2026-07-28T11:50:50.518Z",
+                "id": 237,
                 "workflowId": "G3YDTzNlb8i1x1Z4",
-                "versionId": "cdda101a-7819-4b1c-8c99-33200e07b450",
+                "versionId": "6b7253e2-8c8d-48b0-9ba0-b87c0fd9b18b",
                 "event": "deactivated",
                 "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
             }
