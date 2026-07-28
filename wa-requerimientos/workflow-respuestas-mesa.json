@@ -1,5 +1,5 @@
 {
-    "updatedAt": "2026-07-28T16:57:34.923Z",
+    "updatedAt": "2026-07-28T17:26:38.175Z",
     "createdAt": "2026-07-28T14:13:32.784Z",
     "id": "JPYTBT00v78HcBsB",
     "name": "WA Requerimientos - Respuestas Mesa de Ayuda",
@@ -73,7 +73,7 @@
                 0
             ],
             "parameters": {
-                "jsCode": "// Extrae texto del mail, busca la referencia a la card de Trello y el nro de ticket de la mesa.\nfunction b64url(s) {\n  try { return Buffer.from((s || '').replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8'); } catch (e) { return ''; }\n}\nfunction collectText(payload, out) {\n  if (!payload) return;\n  if (payload.mimeType === 'text/plain' && payload.body && payload.body.data) out.plain.push(b64url(payload.body.data));\n  if (payload.mimeType === 'text/html' && payload.body && payload.body.data) out.html.push(b64url(payload.body.data));\n  for (const p of payload.parts || []) collectText(p, out);\n}\nconst out = [];\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  const raw = items[i].json;\n  const meta = $('Nueva Respuesta Mesa').all()[i] ? $('Nueva Respuesta Mesa').all()[i].json : {};\n  const buf = { plain: [], html: [] };\n  collectText(raw.payload, buf);\n  let texto = buf.plain.join('\\n');\n  if (!texto && typeof raw.text === 'string' && raw.text) texto = raw.text;\n  if (!texto && typeof raw.textPlain === 'string' && raw.textPlain) texto = raw.textPlain;\n  if (!texto) {\n    const h = buf.html.join('\\n') || raw.html || raw.textHtml || raw.textAsHtml || '';\n    if (h) texto = String(h).replace(/<style[\\s\\S]*?<\\/style>/gi, '').replace(/<[^>]+>/g, ' ');\n  }\n  if (!texto) texto = raw.snippet || meta.snippet || '';\n  const headers = {};\n  for (const h of (raw.payload && raw.payload.headers) || []) headers[h.name.toLowerCase()] = h.value;\n  const subject = headers['subject'] || meta.Subject || meta.subject || '(sin asunto)';\n  const from = headers['from'] || meta.From || meta.from || '';\n  let mCard = (subject + '\\n' + texto).match(/\\(Ref[:\\s]+([A-Za-z0-9]{6,12})\\)/i);\n  if (!mCard) mCard = texto.match(/https:\\/\\/trello\\.com\\/c\\/([A-Za-z0-9]+)/);\n  const mTicket = (subject + '\\n' + texto).match(/(?:ticket|caso|incidente|solicitud|nro\\.?|n\u00c2\u00b0|#)\\s*[:#]?\\s*(\\d{3,10})/i);\n  const resumen = texto.replace(/\\s+/g, ' ').trim().slice(0, 500);\n  out.push({ json: {\n    cardShort: mCard ? mCard[1] : '',\n    ticketNum: mTicket ? mTicket[1] : '',\n    from,\n    subject,\n    resumen\n  } });\n}\nreturn out;"
+                "jsCode": "// Extrae texto del mail, matchea la card (Ref en asunto/cuerpo, link, o nro de ticket conocido)\n// y detecta si la mesa dio por resuelto el caso.\nfunction b64url(s) { try { return Buffer.from((s || '').replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8'); } catch (e) { return ''; } }\nfunction collectText(payload, out) {\n  if (!payload) return;\n  if (payload.mimeType === 'text/plain' && payload.body && payload.body.data) out.plain.push(b64url(payload.body.data));\n  if (payload.mimeType === 'text/html' && payload.body && payload.body.data) out.html.push(b64url(payload.body.data));\n  for (const p of payload.parts || []) collectText(p, out);\n}\nconst sd = $getWorkflowStaticData('global');\nif (!sd.ticketMap) sd.ticketMap = {};\nif (!sd.ticketMap['271212']) sd.ticketMap['271212'] = 'tAnZsa3n'; // seed: primer ticket real, mapeado a mano\nconst out = [];\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  const raw = items[i].json;\n  const meta = $('Nueva Respuesta Mesa').all()[i] ? $('Nueva Respuesta Mesa').all()[i].json : {};\n  const buf = { plain: [], html: [] };\n  collectText(raw.payload, buf);\n  let texto = buf.plain.join('\\n');\n  if (!texto && typeof raw.text === 'string' && raw.text) texto = raw.text;\n  if (!texto && typeof raw.textPlain === 'string' && raw.textPlain) texto = raw.textPlain;\n  if (!texto) {\n    const h = buf.html.join('\\n') || raw.html || raw.textHtml || raw.textAsHtml || '';\n    if (h) texto = String(h).replace(/<style[\\s\\S]*?<\\/style>/gi, ' ').replace(/<[^>]+>/g, ' ');\n  }\n  if (!texto) texto = raw.snippet || meta.snippet || '';\n  const headers = {};\n  for (const h of (raw.payload && raw.payload.headers) || []) headers[h.name.toLowerCase()] = h.value;\n  const subject = headers['subject'] || meta.Subject || meta.subject || '(sin asunto)';\n  const from = headers['from'] || meta.From || meta.from || '';\n  let mCard = (subject + '\\n' + texto).match(/\\(Ref[:\\s]+([A-Za-z0-9]{6,12})\\)/i);\n  if (!mCard) mCard = texto.match(/https:\\/\\/trello\\.com\\/c\\/([A-Za-z0-9]+)/);\n  const mTicket = (subject + '\\n' + texto).match(/(?:ticket|caso|incidente|solicitud|numero|n\u00c3\u00bamero|nro\\.?|#)\\s*[:#]?\\s*(\\d{3,10})/i);\n  let cardShort = mCard ? mCard[1] : '';\n  const ticketNum = mTicket ? mTicket[1] : '';\n  if (cardShort && ticketNum) {\n    sd.ticketMap[ticketNum] = cardShort;\n    const ks = Object.keys(sd.ticketMap);\n    if (ks.length > 200) { for (const k of ks.slice(0, ks.length - 150)) delete sd.ticketMap[k]; }\n  }\n  if (!cardShort && ticketNum && sd.ticketMap[ticketNum]) cardShort = sd.ticketMap[ticketNum];\n  const esResuelto = /(resuelt|solucionad|cerrad|finalizad)/i.test(subject + ' ' + texto.slice(0, 3000));\n  const resumen = texto.replace(/\\s+/g, ' ').trim().slice(0, 500);\n  out.push({ json: { cardShort, ticketNum, esResuelto, from, subject, resumen } });\n}\nreturn out;"
             }
         },
         {
@@ -127,7 +127,7 @@
                     "parameters": [
                         {
                             "name": "text",
-                            "value": "={{ '\u00f0\u0178\u017d\u00ab Respuesta de la mesa de ayuda' + ($json.ticketNum ? ' \u00e2\u20ac\u201d Ticket #' + $json.ticketNum : '') + '\\n\\nDe: ' + $json.from + '\\nAsunto: ' + $json.subject + '\\n\\n' + $json.resumen }}"
+                            "value": "={{ ($json.esResuelto ? '\u00e2\u0153\u2026 La mesa de ayuda dio por RESUELTO el caso' : '\u00f0\u0178\u017d\u00ab Respuesta de la mesa de ayuda') + ($json.ticketNum ? ' \u00e2\u20ac\u201d Ticket #' + $json.ticketNum : '') + '\\n\\nDe: ' + $json.from + '\\nAsunto: ' + $json.subject + '\\n\\n' + $json.resumen }}"
                         }
                     ]
                 },
@@ -165,7 +165,7 @@
                     "parameters": [
                         {
                             "name": "fields",
-                            "value": "idList"
+                            "value": "idList,desc,name"
                         }
                     ]
                 },
@@ -197,7 +197,7 @@
             ],
             "parameters": {
                 "mode": "runOnceForEachItem",
-                "jsCode": "// Si la card est\u00c3\u00a1 en una columna 'Pas\u00c3\u00b3 a Mesa...', al responder la mesa se mueve a 'Lo tom\u00c3\u00b3 ...'.\nconst src = $('Parsear Respuesta').item.json;\nconst idList = ($json && $json.idList) || '';\nconst MAP = {\n  '6a689b2b078eec227dc02ea5': '6a689b2c92e20b65c9e467c0', // Pas\u00c3\u00b3 Tango -> Lo tom\u00c3\u00b3 Tango\n  '6a689bcabc131c785ef97206': '6a68db9427fa9384d7e8b3d0'  // Pas\u00c3\u00b3 Ayres -> Lo tom\u00c3\u00b3 Ayres\n};\nreturn { json: { ...src, moveTo: MAP[idList] || '' } };"
+                "jsCode": "// esResuelto: la card va directo a Resuelto (dispara el aviso WhatsApp del cron).\n// Si no: de 'Pas\u00c3\u00b3 a Mesa X' pasa a 'Lo tom\u00c3\u00b3 X'. Carga desc/name para avisar al solicitante.\nconst src = $('Parsear Respuesta').item.json;\nconst idList = ($json && $json.idList) || '';\nconst RESUELTO = '6a688f083afd2addaf2f570e';\nconst MAP = {\n  '6a689b2b078eec227dc02ea5': '6a689b2c92e20b65c9e467c0',\n  '6a689bcabc131c785ef97206': '6a68db9427fa9384d7e8b3d0'\n};\nlet moveTo = '';\nif (src.esResuelto) { if (idList && idList !== RESUELTO) moveTo = RESUELTO; }\nelse moveTo = MAP[idList] || '';\nreturn { json: { ...src, moveTo, cardName: ($json && $json.name) || '', cardDesc: ($json && $json.desc) || '' } };"
             }
         },
         {
@@ -269,6 +269,61 @@
                 "trelloApi": {
                     "id": "MUcIdiWUZ1Vhdf2h",
                     "name": "Trello Desembarco"
+                }
+            },
+            "onError": "continueRegularOutput",
+            "retryOnFail": true,
+            "maxTries": 2,
+            "waitBetweenTries": 3000
+        },
+        {
+            "id": "code-aviso-sol",
+            "name": "Preparar Aviso Solicitante",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1480,
+                40
+            ],
+            "parameters": {
+                "jsCode": "// Toda novedad de la mesa se avisa por WhatsApp al chat que origino el ticket.\n// Excepcion: cuando es RESUELTO, avisa el cron del tablero (evita doble mensaje).\nconst out = [];\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  const d = $('Decidir Movimiento').all()[i] ? $('Decidir Movimiento').all()[i].json : null;\n  if (!d || d.esResuelto) continue;\n  const mChat = (d.cardDesc || '').match(/\\*\\*Chat:\\*\\* ([^\\s\\n]+)/);\n  if (!mChat) continue; // card sin origen WhatsApp\n  const nombre = (d.cardName || '').replace(/^[^0-9A-Za-z\\[\u00c3\u20ac-\u00c5\u00bf]+\\s*/, '');\n  out.push({ json: {\n    recipient: mChat[1],\n    message: `\u00f0\u0178\u201c\u2039 Novedad de la mesa de ayuda sobre tu requerimiento \\\"${nombre}\\\":\\n${d.subject}${d.ticketNum ? ' (Ticket #' + d.ticketNum + ')' : ''}\\n\\n${(d.resumen || '').slice(0, 250)}`\n  } });\n}\nreturn out;"
+            }
+        },
+        {
+            "id": "http-outbox-aviso",
+            "name": "Outbox Aviso",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.4,
+            "position": [
+                1700,
+                40
+            ],
+            "parameters": {
+                "method": "POST",
+                "url": "https://n8n.srv1312396.hstgr.cloud/api/v1/data-tables/W7rPitDcioXfqBfb/rows",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "X-N8N-API-KEY",
+                            "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJiNjBkNWU1YS1lYjNmLTQ4ZTItYTZlOC1iYzUyMTUzZTFhYzMiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiZDFhY2E0YWYtYjExMS00ZmU2LTlkZTItZmIyNWE3ODk1ZDRkIiwiaWF0IjoxNzc2OTUwMjc3fQ.K3a87ubNNw-N_ri3Q7mnYgDD2etP2l9OyoMA9Ut3L5Y"
+                        },
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ JSON.stringify({ data: [{ recipient: $json.recipient, message: $json.message, quoted_message_id: '', quoted_sender_jid: '', quoted_content: '', status: 'pending' }] }) }}",
+                "options": {
+                    "response": {
+                        "response": {
+                            "responseFormat": "json"
+                        }
+                    },
+                    "timeout": 20000
                 }
             },
             "onError": "continueRegularOutput",
@@ -351,6 +406,11 @@
                         "node": "Corresponde Mover",
                         "type": "main",
                         "index": 0
+                    },
+                    {
+                        "node": "Preparar Aviso Solicitante",
+                        "type": "main",
+                        "index": 0
                     }
                 ]
             ]
@@ -360,6 +420,17 @@
                 [
                     {
                         "node": "Mover a Lo Tomo",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Preparar Aviso Solicitante": {
+            "main": [
+                [
+                    {
+                        "node": "Outbox Aviso",
                         "type": "main",
                         "index": 0
                     }
@@ -378,19 +449,24 @@
     "staticData": {
         "node:Nueva Respuesta Mesa": {
             "Nueva Respuesta Mesa": {
-                "lastTimeChecked": 1785257436,
+                "lastTimeChecked": 1785259616,
                 "possibleDuplicates": [
-                    "19fa9a2ac3522f98",
-                    "19fa99dfcabb3f41"
+                    "19fa9c3ef495c756",
+                    "19fa9be8f5798f22"
                 ]
+            }
+        },
+        "global": {
+            "ticketMap": {
+                "271212": "tAnZsa3n"
             }
         }
     },
     "meta": null,
     "pinData": null,
-    "versionId": "93dd8a3f-4224-4b60-a06d-a0b506f7ae3d",
-    "activeVersionId": "93dd8a3f-4224-4b60-a06d-a0b506f7ae3d",
-    "versionCounter": 23,
+    "versionId": "de76e880-1232-4dda-a663-970321698146",
+    "activeVersionId": "de76e880-1232-4dda-a663-970321698146",
+    "versionCounter": 47,
     "triggerCount": 1,
     "shared": [
         {
@@ -413,9 +489,9 @@
     ],
     "tags": [],
     "activeVersion": {
-        "updatedAt": "2026-07-28T16:57:34.924Z",
-        "createdAt": "2026-07-28T16:57:34.924Z",
-        "versionId": "93dd8a3f-4224-4b60-a06d-a0b506f7ae3d",
+        "updatedAt": "2026-07-28T17:12:42.530Z",
+        "createdAt": "2026-07-28T17:12:42.530Z",
+        "versionId": "de76e880-1232-4dda-a663-970321698146",
         "workflowId": "JPYTBT00v78HcBsB",
         "nodes": [
             {
@@ -484,7 +560,7 @@
                     0
                 ],
                 "parameters": {
-                    "jsCode": "// Extrae texto del mail, busca la referencia a la card de Trello y el nro de ticket de la mesa.\nfunction b64url(s) {\n  try { return Buffer.from((s || '').replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8'); } catch (e) { return ''; }\n}\nfunction collectText(payload, out) {\n  if (!payload) return;\n  if (payload.mimeType === 'text/plain' && payload.body && payload.body.data) out.plain.push(b64url(payload.body.data));\n  if (payload.mimeType === 'text/html' && payload.body && payload.body.data) out.html.push(b64url(payload.body.data));\n  for (const p of payload.parts || []) collectText(p, out);\n}\nconst out = [];\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  const raw = items[i].json;\n  const meta = $('Nueva Respuesta Mesa').all()[i] ? $('Nueva Respuesta Mesa').all()[i].json : {};\n  const buf = { plain: [], html: [] };\n  collectText(raw.payload, buf);\n  let texto = buf.plain.join('\\n');\n  if (!texto && typeof raw.text === 'string' && raw.text) texto = raw.text;\n  if (!texto && typeof raw.textPlain === 'string' && raw.textPlain) texto = raw.textPlain;\n  if (!texto) {\n    const h = buf.html.join('\\n') || raw.html || raw.textHtml || raw.textAsHtml || '';\n    if (h) texto = String(h).replace(/<style[\\s\\S]*?<\\/style>/gi, '').replace(/<[^>]+>/g, ' ');\n  }\n  if (!texto) texto = raw.snippet || meta.snippet || '';\n  const headers = {};\n  for (const h of (raw.payload && raw.payload.headers) || []) headers[h.name.toLowerCase()] = h.value;\n  const subject = headers['subject'] || meta.Subject || meta.subject || '(sin asunto)';\n  const from = headers['from'] || meta.From || meta.from || '';\n  let mCard = (subject + '\\n' + texto).match(/\\(Ref[:\\s]+([A-Za-z0-9]{6,12})\\)/i);\n  if (!mCard) mCard = texto.match(/https:\\/\\/trello\\.com\\/c\\/([A-Za-z0-9]+)/);\n  const mTicket = (subject + '\\n' + texto).match(/(?:ticket|caso|incidente|solicitud|nro\\.?|n\u00c2\u00b0|#)\\s*[:#]?\\s*(\\d{3,10})/i);\n  const resumen = texto.replace(/\\s+/g, ' ').trim().slice(0, 500);\n  out.push({ json: {\n    cardShort: mCard ? mCard[1] : '',\n    ticketNum: mTicket ? mTicket[1] : '',\n    from,\n    subject,\n    resumen\n  } });\n}\nreturn out;"
+                    "jsCode": "// Extrae texto del mail, matchea la card (Ref en asunto/cuerpo, link, o nro de ticket conocido)\n// y detecta si la mesa dio por resuelto el caso.\nfunction b64url(s) { try { return Buffer.from((s || '').replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8'); } catch (e) { return ''; } }\nfunction collectText(payload, out) {\n  if (!payload) return;\n  if (payload.mimeType === 'text/plain' && payload.body && payload.body.data) out.plain.push(b64url(payload.body.data));\n  if (payload.mimeType === 'text/html' && payload.body && payload.body.data) out.html.push(b64url(payload.body.data));\n  for (const p of payload.parts || []) collectText(p, out);\n}\nconst sd = $getWorkflowStaticData('global');\nif (!sd.ticketMap) sd.ticketMap = {};\nif (!sd.ticketMap['271212']) sd.ticketMap['271212'] = 'tAnZsa3n'; // seed: primer ticket real, mapeado a mano\nconst out = [];\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  const raw = items[i].json;\n  const meta = $('Nueva Respuesta Mesa').all()[i] ? $('Nueva Respuesta Mesa').all()[i].json : {};\n  const buf = { plain: [], html: [] };\n  collectText(raw.payload, buf);\n  let texto = buf.plain.join('\\n');\n  if (!texto && typeof raw.text === 'string' && raw.text) texto = raw.text;\n  if (!texto && typeof raw.textPlain === 'string' && raw.textPlain) texto = raw.textPlain;\n  if (!texto) {\n    const h = buf.html.join('\\n') || raw.html || raw.textHtml || raw.textAsHtml || '';\n    if (h) texto = String(h).replace(/<style[\\s\\S]*?<\\/style>/gi, ' ').replace(/<[^>]+>/g, ' ');\n  }\n  if (!texto) texto = raw.snippet || meta.snippet || '';\n  const headers = {};\n  for (const h of (raw.payload && raw.payload.headers) || []) headers[h.name.toLowerCase()] = h.value;\n  const subject = headers['subject'] || meta.Subject || meta.subject || '(sin asunto)';\n  const from = headers['from'] || meta.From || meta.from || '';\n  let mCard = (subject + '\\n' + texto).match(/\\(Ref[:\\s]+([A-Za-z0-9]{6,12})\\)/i);\n  if (!mCard) mCard = texto.match(/https:\\/\\/trello\\.com\\/c\\/([A-Za-z0-9]+)/);\n  const mTicket = (subject + '\\n' + texto).match(/(?:ticket|caso|incidente|solicitud|numero|n\u00c3\u00bamero|nro\\.?|#)\\s*[:#]?\\s*(\\d{3,10})/i);\n  let cardShort = mCard ? mCard[1] : '';\n  const ticketNum = mTicket ? mTicket[1] : '';\n  if (cardShort && ticketNum) {\n    sd.ticketMap[ticketNum] = cardShort;\n    const ks = Object.keys(sd.ticketMap);\n    if (ks.length > 200) { for (const k of ks.slice(0, ks.length - 150)) delete sd.ticketMap[k]; }\n  }\n  if (!cardShort && ticketNum && sd.ticketMap[ticketNum]) cardShort = sd.ticketMap[ticketNum];\n  const esResuelto = /(resuelt|solucionad|cerrad|finalizad)/i.test(subject + ' ' + texto.slice(0, 3000));\n  const resumen = texto.replace(/\\s+/g, ' ').trim().slice(0, 500);\n  out.push({ json: { cardShort, ticketNum, esResuelto, from, subject, resumen } });\n}\nreturn out;"
                 }
             },
             {
@@ -538,7 +614,7 @@
                         "parameters": [
                             {
                                 "name": "text",
-                                "value": "={{ '\u00f0\u0178\u017d\u00ab Respuesta de la mesa de ayuda' + ($json.ticketNum ? ' \u00e2\u20ac\u201d Ticket #' + $json.ticketNum : '') + '\\n\\nDe: ' + $json.from + '\\nAsunto: ' + $json.subject + '\\n\\n' + $json.resumen }}"
+                                "value": "={{ ($json.esResuelto ? '\u00e2\u0153\u2026 La mesa de ayuda dio por RESUELTO el caso' : '\u00f0\u0178\u017d\u00ab Respuesta de la mesa de ayuda') + ($json.ticketNum ? ' \u00e2\u20ac\u201d Ticket #' + $json.ticketNum : '') + '\\n\\nDe: ' + $json.from + '\\nAsunto: ' + $json.subject + '\\n\\n' + $json.resumen }}"
                             }
                         ]
                     },
@@ -576,7 +652,7 @@
                         "parameters": [
                             {
                                 "name": "fields",
-                                "value": "idList"
+                                "value": "idList,desc,name"
                             }
                         ]
                     },
@@ -608,7 +684,7 @@
                 ],
                 "parameters": {
                     "mode": "runOnceForEachItem",
-                    "jsCode": "// Si la card est\u00c3\u00a1 en una columna 'Pas\u00c3\u00b3 a Mesa...', al responder la mesa se mueve a 'Lo tom\u00c3\u00b3 ...'.\nconst src = $('Parsear Respuesta').item.json;\nconst idList = ($json && $json.idList) || '';\nconst MAP = {\n  '6a689b2b078eec227dc02ea5': '6a689b2c92e20b65c9e467c0', // Pas\u00c3\u00b3 Tango -> Lo tom\u00c3\u00b3 Tango\n  '6a689bcabc131c785ef97206': '6a68db9427fa9384d7e8b3d0'  // Pas\u00c3\u00b3 Ayres -> Lo tom\u00c3\u00b3 Ayres\n};\nreturn { json: { ...src, moveTo: MAP[idList] || '' } };"
+                    "jsCode": "// esResuelto: la card va directo a Resuelto (dispara el aviso WhatsApp del cron).\n// Si no: de 'Pas\u00c3\u00b3 a Mesa X' pasa a 'Lo tom\u00c3\u00b3 X'. Carga desc/name para avisar al solicitante.\nconst src = $('Parsear Respuesta').item.json;\nconst idList = ($json && $json.idList) || '';\nconst RESUELTO = '6a688f083afd2addaf2f570e';\nconst MAP = {\n  '6a689b2b078eec227dc02ea5': '6a689b2c92e20b65c9e467c0',\n  '6a689bcabc131c785ef97206': '6a68db9427fa9384d7e8b3d0'\n};\nlet moveTo = '';\nif (src.esResuelto) { if (idList && idList !== RESUELTO) moveTo = RESUELTO; }\nelse moveTo = MAP[idList] || '';\nreturn { json: { ...src, moveTo, cardName: ($json && $json.name) || '', cardDesc: ($json && $json.desc) || '' } };"
                 }
             },
             {
@@ -680,6 +756,61 @@
                     "trelloApi": {
                         "id": "MUcIdiWUZ1Vhdf2h",
                         "name": "Trello Desembarco"
+                    }
+                },
+                "onError": "continueRegularOutput",
+                "retryOnFail": true,
+                "maxTries": 2,
+                "waitBetweenTries": 3000
+            },
+            {
+                "id": "code-aviso-sol",
+                "name": "Preparar Aviso Solicitante",
+                "type": "n8n-nodes-base.code",
+                "typeVersion": 2,
+                "position": [
+                    1480,
+                    40
+                ],
+                "parameters": {
+                    "jsCode": "// Toda novedad de la mesa se avisa por WhatsApp al chat que origino el ticket.\n// Excepcion: cuando es RESUELTO, avisa el cron del tablero (evita doble mensaje).\nconst out = [];\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  const d = $('Decidir Movimiento').all()[i] ? $('Decidir Movimiento').all()[i].json : null;\n  if (!d || d.esResuelto) continue;\n  const mChat = (d.cardDesc || '').match(/\\*\\*Chat:\\*\\* ([^\\s\\n]+)/);\n  if (!mChat) continue; // card sin origen WhatsApp\n  const nombre = (d.cardName || '').replace(/^[^0-9A-Za-z\\[\u00c3\u20ac-\u00c5\u00bf]+\\s*/, '');\n  out.push({ json: {\n    recipient: mChat[1],\n    message: `\u00f0\u0178\u201c\u2039 Novedad de la mesa de ayuda sobre tu requerimiento \\\"${nombre}\\\":\\n${d.subject}${d.ticketNum ? ' (Ticket #' + d.ticketNum + ')' : ''}\\n\\n${(d.resumen || '').slice(0, 250)}`\n  } });\n}\nreturn out;"
+                }
+            },
+            {
+                "id": "http-outbox-aviso",
+                "name": "Outbox Aviso",
+                "type": "n8n-nodes-base.httpRequest",
+                "typeVersion": 4.4,
+                "position": [
+                    1700,
+                    40
+                ],
+                "parameters": {
+                    "method": "POST",
+                    "url": "https://n8n.srv1312396.hstgr.cloud/api/v1/data-tables/W7rPitDcioXfqBfb/rows",
+                    "sendHeaders": true,
+                    "headerParameters": {
+                        "parameters": [
+                            {
+                                "name": "X-N8N-API-KEY",
+                                "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJiNjBkNWU1YS1lYjNmLTQ4ZTItYTZlOC1iYzUyMTUzZTFhYzMiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiZDFhY2E0YWYtYjExMS00ZmU2LTlkZTItZmIyNWE3ODk1ZDRkIiwiaWF0IjoxNzc2OTUwMjc3fQ.K3a87ubNNw-N_ri3Q7mnYgDD2etP2l9OyoMA9Ut3L5Y"
+                            },
+                            {
+                                "name": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ]
+                    },
+                    "sendBody": true,
+                    "specifyBody": "json",
+                    "jsonBody": "={{ JSON.stringify({ data: [{ recipient: $json.recipient, message: $json.message, quoted_message_id: '', quoted_sender_jid: '', quoted_content: '', status: 'pending' }] }) }}",
+                    "options": {
+                        "response": {
+                            "response": {
+                                "responseFormat": "json"
+                            }
+                        },
+                        "timeout": 20000
                     }
                 },
                 "onError": "continueRegularOutput",
@@ -762,6 +893,11 @@
                             "node": "Corresponde Mover",
                             "type": "main",
                             "index": 0
+                        },
+                        {
+                            "node": "Preparar Aviso Solicitante",
+                            "type": "main",
+                            "index": 0
                         }
                     ]
                 ]
@@ -776,6 +912,17 @@
                         }
                     ]
                 ]
+            },
+            "Preparar Aviso Solicitante": {
+                "main": [
+                    [
+                        {
+                            "node": "Outbox Aviso",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
             }
         },
         "authors": "Sistemas Desembarco",
@@ -784,18 +931,50 @@
         "autosaved": false,
         "workflowPublishHistory": [
             {
-                "createdAt": "2026-07-28T16:57:36.363Z",
-                "id": 269,
+                "createdAt": "2026-07-28T17:12:43.567Z",
+                "id": 274,
                 "workflowId": "JPYTBT00v78HcBsB",
-                "versionId": "93dd8a3f-4224-4b60-a06d-a0b506f7ae3d",
+                "versionId": "de76e880-1232-4dda-a663-970321698146",
                 "event": "activated",
                 "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
             },
             {
-                "createdAt": "2026-07-28T16:57:34.964Z",
-                "id": 268,
+                "createdAt": "2026-07-28T17:26:29.984Z",
+                "id": 276,
                 "workflowId": "JPYTBT00v78HcBsB",
-                "versionId": "93dd8a3f-4224-4b60-a06d-a0b506f7ae3d",
+                "versionId": "de76e880-1232-4dda-a663-970321698146",
+                "event": "activated",
+                "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
+            },
+            {
+                "createdAt": "2026-07-28T17:26:39.453Z",
+                "id": 278,
+                "workflowId": "JPYTBT00v78HcBsB",
+                "versionId": "de76e880-1232-4dda-a663-970321698146",
+                "event": "activated",
+                "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
+            },
+            {
+                "createdAt": "2026-07-28T17:12:42.582Z",
+                "id": 273,
+                "workflowId": "JPYTBT00v78HcBsB",
+                "versionId": "de76e880-1232-4dda-a663-970321698146",
+                "event": "deactivated",
+                "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
+            },
+            {
+                "createdAt": "2026-07-28T17:26:28.918Z",
+                "id": 275,
+                "workflowId": "JPYTBT00v78HcBsB",
+                "versionId": "de76e880-1232-4dda-a663-970321698146",
+                "event": "deactivated",
+                "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
+            },
+            {
+                "createdAt": "2026-07-28T17:26:30.318Z",
+                "id": 277,
+                "workflowId": "JPYTBT00v78HcBsB",
+                "versionId": "de76e880-1232-4dda-a663-970321698146",
                 "event": "deactivated",
                 "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
             }

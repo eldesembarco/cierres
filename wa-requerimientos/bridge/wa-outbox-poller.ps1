@@ -7,20 +7,21 @@ $bridgeToken = (Get-Content "C:\Users\ferra\dev\whatsapp-mcp-vgp\whatsapp-bridge
 $stateFile = "C:\Users\ferra\Servicios\wa-requerimientos\bridge\outbox-lastid.txt"
 $logFile = "C:\Users\ferra\Servicios\wa-requerimientos\bridge\outbox.log"
 
-function Log($m) { "$(Get-Date -Format o) $m" | Add-Content $logFile }
+function Log($m) { try { "$(Get-Date -Format o) $m" | Add-Content $logFile -ErrorAction Stop } catch {} }
+function SaveState($v) { for ($i = 0; $i -lt 3; $i++) { try { Set-Content $stateFile $v -ErrorAction Stop; return } catch { Start-Sleep -Milliseconds 300 } } }
 
-if ((Test-Path $logFile) -and ((Get-Item $logFile).Length -gt 5MB)) { Move-Item $logFile "$logFile.old" -Force }
+try { if ((Test-Path $logFile) -and ((Get-Item $logFile).Length -gt 5MB)) { Move-Item $logFile "$logFile.old" -Force } } catch {}
 
 # Puntero inicial: si no hay estado, arrancar desde el max id actual (no reenviar historia)
-if (Test-Path $stateFile) {
-    $lastId = [int](Get-Content $stateFile -Raw).Trim()
-} else {
+try {
+    $lastId = [int](Get-Content $stateFile -Raw -ErrorAction Stop).Trim()
+} catch {
     $lastId = 0
     try {
         $all = Invoke-RestMethod -Uri $rowsUrl -Headers @{ 'X-N8N-API-KEY' = $n8nKey } -TimeoutSec 20
         foreach ($r in $all.data) { if ($r.id -gt $lastId) { $lastId = $r.id } }
     } catch { Log "WARN init: $($_.Exception.Message)" }
-    Set-Content $stateFile $lastId
+    SaveState $lastId
 }
 Log "poller start lastId=$lastId"
 
@@ -47,10 +48,10 @@ while ($true) {
             }
             # avanza siempre (un mensaje con error no debe frenar la cola)
             $lastId = $row.id
-            Set-Content $stateFile $lastId
+            SaveState $lastId
         }
     } catch {
         Log "ERROR poll: $($_.Exception.Message)"
     }
-    Start-Sleep -Seconds 5
+    try { Start-Sleep -Seconds 5 } catch {}
 }
