@@ -1,0 +1,1294 @@
+{
+    "updatedAt": "2026-07-28T12:14:16.916Z",
+    "createdAt": "2026-07-28T12:07:57.406Z",
+    "id": "LHbJVS18ZULzqToG",
+    "name": "WA Requerimientos - Trello Sync (mesa de ayuda + resueltos)",
+    "description": null,
+    "active": true,
+    "isArchived": false,
+    "nodes": [
+        {
+            "id": "cron",
+            "name": "Cada Minuto",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1.2,
+            "position": [
+                0,
+                0
+            ],
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "minutes",
+                            "minutesInterval": 1
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "id": "http-enviar",
+            "name": "Cards Enviar Tango",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.4,
+            "position": [
+                220,
+                -120
+            ],
+            "parameters": {
+                "method": "GET",
+                "url": "https://api.trello.com/1/lists/6a689b2b078eec227dc02ea5/cards",
+                "authentication": "predefinedCredentialType",
+                "nodeCredentialType": "trelloApi",
+                "sendQuery": true,
+                "queryParameters": {
+                    "parameters": [
+                        {
+                            "name": "attachments",
+                            "value": "true"
+                        },
+                        {
+                            "name": "fields",
+                            "value": "name,desc,shortUrl,idList"
+                        }
+                    ]
+                },
+                "options": {
+                    "response": {
+                        "response": {
+                            "responseFormat": "json"
+                        }
+                    },
+                    "timeout": 20000
+                }
+            },
+            "credentials": {
+                "trelloApi": {
+                    "id": "MUcIdiWUZ1Vhdf2h",
+                    "name": "Trello Desembarco"
+                }
+            }
+        },
+        {
+            "id": "code-email",
+            "name": "Preparar Email",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                440,
+                -120
+            ],
+            "parameters": {
+                "jsCode": "// Mesas de ayuda por columna de Trello. Destinos HOY apuntan al mail de Pablo\n// hasta tener las casillas reales (Tango/Axoft y Ayres IT).\nconst MESAS = {\n  '6a689b2b078eec227dc02ea5': { mesa: 'Mesa de Ayuda Tango', destino: 'mesadeayuda@seincomp.com.ar' },\n  '6a689bcabc131c785ef97206': { mesa: 'Mesa de Ayuda Ayres IT', destino: 'polejavetzky@eldesembarco.com' }\n};\nconst out = [];\nfor (const item of $input.all()) {\n  const c = item.json;\n  if (!c || !c.id) continue;\n  const cfg = MESAS[c.idList] || { mesa: 'Mesa de ayuda', destino: 'polejavetzky@eldesembarco.com' };\n  const att = (c.attachments || []).find(a => a.url) || null;\n  const nombre = (c.name || '').replace(/^[^0-9A-Za-z\\[\u00c3\u20ac-\u00c5\u00bf]+\\s*/, '');\n  const cuerpo = [\n    'Estimados,',\n    '',\n    'Solicitamos asistencia por el siguiente requerimiento:',\n    '',\n    (c.desc || '').split('\\n---')[0].trim(),\n    '',\n    `Referencia interna: ${c.shortUrl}`,\n    '',\n    'Gracias,',\n    'Sistemas El Desembarco'\n  ].join('\\n');\n  out.push({ json: {\n    cardId: c.id,\n    cardName: c.name,\n    shortUrl: c.shortUrl,\n    mesa: cfg.mesa,\n    destino: cfg.destino,\n    asunto: ('[El Desembarco] ' + nombre).slice(0, 120),\n    cuerpo,\n    attUrl: att ? att.url : '',\n    attName: att ? (att.fileName || att.name || 'adjunto') : '',\n    attMime: att ? (att.mimeType || 'application/octet-stream') : ''\n  } });\n}\nreturn out;"
+            }
+        },
+        {
+            "id": "if-att",
+            "name": "Tiene Adjunto",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2.2,
+            "position": [
+                660,
+                -120
+            ],
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "typeValidation": "loose",
+                        "version": 2
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                        {
+                            "leftValue": "={{ $json.attUrl }}",
+                            "rightValue": "",
+                            "operator": {
+                                "type": "string",
+                                "operation": "notEmpty",
+                                "singleValue": true
+                            }
+                        }
+                    ]
+                },
+                "options": {}
+            }
+        },
+        {
+            "id": "http-att-mesa",
+            "name": "Bajar Adjunto Mesa",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.4,
+            "position": [
+                880,
+                -220
+            ],
+            "parameters": {
+                "method": "GET",
+                "url": "={{ $json.attUrl }}",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "Authorization",
+                            "value": "OAuth oauth_consumer_key=\"0e2126dbfd8ca7c38318c2570e7bf532\", oauth_token=\"ATTAac89aa35c1107c9ad5684977c731d18e375ec585f2e3e3bfbf84606bedaa3793FE3A3525\""
+                        }
+                    ]
+                },
+                "options": {
+                    "response": {
+                        "response": {
+                            "responseFormat": "file"
+                        }
+                    },
+                    "timeout": 60000
+                }
+            },
+            "retryOnFail": true,
+            "maxTries": 2,
+            "waitBetweenTries": 3000
+        },
+        {
+            "id": "gmail-att",
+            "name": "Email con Adjunto",
+            "type": "n8n-nodes-base.gmail",
+            "typeVersion": 2.1,
+            "position": [
+                1100,
+                -220
+            ],
+            "parameters": {
+                "sendTo": "={{ $('Preparar Email').item.json.destino }}",
+                "subject": "={{ $('Preparar Email').item.json.asunto }}",
+                "emailType": "text",
+                "message": "={{ $('Preparar Email').item.json.cuerpo }}",
+                "options": {
+                    "attachmentsUi": {
+                        "attachmentsBinary": [
+                            {
+                                "property": "data"
+                            }
+                        ]
+                    },
+                    "appendAttribution": false
+                }
+            },
+            "credentials": {
+                "gmailOAuth2": {
+                    "id": "lF9yQ6QkP6CKsCB6",
+                    "name": "Gmail account"
+                }
+            },
+            "retryOnFail": true,
+            "maxTries": 2,
+            "waitBetweenTries": 5000
+        },
+        {
+            "id": "gmail-plain",
+            "name": "Email sin Adjunto",
+            "type": "n8n-nodes-base.gmail",
+            "typeVersion": 2.1,
+            "position": [
+                1100,
+                -20
+            ],
+            "parameters": {
+                "sendTo": "={{ $json.destino }}",
+                "subject": "={{ $json.asunto }}",
+                "emailType": "text",
+                "message": "={{ $json.cuerpo }}",
+                "options": {
+                    "appendAttribution": false
+                }
+            },
+            "credentials": {
+                "gmailOAuth2": {
+                    "id": "lF9yQ6QkP6CKsCB6",
+                    "name": "Gmail account"
+                }
+            },
+            "retryOnFail": true,
+            "maxTries": 2,
+            "waitBetweenTries": 5000
+        },
+        {
+            "id": "http-mover",
+            "name": "Mover a Enviado",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.4,
+            "position": [
+                1320,
+                -120
+            ],
+            "parameters": {
+                "method": "PUT",
+                "url": "=https://api.trello.com/1/cards/{{ $('Preparar Email').item.json.cardId }}",
+                "authentication": "predefinedCredentialType",
+                "nodeCredentialType": "trelloApi",
+                "sendQuery": true,
+                "queryParameters": {
+                    "parameters": [
+                        {
+                            "name": "idList",
+                            "value": "6a689b2c92e20b65c9e467c0"
+                        },
+                        {
+                            "name": "pos",
+                            "value": "top"
+                        }
+                    ]
+                },
+                "options": {
+                    "timeout": 20000
+                }
+            },
+            "credentials": {
+                "trelloApi": {
+                    "id": "MUcIdiWUZ1Vhdf2h",
+                    "name": "Trello Desembarco"
+                }
+            },
+            "retryOnFail": true,
+            "maxTries": 3,
+            "waitBetweenTries": 3000
+        },
+        {
+            "id": "http-comentar",
+            "name": "Comentar Enviado",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.4,
+            "position": [
+                1540,
+                -120
+            ],
+            "parameters": {
+                "method": "POST",
+                "url": "=https://api.trello.com/1/cards/{{ $('Preparar Email').item.json.cardId }}/actions/comments",
+                "authentication": "predefinedCredentialType",
+                "nodeCredentialType": "trelloApi",
+                "sendQuery": true,
+                "queryParameters": {
+                    "parameters": [
+                        {
+                            "name": "text",
+                            "value": "={{ '\u00f0\u0178\u201c\u00a7 Enviado a ' + $('Preparar Email').item.json.mesa + ' (' + $('Preparar Email').item.json.destino + ') el ' + new Date().toISOString() }}"
+                        }
+                    ]
+                },
+                "options": {
+                    "timeout": 20000
+                }
+            },
+            "credentials": {
+                "trelloApi": {
+                    "id": "MUcIdiWUZ1Vhdf2h",
+                    "name": "Trello Desembarco"
+                }
+            },
+            "onError": "continueRegularOutput"
+        },
+        {
+            "id": "http-resuelto",
+            "name": "Cards Resuelto",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.4,
+            "position": [
+                220,
+                200
+            ],
+            "parameters": {
+                "method": "GET",
+                "url": "https://api.trello.com/1/lists/6a688f083afd2addaf2f570e/cards",
+                "authentication": "predefinedCredentialType",
+                "nodeCredentialType": "trelloApi",
+                "sendQuery": true,
+                "queryParameters": {
+                    "parameters": [
+                        {
+                            "name": "fields",
+                            "value": "name,desc,shortUrl"
+                        }
+                    ]
+                },
+                "options": {
+                    "response": {
+                        "response": {
+                            "responseFormat": "json"
+                        }
+                    },
+                    "timeout": 20000
+                }
+            },
+            "credentials": {
+                "trelloApi": {
+                    "id": "MUcIdiWUZ1Vhdf2h",
+                    "name": "Trello Desembarco"
+                }
+            }
+        },
+        {
+            "id": "code-notif",
+            "name": "Preparar Notificacion",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                440,
+                200
+            ],
+            "parameters": {
+                "jsCode": "// Notifica una sola vez por card resuelta, al chat de WhatsApp de origen.\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.notified)) sd.notified = [];\nconst out = [];\nfor (const item of $input.all()) {\n  const c = item.json;\n  if (!c || !c.id) continue;\n  if (sd.notified.includes(c.id)) continue;\n  sd.notified.push(c.id);\n  if (sd.notified.length > 500) sd.notified = sd.notified.slice(-400);\n  const mChat = (c.desc || '').match(/\\*\\*Chat:\\*\\* ([^\\s\\n]+)/);\n  if (!mChat) continue; // card creada a mano, sin origen WhatsApp\n  const mSol = (c.desc || '').match(/\\*\\*Solicitante:\\*\\* ([^\\s\\n]+)/);\n  out.push({ json: {\n    cardId: c.id,\n    recipient: mChat[1],\n    message: `\u00e2\u0153\u2026 Resuelto: ${c.name}\\n${c.shortUrl}${mSol ? '\\n(solicitado por ' + mSol[1] + ')' : ''}`\n  } });\n}\nreturn out;"
+            }
+        },
+        {
+            "id": "http-outbox2",
+            "name": "Outbox Notificar",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.4,
+            "position": [
+                660,
+                200
+            ],
+            "parameters": {
+                "method": "POST",
+                "url": "https://n8n.srv1312396.hstgr.cloud/api/v1/data-tables/W7rPitDcioXfqBfb/rows",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "X-N8N-API-KEY",
+                            "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJiNjBkNWU1YS1lYjNmLTQ4ZTItYTZlOC1iYzUyMTUzZTFhYzMiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiZDFhY2E0YWYtYjExMS00ZmU2LTlkZTItZmIyNWE3ODk1ZDRkIiwiaWF0IjoxNzc2OTUwMjc3fQ.K3a87ubNNw-N_ri3Q7mnYgDD2etP2l9OyoMA9Ut3L5Y"
+                        },
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ JSON.stringify({ data: [{ recipient: $json.recipient, message: $json.message, quoted_message_id: '', quoted_sender_jid: '', quoted_content: '', status: 'pending' }] }) }}",
+                "options": {
+                    "response": {
+                        "response": {
+                            "responseFormat": "json"
+                        }
+                    },
+                    "timeout": 20000
+                }
+            },
+            "retryOnFail": true,
+            "maxTries": 2,
+            "waitBetweenTries": 3000,
+            "onError": "continueRegularOutput"
+        },
+        {
+            "id": "http-comentar2",
+            "name": "Comentar Notificado",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.4,
+            "position": [
+                880,
+                200
+            ],
+            "parameters": {
+                "method": "POST",
+                "url": "=https://api.trello.com/1/cards/{{ $('Preparar Notificacion').item.json.cardId }}/actions/comments",
+                "authentication": "predefinedCredentialType",
+                "nodeCredentialType": "trelloApi",
+                "sendQuery": true,
+                "queryParameters": {
+                    "parameters": [
+                        {
+                            "name": "text",
+                            "value": "={{ '\u00f0\u0178\u201d\u201d Notificado por WhatsApp al chat de origen el ' + new Date().toISOString() }}"
+                        }
+                    ]
+                },
+                "options": {
+                    "timeout": 20000
+                }
+            },
+            "credentials": {
+                "trelloApi": {
+                    "id": "MUcIdiWUZ1Vhdf2h",
+                    "name": "Trello Desembarco"
+                }
+            },
+            "onError": "continueRegularOutput"
+        },
+        {
+            "id": "http-enviar-ayres",
+            "name": "Cards Enviar Ayres",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.4,
+            "position": [
+                220,
+                -320
+            ],
+            "parameters": {
+                "method": "GET",
+                "url": "https://api.trello.com/1/lists/6a689bcabc131c785ef97206/cards",
+                "authentication": "predefinedCredentialType",
+                "nodeCredentialType": "trelloApi",
+                "sendQuery": true,
+                "queryParameters": {
+                    "parameters": [
+                        {
+                            "name": "attachments",
+                            "value": "true"
+                        },
+                        {
+                            "name": "fields",
+                            "value": "name,desc,shortUrl,idList"
+                        }
+                    ]
+                },
+                "options": {
+                    "response": {
+                        "response": {
+                            "responseFormat": "json"
+                        }
+                    },
+                    "timeout": 20000
+                }
+            },
+            "credentials": {
+                "trelloApi": {
+                    "id": "MUcIdiWUZ1Vhdf2h",
+                    "name": "Trello Desembarco"
+                }
+            }
+        }
+    ],
+    "connections": {
+        "Cada Minuto": {
+            "main": [
+                [
+                    {
+                        "node": "Cards Enviar Tango",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Cards Resuelto",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Cards Enviar Ayres",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Cards Enviar Tango": {
+            "main": [
+                [
+                    {
+                        "node": "Preparar Email",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Preparar Email": {
+            "main": [
+                [
+                    {
+                        "node": "Tiene Adjunto",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Tiene Adjunto": {
+            "main": [
+                [
+                    {
+                        "node": "Bajar Adjunto Mesa",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Email sin Adjunto",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Bajar Adjunto Mesa": {
+            "main": [
+                [
+                    {
+                        "node": "Email con Adjunto",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Email con Adjunto": {
+            "main": [
+                [
+                    {
+                        "node": "Mover a Enviado",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Email sin Adjunto": {
+            "main": [
+                [
+                    {
+                        "node": "Mover a Enviado",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Mover a Enviado": {
+            "main": [
+                [
+                    {
+                        "node": "Comentar Enviado",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Cards Resuelto": {
+            "main": [
+                [
+                    {
+                        "node": "Preparar Notificacion",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Preparar Notificacion": {
+            "main": [
+                [
+                    {
+                        "node": "Outbox Notificar",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Outbox Notificar": {
+            "main": [
+                [
+                    {
+                        "node": "Comentar Notificado",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Cards Enviar Ayres": {
+            "main": [
+                [
+                    {
+                        "node": "Preparar Email",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1",
+        "timezone": "America/Argentina/Buenos_Aires",
+        "saveDataErrorExecution": "all",
+        "saveDataSuccessExecution": "none",
+        "saveManualExecutions": true,
+        "callerPolicy": "workflowsFromSameOwner",
+        "availableInMCP": false
+    },
+    "staticData": {
+        "node:Cada Minuto": {
+            "recurrenceRules": []
+        },
+        "global": {
+            "notified": [
+                "6a689c015de378b6b56ec13f"
+            ]
+        }
+    },
+    "meta": null,
+    "pinData": null,
+    "versionId": "76657cda-c986-46f3-8210-1b5a6c515d8d",
+    "activeVersionId": "76657cda-c986-46f3-8210-1b5a6c515d8d",
+    "versionCounter": 10,
+    "triggerCount": 1,
+    "shared": [
+        {
+            "updatedAt": "2026-07-28T12:07:57.413Z",
+            "createdAt": "2026-07-28T12:07:57.413Z",
+            "role": "workflow:owner",
+            "workflowId": "LHbJVS18ZULzqToG",
+            "projectId": "ocPw9pE4DMpA2RZi",
+            "project": {
+                "updatedAt": "2026-01-30T16:50:53.225Z",
+                "createdAt": "2026-01-30T16:46:45.454Z",
+                "id": "ocPw9pE4DMpA2RZi",
+                "name": "Sistemas Desembarco <sistemas.desembarco@gmail.com>",
+                "type": "personal",
+                "icon": null,
+                "description": null,
+                "creatorId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
+            }
+        }
+    ],
+    "tags": [],
+    "activeVersion": {
+        "updatedAt": "2026-07-28T12:14:16.917Z",
+        "createdAt": "2026-07-28T12:14:16.917Z",
+        "versionId": "76657cda-c986-46f3-8210-1b5a6c515d8d",
+        "workflowId": "LHbJVS18ZULzqToG",
+        "nodes": [
+            {
+                "id": "cron",
+                "name": "Cada Minuto",
+                "type": "n8n-nodes-base.scheduleTrigger",
+                "typeVersion": 1.2,
+                "position": [
+                    0,
+                    0
+                ],
+                "parameters": {
+                    "rule": {
+                        "interval": [
+                            {
+                                "field": "minutes",
+                                "minutesInterval": 1
+                            }
+                        ]
+                    }
+                }
+            },
+            {
+                "id": "http-enviar",
+                "name": "Cards Enviar Tango",
+                "type": "n8n-nodes-base.httpRequest",
+                "typeVersion": 4.4,
+                "position": [
+                    220,
+                    -120
+                ],
+                "parameters": {
+                    "method": "GET",
+                    "url": "https://api.trello.com/1/lists/6a689b2b078eec227dc02ea5/cards",
+                    "authentication": "predefinedCredentialType",
+                    "nodeCredentialType": "trelloApi",
+                    "sendQuery": true,
+                    "queryParameters": {
+                        "parameters": [
+                            {
+                                "name": "attachments",
+                                "value": "true"
+                            },
+                            {
+                                "name": "fields",
+                                "value": "name,desc,shortUrl,idList"
+                            }
+                        ]
+                    },
+                    "options": {
+                        "response": {
+                            "response": {
+                                "responseFormat": "json"
+                            }
+                        },
+                        "timeout": 20000
+                    }
+                },
+                "credentials": {
+                    "trelloApi": {
+                        "id": "MUcIdiWUZ1Vhdf2h",
+                        "name": "Trello Desembarco"
+                    }
+                }
+            },
+            {
+                "id": "code-email",
+                "name": "Preparar Email",
+                "type": "n8n-nodes-base.code",
+                "typeVersion": 2,
+                "position": [
+                    440,
+                    -120
+                ],
+                "parameters": {
+                    "jsCode": "// Mesas de ayuda por columna de Trello. Destinos HOY apuntan al mail de Pablo\n// hasta tener las casillas reales (Tango/Axoft y Ayres IT).\nconst MESAS = {\n  '6a689b2b078eec227dc02ea5': { mesa: 'Mesa de Ayuda Tango', destino: 'mesadeayuda@seincomp.com.ar' },\n  '6a689bcabc131c785ef97206': { mesa: 'Mesa de Ayuda Ayres IT', destino: 'polejavetzky@eldesembarco.com' }\n};\nconst out = [];\nfor (const item of $input.all()) {\n  const c = item.json;\n  if (!c || !c.id) continue;\n  const cfg = MESAS[c.idList] || { mesa: 'Mesa de ayuda', destino: 'polejavetzky@eldesembarco.com' };\n  const att = (c.attachments || []).find(a => a.url) || null;\n  const nombre = (c.name || '').replace(/^[^0-9A-Za-z\\[\u00c3\u20ac-\u00c5\u00bf]+\\s*/, '');\n  const cuerpo = [\n    'Estimados,',\n    '',\n    'Solicitamos asistencia por el siguiente requerimiento:',\n    '',\n    (c.desc || '').split('\\n---')[0].trim(),\n    '',\n    `Referencia interna: ${c.shortUrl}`,\n    '',\n    'Gracias,',\n    'Sistemas El Desembarco'\n  ].join('\\n');\n  out.push({ json: {\n    cardId: c.id,\n    cardName: c.name,\n    shortUrl: c.shortUrl,\n    mesa: cfg.mesa,\n    destino: cfg.destino,\n    asunto: ('[El Desembarco] ' + nombre).slice(0, 120),\n    cuerpo,\n    attUrl: att ? att.url : '',\n    attName: att ? (att.fileName || att.name || 'adjunto') : '',\n    attMime: att ? (att.mimeType || 'application/octet-stream') : ''\n  } });\n}\nreturn out;"
+                }
+            },
+            {
+                "id": "if-att",
+                "name": "Tiene Adjunto",
+                "type": "n8n-nodes-base.if",
+                "typeVersion": 2.2,
+                "position": [
+                    660,
+                    -120
+                ],
+                "parameters": {
+                    "conditions": {
+                        "options": {
+                            "caseSensitive": true,
+                            "typeValidation": "loose",
+                            "version": 2
+                        },
+                        "combinator": "and",
+                        "conditions": [
+                            {
+                                "leftValue": "={{ $json.attUrl }}",
+                                "rightValue": "",
+                                "operator": {
+                                    "type": "string",
+                                    "operation": "notEmpty",
+                                    "singleValue": true
+                                }
+                            }
+                        ]
+                    },
+                    "options": {}
+                }
+            },
+            {
+                "id": "http-att-mesa",
+                "name": "Bajar Adjunto Mesa",
+                "type": "n8n-nodes-base.httpRequest",
+                "typeVersion": 4.4,
+                "position": [
+                    880,
+                    -220
+                ],
+                "parameters": {
+                    "method": "GET",
+                    "url": "={{ $json.attUrl }}",
+                    "sendHeaders": true,
+                    "headerParameters": {
+                        "parameters": [
+                            {
+                                "name": "Authorization",
+                                "value": "OAuth oauth_consumer_key=\"0e2126dbfd8ca7c38318c2570e7bf532\", oauth_token=\"ATTAac89aa35c1107c9ad5684977c731d18e375ec585f2e3e3bfbf84606bedaa3793FE3A3525\""
+                            }
+                        ]
+                    },
+                    "options": {
+                        "response": {
+                            "response": {
+                                "responseFormat": "file"
+                            }
+                        },
+                        "timeout": 60000
+                    }
+                },
+                "retryOnFail": true,
+                "maxTries": 2,
+                "waitBetweenTries": 3000
+            },
+            {
+                "id": "gmail-att",
+                "name": "Email con Adjunto",
+                "type": "n8n-nodes-base.gmail",
+                "typeVersion": 2.1,
+                "position": [
+                    1100,
+                    -220
+                ],
+                "parameters": {
+                    "sendTo": "={{ $('Preparar Email').item.json.destino }}",
+                    "subject": "={{ $('Preparar Email').item.json.asunto }}",
+                    "emailType": "text",
+                    "message": "={{ $('Preparar Email').item.json.cuerpo }}",
+                    "options": {
+                        "attachmentsUi": {
+                            "attachmentsBinary": [
+                                {
+                                    "property": "data"
+                                }
+                            ]
+                        },
+                        "appendAttribution": false
+                    }
+                },
+                "credentials": {
+                    "gmailOAuth2": {
+                        "id": "lF9yQ6QkP6CKsCB6",
+                        "name": "Gmail account"
+                    }
+                },
+                "retryOnFail": true,
+                "maxTries": 2,
+                "waitBetweenTries": 5000
+            },
+            {
+                "id": "gmail-plain",
+                "name": "Email sin Adjunto",
+                "type": "n8n-nodes-base.gmail",
+                "typeVersion": 2.1,
+                "position": [
+                    1100,
+                    -20
+                ],
+                "parameters": {
+                    "sendTo": "={{ $json.destino }}",
+                    "subject": "={{ $json.asunto }}",
+                    "emailType": "text",
+                    "message": "={{ $json.cuerpo }}",
+                    "options": {
+                        "appendAttribution": false
+                    }
+                },
+                "credentials": {
+                    "gmailOAuth2": {
+                        "id": "lF9yQ6QkP6CKsCB6",
+                        "name": "Gmail account"
+                    }
+                },
+                "retryOnFail": true,
+                "maxTries": 2,
+                "waitBetweenTries": 5000
+            },
+            {
+                "id": "http-mover",
+                "name": "Mover a Enviado",
+                "type": "n8n-nodes-base.httpRequest",
+                "typeVersion": 4.4,
+                "position": [
+                    1320,
+                    -120
+                ],
+                "parameters": {
+                    "method": "PUT",
+                    "url": "=https://api.trello.com/1/cards/{{ $('Preparar Email').item.json.cardId }}",
+                    "authentication": "predefinedCredentialType",
+                    "nodeCredentialType": "trelloApi",
+                    "sendQuery": true,
+                    "queryParameters": {
+                        "parameters": [
+                            {
+                                "name": "idList",
+                                "value": "6a689b2c92e20b65c9e467c0"
+                            },
+                            {
+                                "name": "pos",
+                                "value": "top"
+                            }
+                        ]
+                    },
+                    "options": {
+                        "timeout": 20000
+                    }
+                },
+                "credentials": {
+                    "trelloApi": {
+                        "id": "MUcIdiWUZ1Vhdf2h",
+                        "name": "Trello Desembarco"
+                    }
+                },
+                "retryOnFail": true,
+                "maxTries": 3,
+                "waitBetweenTries": 3000
+            },
+            {
+                "id": "http-comentar",
+                "name": "Comentar Enviado",
+                "type": "n8n-nodes-base.httpRequest",
+                "typeVersion": 4.4,
+                "position": [
+                    1540,
+                    -120
+                ],
+                "parameters": {
+                    "method": "POST",
+                    "url": "=https://api.trello.com/1/cards/{{ $('Preparar Email').item.json.cardId }}/actions/comments",
+                    "authentication": "predefinedCredentialType",
+                    "nodeCredentialType": "trelloApi",
+                    "sendQuery": true,
+                    "queryParameters": {
+                        "parameters": [
+                            {
+                                "name": "text",
+                                "value": "={{ '\u00f0\u0178\u201c\u00a7 Enviado a ' + $('Preparar Email').item.json.mesa + ' (' + $('Preparar Email').item.json.destino + ') el ' + new Date().toISOString() }}"
+                            }
+                        ]
+                    },
+                    "options": {
+                        "timeout": 20000
+                    }
+                },
+                "credentials": {
+                    "trelloApi": {
+                        "id": "MUcIdiWUZ1Vhdf2h",
+                        "name": "Trello Desembarco"
+                    }
+                },
+                "onError": "continueRegularOutput"
+            },
+            {
+                "id": "http-resuelto",
+                "name": "Cards Resuelto",
+                "type": "n8n-nodes-base.httpRequest",
+                "typeVersion": 4.4,
+                "position": [
+                    220,
+                    200
+                ],
+                "parameters": {
+                    "method": "GET",
+                    "url": "https://api.trello.com/1/lists/6a688f083afd2addaf2f570e/cards",
+                    "authentication": "predefinedCredentialType",
+                    "nodeCredentialType": "trelloApi",
+                    "sendQuery": true,
+                    "queryParameters": {
+                        "parameters": [
+                            {
+                                "name": "fields",
+                                "value": "name,desc,shortUrl"
+                            }
+                        ]
+                    },
+                    "options": {
+                        "response": {
+                            "response": {
+                                "responseFormat": "json"
+                            }
+                        },
+                        "timeout": 20000
+                    }
+                },
+                "credentials": {
+                    "trelloApi": {
+                        "id": "MUcIdiWUZ1Vhdf2h",
+                        "name": "Trello Desembarco"
+                    }
+                }
+            },
+            {
+                "id": "code-notif",
+                "name": "Preparar Notificacion",
+                "type": "n8n-nodes-base.code",
+                "typeVersion": 2,
+                "position": [
+                    440,
+                    200
+                ],
+                "parameters": {
+                    "jsCode": "// Notifica una sola vez por card resuelta, al chat de WhatsApp de origen.\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.notified)) sd.notified = [];\nconst out = [];\nfor (const item of $input.all()) {\n  const c = item.json;\n  if (!c || !c.id) continue;\n  if (sd.notified.includes(c.id)) continue;\n  sd.notified.push(c.id);\n  if (sd.notified.length > 500) sd.notified = sd.notified.slice(-400);\n  const mChat = (c.desc || '').match(/\\*\\*Chat:\\*\\* ([^\\s\\n]+)/);\n  if (!mChat) continue; // card creada a mano, sin origen WhatsApp\n  const mSol = (c.desc || '').match(/\\*\\*Solicitante:\\*\\* ([^\\s\\n]+)/);\n  out.push({ json: {\n    cardId: c.id,\n    recipient: mChat[1],\n    message: `\u00e2\u0153\u2026 Resuelto: ${c.name}\\n${c.shortUrl}${mSol ? '\\n(solicitado por ' + mSol[1] + ')' : ''}`\n  } });\n}\nreturn out;"
+                }
+            },
+            {
+                "id": "http-outbox2",
+                "name": "Outbox Notificar",
+                "type": "n8n-nodes-base.httpRequest",
+                "typeVersion": 4.4,
+                "position": [
+                    660,
+                    200
+                ],
+                "parameters": {
+                    "method": "POST",
+                    "url": "https://n8n.srv1312396.hstgr.cloud/api/v1/data-tables/W7rPitDcioXfqBfb/rows",
+                    "sendHeaders": true,
+                    "headerParameters": {
+                        "parameters": [
+                            {
+                                "name": "X-N8N-API-KEY",
+                                "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJiNjBkNWU1YS1lYjNmLTQ4ZTItYTZlOC1iYzUyMTUzZTFhYzMiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiZDFhY2E0YWYtYjExMS00ZmU2LTlkZTItZmIyNWE3ODk1ZDRkIiwiaWF0IjoxNzc2OTUwMjc3fQ.K3a87ubNNw-N_ri3Q7mnYgDD2etP2l9OyoMA9Ut3L5Y"
+                            },
+                            {
+                                "name": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ]
+                    },
+                    "sendBody": true,
+                    "specifyBody": "json",
+                    "jsonBody": "={{ JSON.stringify({ data: [{ recipient: $json.recipient, message: $json.message, quoted_message_id: '', quoted_sender_jid: '', quoted_content: '', status: 'pending' }] }) }}",
+                    "options": {
+                        "response": {
+                            "response": {
+                                "responseFormat": "json"
+                            }
+                        },
+                        "timeout": 20000
+                    }
+                },
+                "retryOnFail": true,
+                "maxTries": 2,
+                "waitBetweenTries": 3000,
+                "onError": "continueRegularOutput"
+            },
+            {
+                "id": "http-comentar2",
+                "name": "Comentar Notificado",
+                "type": "n8n-nodes-base.httpRequest",
+                "typeVersion": 4.4,
+                "position": [
+                    880,
+                    200
+                ],
+                "parameters": {
+                    "method": "POST",
+                    "url": "=https://api.trello.com/1/cards/{{ $('Preparar Notificacion').item.json.cardId }}/actions/comments",
+                    "authentication": "predefinedCredentialType",
+                    "nodeCredentialType": "trelloApi",
+                    "sendQuery": true,
+                    "queryParameters": {
+                        "parameters": [
+                            {
+                                "name": "text",
+                                "value": "={{ '\u00f0\u0178\u201d\u201d Notificado por WhatsApp al chat de origen el ' + new Date().toISOString() }}"
+                            }
+                        ]
+                    },
+                    "options": {
+                        "timeout": 20000
+                    }
+                },
+                "credentials": {
+                    "trelloApi": {
+                        "id": "MUcIdiWUZ1Vhdf2h",
+                        "name": "Trello Desembarco"
+                    }
+                },
+                "onError": "continueRegularOutput"
+            },
+            {
+                "id": "http-enviar-ayres",
+                "name": "Cards Enviar Ayres",
+                "type": "n8n-nodes-base.httpRequest",
+                "typeVersion": 4.4,
+                "position": [
+                    220,
+                    -320
+                ],
+                "parameters": {
+                    "method": "GET",
+                    "url": "https://api.trello.com/1/lists/6a689bcabc131c785ef97206/cards",
+                    "authentication": "predefinedCredentialType",
+                    "nodeCredentialType": "trelloApi",
+                    "sendQuery": true,
+                    "queryParameters": {
+                        "parameters": [
+                            {
+                                "name": "attachments",
+                                "value": "true"
+                            },
+                            {
+                                "name": "fields",
+                                "value": "name,desc,shortUrl,idList"
+                            }
+                        ]
+                    },
+                    "options": {
+                        "response": {
+                            "response": {
+                                "responseFormat": "json"
+                            }
+                        },
+                        "timeout": 20000
+                    }
+                },
+                "credentials": {
+                    "trelloApi": {
+                        "id": "MUcIdiWUZ1Vhdf2h",
+                        "name": "Trello Desembarco"
+                    }
+                }
+            }
+        ],
+        "connections": {
+            "Cada Minuto": {
+                "main": [
+                    [
+                        {
+                            "node": "Cards Enviar Tango",
+                            "type": "main",
+                            "index": 0
+                        },
+                        {
+                            "node": "Cards Resuelto",
+                            "type": "main",
+                            "index": 0
+                        },
+                        {
+                            "node": "Cards Enviar Ayres",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Cards Enviar Tango": {
+                "main": [
+                    [
+                        {
+                            "node": "Preparar Email",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Preparar Email": {
+                "main": [
+                    [
+                        {
+                            "node": "Tiene Adjunto",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Tiene Adjunto": {
+                "main": [
+                    [
+                        {
+                            "node": "Bajar Adjunto Mesa",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ],
+                    [
+                        {
+                            "node": "Email sin Adjunto",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Bajar Adjunto Mesa": {
+                "main": [
+                    [
+                        {
+                            "node": "Email con Adjunto",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Email con Adjunto": {
+                "main": [
+                    [
+                        {
+                            "node": "Mover a Enviado",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Email sin Adjunto": {
+                "main": [
+                    [
+                        {
+                            "node": "Mover a Enviado",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Mover a Enviado": {
+                "main": [
+                    [
+                        {
+                            "node": "Comentar Enviado",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Cards Resuelto": {
+                "main": [
+                    [
+                        {
+                            "node": "Preparar Notificacion",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Preparar Notificacion": {
+                "main": [
+                    [
+                        {
+                            "node": "Outbox Notificar",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Outbox Notificar": {
+                "main": [
+                    [
+                        {
+                            "node": "Comentar Notificado",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Cards Enviar Ayres": {
+                "main": [
+                    [
+                        {
+                            "node": "Preparar Email",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            }
+        },
+        "authors": "Sistemas Desembarco",
+        "name": null,
+        "description": null,
+        "autosaved": false,
+        "workflowPublishHistory": [
+            {
+                "createdAt": "2026-07-28T12:14:16.954Z",
+                "id": 241,
+                "workflowId": "LHbJVS18ZULzqToG",
+                "versionId": "76657cda-c986-46f3-8210-1b5a6c515d8d",
+                "event": "activated",
+                "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
+            },
+            {
+                "createdAt": "2026-07-28T12:14:16.942Z",
+                "id": 240,
+                "workflowId": "LHbJVS18ZULzqToG",
+                "versionId": "76657cda-c986-46f3-8210-1b5a6c515d8d",
+                "event": "deactivated",
+                "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
+            }
+        ]
+    }
+}

@@ -903,14 +903,23 @@
                 "TEST-E2E-002",
                 "h2132823952",
                 "QA-100",
-                "QA-101"
+                "QA-101",
+                "QA-200",
+                "h-910718556",
+                "h-1992375475"
             ],
             "lastTicket": {
                 "5491157935007@s.whatsapp.net|5491157935007": {
-                    "cardId": "6a6899204b5f33e104a75093",
-                    "cardName": "\u00f0\u0178\u0178\u00a2 Revisar pantalla con patr\u00c3\u00b3n de cuadros",
-                    "shortUrl": "https://trello.com/c/jSw7c5zn",
-                    "ts": 1785239841766
+                    "cardId": "6a689c015de378b6b56ec13f",
+                    "cardName": "\u00f0\u0178\u201d\u00b4 [San Telmo] Reparar impresora fiscal Tango en San Telmo (error 505)",
+                    "shortUrl": "https://trello.com/c/Rbh4ijiM",
+                    "ts": 1785240578020
+                },
+                "120363410062969047@g.us|5491171241480": {
+                    "cardId": "6a689d2faa135d5a190ddc7c",
+                    "cardName": "\u00f0\u0178\u0178\u00a2 Aclaraci\u00c3\u00b3n de personal en grupo de WhatsApp",
+                    "shortUrl": "https://trello.com/c/3nWfMo9Z",
+                    "ts": 1785240880123
                 }
             },
             "pendingUndo": {}
@@ -920,7 +929,7 @@
     "pinData": null,
     "versionId": "6b7253e2-8c8d-48b0-9ba0-b87c0fd9b18b",
     "activeVersionId": "6b7253e2-8c8d-48b0-9ba0-b87c0fd9b18b",
-    "versionCounter": 19,
+    "versionCounter": 22,
     "triggerCount": 1,
     "shared": [
         {

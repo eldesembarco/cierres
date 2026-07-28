@@ -48,6 +48,27 @@ Reglas de UX:
   bot avisa y con reaccionar 👎 a la foto se separa en ticket propio.
 - Toda card creada se confirma en el chat con el link de Trello.
 
+## Workflow 2: Trello Sync (mesa de ayuda + resueltos)
+
+Workflow `LHbJVS18ZULzqToG` — cron cada 1 min (ejecuciones exitosas NO se
+guardan; errores sí). Flujo operado por Pablo arrastrando cards:
+
+- Card en **"Enviar a Mesa Tango"** → email a `mesadeayuda@seincomp.com.ar`
+  (Seincomp) con el requerimiento + primer adjunto, desde la Gmail de n8n
+  (`Gmail account`, cred `lF9yQ6QkP6CKsCB6`), la card pasa a **"Enviado a mesa
+  de ayuda"** con comentario 📧 de auditoría.
+- Card en **"Enviar a Mesa Ayres IT"** → mismo circuito. ⚠️ PENDIENTE: casilla
+  real de Ayres IT — hoy apunta a `polejavetzky@eldesembarco.com` (placeholder).
+  Cambiar en el mapa `MESAS` del nodo `Preparar Email`.
+- Card en **"Resuelto"** → notifica ✅ por WhatsApp al chat de origen (parsea
+  `**Chat:**` de la descripción; cards manuales sin ese campo no notifican),
+  comenta 🔔 en la card. Dedupe de notificaciones en staticData (`notified`).
+
+Columnas del board: Entrantes → En curso → Enviar a Mesa Tango → Enviar a Mesa
+Ayres IT → Enviado a mesa de ayuda → Resuelto.
+IDs listas: Tango `6a689b2b078eec227dc02ea5`, Ayres `6a689bcabc131c785ef97206`,
+Enviado `6a689b2c92e20b65c9e467c0`, Resuelto `6a688f083afd2addaf2f570e`.
+
 ## IDs / referencias
 
 | Qué | Valor |
