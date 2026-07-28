@@ -1,5 +1,5 @@
 {
-    "updatedAt": "2026-07-28T16:41:43.951Z",
+    "updatedAt": "2026-07-28T16:52:04.713Z",
     "createdAt": "2026-07-28T12:07:57.406Z",
     "id": "LHbJVS18ZULzqToG",
     "name": "WA Requerimientos - Trello Sync (mesa de ayuda + resueltos)",
@@ -80,7 +80,7 @@
                 -120
             ],
             "parameters": {
-                "jsCode": "// Mesas de ayuda por columna de Trello. Destinos HOY apuntan al mail de Pablo\n// hasta tener las casillas reales (Tango/Axoft y Ayres IT).\nconst MESAS = {\n  '6a689b2b078eec227dc02ea5': { mesa: 'Mesa de Ayuda Tango', destino: 'mesadeayuda@seincomp.com.ar' },\n  '6a689bcabc131c785ef97206': { mesa: 'Mesa de Ayuda Ayres IT', destino: 'polejavetzky@eldesembarco.com' }\n};\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.sentMesa)) sd.sentMesa = [];\nconst out = [];\nfor (const item of $input.all()) {\n  const c = item.json;\n  if (!c || !c.id) continue;\n  if (sd.sentMesa.includes(c.id)) continue; // ya enviado: la card se queda en la columna sin reenviar\n  const cfg = MESAS[c.idList] || { mesa: 'Mesa de ayuda', destino: 'polejavetzky@eldesembarco.com' };\n  const atts = (c.attachments || []).filter(a => a.url && a.isUpload !== false);\n  const nombre = (c.name || '').replace(/^[^0-9A-Za-z\\[\u00c3\u20ac-\u00c5\u00bf]+\\s*/, '');\n  const cuerpo = [\n    'Estimados,',\n    '',\n    'Solicitamos asistencia por el siguiente requerimiento:',\n    '',\n    (c.desc || '').split('\\n---')[0].trim(),\n    '',\n    'Gracias,',\n    'Sistemas El Desembarco'\n  ].join('\\n');\n  out.push({ json: {\n    cardId: c.id,\n    cardName: c.name,\n    shortUrl: c.shortUrl,\n    mesa: cfg.mesa,\n    destino: cfg.destino,\n    asunto: ('[El Desembarco] ' + nombre).slice(0, 100) + ' (Ref ' + (((c.shortUrl || '').split('/c/')[1]) || c.id) + ')',\n    cuerpo,\n    attUrl: atts.length ? atts[0].url : '',\n    attList: atts.map(a => ({ url: a.url, name: a.fileName || a.name || 'adjunto', mime: a.mimeType || 'application/octet-stream' }))\n  } });\n}\nreturn out;"
+                "jsCode": "// Mesas de ayuda por columna de Trello. Destinos HOY apuntan al mail de Pablo\n// hasta tener las casillas reales (Tango/Axoft y Ayres IT).\nconst MESAS = {\n  '6a689b2b078eec227dc02ea5': { mesa: 'Mesa de Ayuda Tango', destino: 'mesadeayuda@seincomp.com.ar' },\n  '6a689bcabc131c785ef97206': { mesa: 'Mesa de Ayuda Ayres IT', destino: '' } // SIN CASILLA AUN: no envia nada hasta configurarla\n};\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.sentMesa)) sd.sentMesa = [];\nconst out = [];\nfor (const item of $input.all()) {\n  const c = item.json;\n  if (!c || !c.id) continue;\n  if (sd.sentMesa.includes(c.id)) continue; // ya enviado: la card se queda en la columna sin reenviar\n  const cfg = MESAS[c.idList] || { mesa: 'Mesa de ayuda', destino: '' };\n  if (!cfg.destino) continue; // mesa sin casilla configurada: la card queda sin enviar\n  const atts = (c.attachments || []).filter(a => a.url && a.isUpload !== false);\n  const nombre = (c.name || '').replace(/^[^0-9A-Za-z\\[\u00c3\u20ac-\u00c5\u00bf]+\\s*/, '');\n  const cuerpo = [\n    'Estimados,',\n    '',\n    'Solicitamos asistencia por el siguiente requerimiento:',\n    '',\n    (c.desc || '').split('\\n---')[0].trim(),\n    '',\n    'Gracias,',\n    'Sistemas El Desembarco'\n  ].join('\\n');\n  out.push({ json: {\n    cardId: c.id,\n    cardName: c.name,\n    shortUrl: c.shortUrl,\n    mesa: cfg.mesa,\n    destino: cfg.destino,\n    asunto: ('[El Desembarco] ' + nombre).slice(0, 100) + ' (Ref ' + (((c.shortUrl || '').split('/c/')[1]) || c.id) + ')',\n    cuerpo,\n    attUrl: atts.length ? atts[0].url : '',\n    attList: atts.map(a => ({ url: a.url, name: a.fileName || a.name || 'adjunto', mime: a.mimeType || 'application/octet-stream' }))\n  } });\n}\nreturn out;"
             }
         },
         {
@@ -584,15 +584,16 @@
                 "6a689c015de378b6b56ec13f"
             ],
             "sentMesa": [
-                "6a68dc2f5209629993edcc67"
+                "6a68dc2f5209629993edcc67",
+                "6a68ca46a1a832d6a2e360ac"
             ]
         }
     },
     "meta": null,
     "pinData": null,
-    "versionId": "cd56ebc2-260a-43ff-84d4-744c8407d0d5",
-    "activeVersionId": "cd56ebc2-260a-43ff-84d4-744c8407d0d5",
-    "versionCounter": 26,
+    "versionId": "fa4cd0c6-7d2c-4e7a-aa33-e729467b2263",
+    "activeVersionId": "fa4cd0c6-7d2c-4e7a-aa33-e729467b2263",
+    "versionCounter": 30,
     "triggerCount": 1,
     "shared": [
         {
@@ -615,9 +616,9 @@
     ],
     "tags": [],
     "activeVersion": {
-        "updatedAt": "2026-07-28T16:41:43.953Z",
-        "createdAt": "2026-07-28T16:41:43.953Z",
-        "versionId": "cd56ebc2-260a-43ff-84d4-744c8407d0d5",
+        "updatedAt": "2026-07-28T16:52:04.716Z",
+        "createdAt": "2026-07-28T16:52:04.716Z",
+        "versionId": "fa4cd0c6-7d2c-4e7a-aa33-e729467b2263",
         "workflowId": "LHbJVS18ZULzqToG",
         "nodes": [
             {
@@ -693,7 +694,7 @@
                     -120
                 ],
                 "parameters": {
-                    "jsCode": "// Mesas de ayuda por columna de Trello. Destinos HOY apuntan al mail de Pablo\n// hasta tener las casillas reales (Tango/Axoft y Ayres IT).\nconst MESAS = {\n  '6a689b2b078eec227dc02ea5': { mesa: 'Mesa de Ayuda Tango', destino: 'mesadeayuda@seincomp.com.ar' },\n  '6a689bcabc131c785ef97206': { mesa: 'Mesa de Ayuda Ayres IT', destino: 'polejavetzky@eldesembarco.com' }\n};\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.sentMesa)) sd.sentMesa = [];\nconst out = [];\nfor (const item of $input.all()) {\n  const c = item.json;\n  if (!c || !c.id) continue;\n  if (sd.sentMesa.includes(c.id)) continue; // ya enviado: la card se queda en la columna sin reenviar\n  const cfg = MESAS[c.idList] || { mesa: 'Mesa de ayuda', destino: 'polejavetzky@eldesembarco.com' };\n  const atts = (c.attachments || []).filter(a => a.url && a.isUpload !== false);\n  const nombre = (c.name || '').replace(/^[^0-9A-Za-z\\[\u00c3\u20ac-\u00c5\u00bf]+\\s*/, '');\n  const cuerpo = [\n    'Estimados,',\n    '',\n    'Solicitamos asistencia por el siguiente requerimiento:',\n    '',\n    (c.desc || '').split('\\n---')[0].trim(),\n    '',\n    'Gracias,',\n    'Sistemas El Desembarco'\n  ].join('\\n');\n  out.push({ json: {\n    cardId: c.id,\n    cardName: c.name,\n    shortUrl: c.shortUrl,\n    mesa: cfg.mesa,\n    destino: cfg.destino,\n    asunto: ('[El Desembarco] ' + nombre).slice(0, 100) + ' (Ref ' + (((c.shortUrl || '').split('/c/')[1]) || c.id) + ')',\n    cuerpo,\n    attUrl: atts.length ? atts[0].url : '',\n    attList: atts.map(a => ({ url: a.url, name: a.fileName || a.name || 'adjunto', mime: a.mimeType || 'application/octet-stream' }))\n  } });\n}\nreturn out;"
+                    "jsCode": "// Mesas de ayuda por columna de Trello. Destinos HOY apuntan al mail de Pablo\n// hasta tener las casillas reales (Tango/Axoft y Ayres IT).\nconst MESAS = {\n  '6a689b2b078eec227dc02ea5': { mesa: 'Mesa de Ayuda Tango', destino: 'mesadeayuda@seincomp.com.ar' },\n  '6a689bcabc131c785ef97206': { mesa: 'Mesa de Ayuda Ayres IT', destino: '' } // SIN CASILLA AUN: no envia nada hasta configurarla\n};\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.sentMesa)) sd.sentMesa = [];\nconst out = [];\nfor (const item of $input.all()) {\n  const c = item.json;\n  if (!c || !c.id) continue;\n  if (sd.sentMesa.includes(c.id)) continue; // ya enviado: la card se queda en la columna sin reenviar\n  const cfg = MESAS[c.idList] || { mesa: 'Mesa de ayuda', destino: '' };\n  if (!cfg.destino) continue; // mesa sin casilla configurada: la card queda sin enviar\n  const atts = (c.attachments || []).filter(a => a.url && a.isUpload !== false);\n  const nombre = (c.name || '').replace(/^[^0-9A-Za-z\\[\u00c3\u20ac-\u00c5\u00bf]+\\s*/, '');\n  const cuerpo = [\n    'Estimados,',\n    '',\n    'Solicitamos asistencia por el siguiente requerimiento:',\n    '',\n    (c.desc || '').split('\\n---')[0].trim(),\n    '',\n    'Gracias,',\n    'Sistemas El Desembarco'\n  ].join('\\n');\n  out.push({ json: {\n    cardId: c.id,\n    cardName: c.name,\n    shortUrl: c.shortUrl,\n    mesa: cfg.mesa,\n    destino: cfg.destino,\n    asunto: ('[El Desembarco] ' + nombre).slice(0, 100) + ' (Ref ' + (((c.shortUrl || '').split('/c/')[1]) || c.id) + ')',\n    cuerpo,\n    attUrl: atts.length ? atts[0].url : '',\n    attList: atts.map(a => ({ url: a.url, name: a.fileName || a.name || 'adjunto', mime: a.mimeType || 'application/octet-stream' }))\n  } });\n}\nreturn out;"
                 }
             },
             {
@@ -1185,18 +1186,18 @@
         "autosaved": false,
         "workflowPublishHistory": [
             {
-                "createdAt": "2026-07-28T16:41:43.995Z",
-                "id": 257,
+                "createdAt": "2026-07-28T16:52:04.801Z",
+                "id": 262,
                 "workflowId": "LHbJVS18ZULzqToG",
-                "versionId": "cd56ebc2-260a-43ff-84d4-744c8407d0d5",
+                "versionId": "fa4cd0c6-7d2c-4e7a-aa33-e729467b2263",
                 "event": "activated",
                 "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
             },
             {
-                "createdAt": "2026-07-28T16:41:43.979Z",
-                "id": 256,
+                "createdAt": "2026-07-28T16:52:04.778Z",
+                "id": 261,
                 "workflowId": "LHbJVS18ZULzqToG",
-                "versionId": "cd56ebc2-260a-43ff-84d4-744c8407d0d5",
+                "versionId": "fa4cd0c6-7d2c-4e7a-aa33-e729467b2263",
                 "event": "deactivated",
                 "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
             }
