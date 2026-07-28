@@ -53,13 +53,18 @@ Reglas de UX:
 Workflow `LHbJVS18ZULzqToG` — cron cada 1 min (ejecuciones exitosas NO se
 guardan; errores sí). Flujo operado por Pablo arrastrando cards:
 
-- Card en **"Enviar a Mesa Tango"** → email a `mesadeayuda@seincomp.com.ar`
+- Card en **"Pasó a Mesa de Ayuda Tango"** → email a `mesadeayuda@seincomp.com.ar`
   (Seincomp) con el requerimiento + TODOS los adjuntos, **desde
-  `lrecchini@eldesembarco.com`** (cred OAuth `f1LNQxtkdbexNoiC` "Gmail account 3"),
-  la card pasa a **"Enviado a mesa de ayuda"** con comentario 📧 de auditoría.
-- Card en **"Enviar a Mesa Ayres IT"** → mismo circuito. ⚠️ PENDIENTE: casilla
+  `lrecchini@eldesembarco.com`** (cred OAuth `f1LNQxtkdbexNoiC` "Gmail account 3").
+  La card SE QUEDA en la columna con comentario 📧 (dedupe de envío en
+  staticData `sentMesa` — una card se envía UNA vez; para reenviar hay que
+  limpiar ese registro). El mail va SIN link de Trello: la referencia viaja en
+  el asunto como `(Ref <shortlink>)`.
+- Card en **"Pasó a Mesa de Ayuda Ayres"** → mismo circuito. ⚠️ PENDIENTE: casilla
   real de Ayres IT — hoy apunta a `polejavetzky@eldesembarco.com` (placeholder).
   Cambiar en el mapa `MESAS` del nodo `Preparar Email`.
+- Cuando la mesa RESPONDE, la card se mueve sola de "Pasó a..." a **"Lo tomó
+  Tango"** / **"Lo tomó Ayres"** con comentario 🎫 + nro de ticket (ver Workflow 3).
 - Card en **"Resuelto"** → notifica ✅ por WhatsApp al chat de origen (parsea
   `**Chat:**` de la descripción; cards manuales sin ese campo no notifican),
   comenta 🔔 en la card. Dedupe de notificaciones en staticData (`notified`).

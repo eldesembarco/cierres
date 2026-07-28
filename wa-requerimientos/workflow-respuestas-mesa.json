@@ -1,5 +1,5 @@
 {
-    "updatedAt": "2026-07-28T16:35:25.717Z",
+    "updatedAt": "2026-07-28T16:42:08.796Z",
     "createdAt": "2026-07-28T14:13:32.784Z",
     "id": "JPYTBT00v78HcBsB",
     "name": "WA Requerimientos - Respuestas Mesa de Ayuda",
@@ -73,7 +73,7 @@
                 0
             ],
             "parameters": {
-                "jsCode": "// Extrae texto del mail, busca la referencia a la card de Trello y el nro de ticket de la mesa.\nfunction b64url(s) {\n  try { return Buffer.from((s || '').replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8'); } catch (e) { return ''; }\n}\nfunction collectText(payload, out) {\n  if (!payload) return;\n  if (payload.mimeType === 'text/plain' && payload.body && payload.body.data) out.plain.push(b64url(payload.body.data));\n  if (payload.mimeType === 'text/html' && payload.body && payload.body.data) out.html.push(b64url(payload.body.data));\n  for (const p of payload.parts || []) collectText(p, out);\n}\nconst out = [];\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  const raw = items[i].json;\n  const meta = $('Nueva Respuesta Mesa').all()[i] ? $('Nueva Respuesta Mesa').all()[i].json : {};\n  const buf = { plain: [], html: [] };\n  collectText(raw.payload, buf);\n  let texto = buf.plain.join('\\n');\n  if (!texto && typeof raw.text === 'string' && raw.text) texto = raw.text;\n  if (!texto && typeof raw.textPlain === 'string' && raw.textPlain) texto = raw.textPlain;\n  if (!texto) {\n    const h = buf.html.join('\\n') || raw.html || raw.textHtml || raw.textAsHtml || '';\n    if (h) texto = String(h).replace(/<style[\\s\\S]*?<\\/style>/gi, '').replace(/<[^>]+>/g, ' ');\n  }\n  if (!texto) texto = raw.snippet || meta.snippet || '';\n  const headers = {};\n  for (const h of (raw.payload && raw.payload.headers) || []) headers[h.name.toLowerCase()] = h.value;\n  const subject = headers['subject'] || meta.Subject || meta.subject || '(sin asunto)';\n  const from = headers['from'] || meta.From || meta.from || '';\n  const mCard = texto.match(/https:\\/\\/trello\\.com\\/c\\/([A-Za-z0-9]+)/);\n  const mTicket = (subject + '\\n' + texto).match(/(?:ticket|caso|incidente|solicitud|nro\\.?|n\u00c2\u00b0|#)\\s*[:#]?\\s*(\\d{3,10})/i);\n  const resumen = texto.replace(/\\s+/g, ' ').trim().slice(0, 500);\n  out.push({ json: {\n    cardShort: mCard ? mCard[1] : '',\n    ticketNum: mTicket ? mTicket[1] : '',\n    from,\n    subject,\n    resumen\n  } });\n}\nreturn out;"
+                "jsCode": "// Extrae texto del mail, busca la referencia a la card de Trello y el nro de ticket de la mesa.\nfunction b64url(s) {\n  try { return Buffer.from((s || '').replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8'); } catch (e) { return ''; }\n}\nfunction collectText(payload, out) {\n  if (!payload) return;\n  if (payload.mimeType === 'text/plain' && payload.body && payload.body.data) out.plain.push(b64url(payload.body.data));\n  if (payload.mimeType === 'text/html' && payload.body && payload.body.data) out.html.push(b64url(payload.body.data));\n  for (const p of payload.parts || []) collectText(p, out);\n}\nconst out = [];\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  const raw = items[i].json;\n  const meta = $('Nueva Respuesta Mesa').all()[i] ? $('Nueva Respuesta Mesa').all()[i].json : {};\n  const buf = { plain: [], html: [] };\n  collectText(raw.payload, buf);\n  let texto = buf.plain.join('\\n');\n  if (!texto && typeof raw.text === 'string' && raw.text) texto = raw.text;\n  if (!texto && typeof raw.textPlain === 'string' && raw.textPlain) texto = raw.textPlain;\n  if (!texto) {\n    const h = buf.html.join('\\n') || raw.html || raw.textHtml || raw.textAsHtml || '';\n    if (h) texto = String(h).replace(/<style[\\s\\S]*?<\\/style>/gi, '').replace(/<[^>]+>/g, ' ');\n  }\n  if (!texto) texto = raw.snippet || meta.snippet || '';\n  const headers = {};\n  for (const h of (raw.payload && raw.payload.headers) || []) headers[h.name.toLowerCase()] = h.value;\n  const subject = headers['subject'] || meta.Subject || meta.subject || '(sin asunto)';\n  const from = headers['from'] || meta.From || meta.from || '';\n  let mCard = (subject + '\\n' + texto).match(/\\(Ref[:\\s]+([A-Za-z0-9]{6,12})\\)/i);\n  if (!mCard) mCard = texto.match(/https:\\/\\/trello\\.com\\/c\\/([A-Za-z0-9]+)/);\n  const mTicket = (subject + '\\n' + texto).match(/(?:ticket|caso|incidente|solicitud|nro\\.?|n\u00c2\u00b0|#)\\s*[:#]?\\s*(\\d{3,10})/i);\n  const resumen = texto.replace(/\\s+/g, ' ').trim().slice(0, 500);\n  out.push({ json: {\n    cardShort: mCard ? mCard[1] : '',\n    ticketNum: mTicket ? mTicket[1] : '',\n    from,\n    subject,\n    resumen\n  } });\n}\nreturn out;"
             }
         },
         {
@@ -145,6 +145,136 @@
             "maxTries": 2,
             "waitBetweenTries": 3000,
             "onError": "continueRegularOutput"
+        },
+        {
+            "id": "http-ver-card",
+            "name": "Ver Card Lista",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.4,
+            "position": [
+                860,
+                -120
+            ],
+            "parameters": {
+                "method": "GET",
+                "url": "=https://api.trello.com/1/cards/{{ $json.cardShort }}",
+                "authentication": "predefinedCredentialType",
+                "nodeCredentialType": "trelloApi",
+                "sendQuery": true,
+                "queryParameters": {
+                    "parameters": [
+                        {
+                            "name": "fields",
+                            "value": "idList"
+                        }
+                    ]
+                },
+                "options": {
+                    "response": {
+                        "response": {
+                            "responseFormat": "json"
+                        }
+                    },
+                    "timeout": 20000
+                }
+            },
+            "credentials": {
+                "trelloApi": {
+                    "id": "MUcIdiWUZ1Vhdf2h",
+                    "name": "Trello Desembarco"
+                }
+            },
+            "onError": "continueRegularOutput"
+        },
+        {
+            "id": "code-decidir",
+            "name": "Decidir Movimiento",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1060,
+                -120
+            ],
+            "parameters": {
+                "mode": "runOnceForEachItem",
+                "jsCode": "// Si la card est\u00c3\u00a1 en una columna 'Pas\u00c3\u00b3 a Mesa...', al responder la mesa se mueve a 'Lo tom\u00c3\u00b3 ...'.\nconst src = $('Parsear Respuesta').item.json;\nconst idList = ($json && $json.idList) || '';\nconst MAP = {\n  '6a689b2b078eec227dc02ea5': '6a689b2c92e20b65c9e467c0', // Pas\u00c3\u00b3 Tango -> Lo tom\u00c3\u00b3 Tango\n  '6a689bcabc131c785ef97206': '6a68db9427fa9384d7e8b3d0'  // Pas\u00c3\u00b3 Ayres -> Lo tom\u00c3\u00b3 Ayres\n};\nreturn { json: { ...src, moveTo: MAP[idList] || '' } };"
+            }
+        },
+        {
+            "id": "if-mover",
+            "name": "Corresponde Mover",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2.2,
+            "position": [
+                1480,
+                -120
+            ],
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "version": 2,
+                        "leftValue": "",
+                        "caseSensitive": true,
+                        "typeValidation": "loose"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                        {
+                            "leftValue": "={{ $('Decidir Movimiento').item.json.moveTo }}",
+                            "rightValue": "",
+                            "operator": {
+                                "type": "string",
+                                "operation": "notEmpty",
+                                "singleValue": true
+                            },
+                            "id": "condition-1785256929056-edc1bmh5q"
+                        }
+                    ]
+                },
+                "options": {}
+            }
+        },
+        {
+            "id": "http-mover-tomo",
+            "name": "Mover a Lo Tomo",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.4,
+            "position": [
+                1700,
+                -180
+            ],
+            "parameters": {
+                "method": "PUT",
+                "url": "=https://api.trello.com/1/cards/{{ $('Decidir Movimiento').item.json.cardShort }}",
+                "authentication": "predefinedCredentialType",
+                "nodeCredentialType": "trelloApi",
+                "sendQuery": true,
+                "queryParameters": {
+                    "parameters": [
+                        {
+                            "name": "idList",
+                            "value": "={{ $('Decidir Movimiento').item.json.moveTo }}"
+                        },
+                        {
+                            "name": "pos",
+                            "value": "top"
+                        }
+                    ]
+                },
+                "options": {
+                    "timeout": 20000
+                }
+            },
+            "credentials": {
+                "trelloApi": {
+                    "id": "MUcIdiWUZ1Vhdf2h",
+                    "name": "Trello Desembarco"
+                }
+            },
+            "onError": "continueRegularOutput",
+            "retryOnFail": true,
+            "maxTries": 2,
+            "waitBetweenTries": 3000
         }
     ],
     "connections": {
@@ -185,7 +315,51 @@
             "main": [
                 [
                     {
+                        "node": "Ver Card Lista",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Ver Card Lista": {
+            "main": [
+                [
+                    {
+                        "node": "Decidir Movimiento",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Decidir Movimiento": {
+            "main": [
+                [
+                    {
                         "node": "Comentar Card Respuesta",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Comentar Card Respuesta": {
+            "main": [
+                [
+                    {
+                        "node": "Corresponde Mover",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Corresponde Mover": {
+            "main": [
+                [
+                    {
+                        "node": "Mover a Lo Tomo",
                         "type": "main",
                         "index": 0
                     }
@@ -204,19 +378,19 @@
     "staticData": {
         "node:Nueva Respuesta Mesa": {
             "Nueva Respuesta Mesa": {
-                "lastTimeChecked": 1785256536,
+                "lastTimeChecked": 1785257129,
                 "possibleDuplicates": [
-                    "19fa994ed84259c1",
-                    "19fa98e7b8e2090f"
+                    "19fa99dfcabb3f41",
+                    "19fa994ed84259c1"
                 ]
             }
         }
     },
     "meta": null,
     "pinData": null,
-    "versionId": "7dd53623-05f7-40c8-91c8-a0d6d2be2f96",
-    "activeVersionId": "7dd53623-05f7-40c8-91c8-a0d6d2be2f96",
-    "versionCounter": 14,
+    "versionId": "49dd3451-116f-473e-ad8e-bfc10885ce8e",
+    "activeVersionId": "49dd3451-116f-473e-ad8e-bfc10885ce8e",
+    "versionCounter": 19,
     "triggerCount": 1,
     "shared": [
         {
@@ -239,9 +413,9 @@
     ],
     "tags": [],
     "activeVersion": {
-        "updatedAt": "2026-07-28T16:35:25.720Z",
-        "createdAt": "2026-07-28T16:35:25.720Z",
-        "versionId": "7dd53623-05f7-40c8-91c8-a0d6d2be2f96",
+        "updatedAt": "2026-07-28T16:42:08.797Z",
+        "createdAt": "2026-07-28T16:42:08.797Z",
+        "versionId": "49dd3451-116f-473e-ad8e-bfc10885ce8e",
         "workflowId": "JPYTBT00v78HcBsB",
         "nodes": [
             {
@@ -310,7 +484,7 @@
                     0
                 ],
                 "parameters": {
-                    "jsCode": "// Extrae texto del mail, busca la referencia a la card de Trello y el nro de ticket de la mesa.\nfunction b64url(s) {\n  try { return Buffer.from((s || '').replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8'); } catch (e) { return ''; }\n}\nfunction collectText(payload, out) {\n  if (!payload) return;\n  if (payload.mimeType === 'text/plain' && payload.body && payload.body.data) out.plain.push(b64url(payload.body.data));\n  if (payload.mimeType === 'text/html' && payload.body && payload.body.data) out.html.push(b64url(payload.body.data));\n  for (const p of payload.parts || []) collectText(p, out);\n}\nconst out = [];\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  const raw = items[i].json;\n  const meta = $('Nueva Respuesta Mesa').all()[i] ? $('Nueva Respuesta Mesa').all()[i].json : {};\n  const buf = { plain: [], html: [] };\n  collectText(raw.payload, buf);\n  let texto = buf.plain.join('\\n');\n  if (!texto && typeof raw.text === 'string' && raw.text) texto = raw.text;\n  if (!texto && typeof raw.textPlain === 'string' && raw.textPlain) texto = raw.textPlain;\n  if (!texto) {\n    const h = buf.html.join('\\n') || raw.html || raw.textHtml || raw.textAsHtml || '';\n    if (h) texto = String(h).replace(/<style[\\s\\S]*?<\\/style>/gi, '').replace(/<[^>]+>/g, ' ');\n  }\n  if (!texto) texto = raw.snippet || meta.snippet || '';\n  const headers = {};\n  for (const h of (raw.payload && raw.payload.headers) || []) headers[h.name.toLowerCase()] = h.value;\n  const subject = headers['subject'] || meta.Subject || meta.subject || '(sin asunto)';\n  const from = headers['from'] || meta.From || meta.from || '';\n  const mCard = texto.match(/https:\\/\\/trello\\.com\\/c\\/([A-Za-z0-9]+)/);\n  const mTicket = (subject + '\\n' + texto).match(/(?:ticket|caso|incidente|solicitud|nro\\.?|n\u00c2\u00b0|#)\\s*[:#]?\\s*(\\d{3,10})/i);\n  const resumen = texto.replace(/\\s+/g, ' ').trim().slice(0, 500);\n  out.push({ json: {\n    cardShort: mCard ? mCard[1] : '',\n    ticketNum: mTicket ? mTicket[1] : '',\n    from,\n    subject,\n    resumen\n  } });\n}\nreturn out;"
+                    "jsCode": "// Extrae texto del mail, busca la referencia a la card de Trello y el nro de ticket de la mesa.\nfunction b64url(s) {\n  try { return Buffer.from((s || '').replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8'); } catch (e) { return ''; }\n}\nfunction collectText(payload, out) {\n  if (!payload) return;\n  if (payload.mimeType === 'text/plain' && payload.body && payload.body.data) out.plain.push(b64url(payload.body.data));\n  if (payload.mimeType === 'text/html' && payload.body && payload.body.data) out.html.push(b64url(payload.body.data));\n  for (const p of payload.parts || []) collectText(p, out);\n}\nconst out = [];\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  const raw = items[i].json;\n  const meta = $('Nueva Respuesta Mesa').all()[i] ? $('Nueva Respuesta Mesa').all()[i].json : {};\n  const buf = { plain: [], html: [] };\n  collectText(raw.payload, buf);\n  let texto = buf.plain.join('\\n');\n  if (!texto && typeof raw.text === 'string' && raw.text) texto = raw.text;\n  if (!texto && typeof raw.textPlain === 'string' && raw.textPlain) texto = raw.textPlain;\n  if (!texto) {\n    const h = buf.html.join('\\n') || raw.html || raw.textHtml || raw.textAsHtml || '';\n    if (h) texto = String(h).replace(/<style[\\s\\S]*?<\\/style>/gi, '').replace(/<[^>]+>/g, ' ');\n  }\n  if (!texto) texto = raw.snippet || meta.snippet || '';\n  const headers = {};\n  for (const h of (raw.payload && raw.payload.headers) || []) headers[h.name.toLowerCase()] = h.value;\n  const subject = headers['subject'] || meta.Subject || meta.subject || '(sin asunto)';\n  const from = headers['from'] || meta.From || meta.from || '';\n  let mCard = (subject + '\\n' + texto).match(/\\(Ref[:\\s]+([A-Za-z0-9]{6,12})\\)/i);\n  if (!mCard) mCard = texto.match(/https:\\/\\/trello\\.com\\/c\\/([A-Za-z0-9]+)/);\n  const mTicket = (subject + '\\n' + texto).match(/(?:ticket|caso|incidente|solicitud|nro\\.?|n\u00c2\u00b0|#)\\s*[:#]?\\s*(\\d{3,10})/i);\n  const resumen = texto.replace(/\\s+/g, ' ').trim().slice(0, 500);\n  out.push({ json: {\n    cardShort: mCard ? mCard[1] : '',\n    ticketNum: mTicket ? mTicket[1] : '',\n    from,\n    subject,\n    resumen\n  } });\n}\nreturn out;"
                 }
             },
             {
@@ -382,6 +556,136 @@
                 "maxTries": 2,
                 "waitBetweenTries": 3000,
                 "onError": "continueRegularOutput"
+            },
+            {
+                "id": "http-ver-card",
+                "name": "Ver Card Lista",
+                "type": "n8n-nodes-base.httpRequest",
+                "typeVersion": 4.4,
+                "position": [
+                    860,
+                    -120
+                ],
+                "parameters": {
+                    "method": "GET",
+                    "url": "=https://api.trello.com/1/cards/{{ $json.cardShort }}",
+                    "authentication": "predefinedCredentialType",
+                    "nodeCredentialType": "trelloApi",
+                    "sendQuery": true,
+                    "queryParameters": {
+                        "parameters": [
+                            {
+                                "name": "fields",
+                                "value": "idList"
+                            }
+                        ]
+                    },
+                    "options": {
+                        "response": {
+                            "response": {
+                                "responseFormat": "json"
+                            }
+                        },
+                        "timeout": 20000
+                    }
+                },
+                "credentials": {
+                    "trelloApi": {
+                        "id": "MUcIdiWUZ1Vhdf2h",
+                        "name": "Trello Desembarco"
+                    }
+                },
+                "onError": "continueRegularOutput"
+            },
+            {
+                "id": "code-decidir",
+                "name": "Decidir Movimiento",
+                "type": "n8n-nodes-base.code",
+                "typeVersion": 2,
+                "position": [
+                    1060,
+                    -120
+                ],
+                "parameters": {
+                    "mode": "runOnceForEachItem",
+                    "jsCode": "// Si la card est\u00c3\u00a1 en una columna 'Pas\u00c3\u00b3 a Mesa...', al responder la mesa se mueve a 'Lo tom\u00c3\u00b3 ...'.\nconst src = $('Parsear Respuesta').item.json;\nconst idList = ($json && $json.idList) || '';\nconst MAP = {\n  '6a689b2b078eec227dc02ea5': '6a689b2c92e20b65c9e467c0', // Pas\u00c3\u00b3 Tango -> Lo tom\u00c3\u00b3 Tango\n  '6a689bcabc131c785ef97206': '6a68db9427fa9384d7e8b3d0'  // Pas\u00c3\u00b3 Ayres -> Lo tom\u00c3\u00b3 Ayres\n};\nreturn { json: { ...src, moveTo: MAP[idList] || '' } };"
+                }
+            },
+            {
+                "id": "if-mover",
+                "name": "Corresponde Mover",
+                "type": "n8n-nodes-base.if",
+                "typeVersion": 2.2,
+                "position": [
+                    1480,
+                    -120
+                ],
+                "parameters": {
+                    "conditions": {
+                        "options": {
+                            "version": 2,
+                            "leftValue": "",
+                            "caseSensitive": true,
+                            "typeValidation": "loose"
+                        },
+                        "combinator": "and",
+                        "conditions": [
+                            {
+                                "leftValue": "={{ $('Decidir Movimiento').item.json.moveTo }}",
+                                "rightValue": "",
+                                "operator": {
+                                    "type": "string",
+                                    "operation": "notEmpty",
+                                    "singleValue": true
+                                },
+                                "id": "condition-1785256929056-edc1bmh5q"
+                            }
+                        ]
+                    },
+                    "options": {}
+                }
+            },
+            {
+                "id": "http-mover-tomo",
+                "name": "Mover a Lo Tomo",
+                "type": "n8n-nodes-base.httpRequest",
+                "typeVersion": 4.4,
+                "position": [
+                    1700,
+                    -180
+                ],
+                "parameters": {
+                    "method": "PUT",
+                    "url": "=https://api.trello.com/1/cards/{{ $('Decidir Movimiento').item.json.cardShort }}",
+                    "authentication": "predefinedCredentialType",
+                    "nodeCredentialType": "trelloApi",
+                    "sendQuery": true,
+                    "queryParameters": {
+                        "parameters": [
+                            {
+                                "name": "idList",
+                                "value": "={{ $('Decidir Movimiento').item.json.moveTo }}"
+                            },
+                            {
+                                "name": "pos",
+                                "value": "top"
+                            }
+                        ]
+                    },
+                    "options": {
+                        "timeout": 20000
+                    }
+                },
+                "credentials": {
+                    "trelloApi": {
+                        "id": "MUcIdiWUZ1Vhdf2h",
+                        "name": "Trello Desembarco"
+                    }
+                },
+                "onError": "continueRegularOutput",
+                "retryOnFail": true,
+                "maxTries": 2,
+                "waitBetweenTries": 3000
             }
         ],
         "connections": {
@@ -422,7 +726,51 @@
                 "main": [
                     [
                         {
+                            "node": "Ver Card Lista",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Ver Card Lista": {
+                "main": [
+                    [
+                        {
+                            "node": "Decidir Movimiento",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Decidir Movimiento": {
+                "main": [
+                    [
+                        {
                             "node": "Comentar Card Respuesta",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Comentar Card Respuesta": {
+                "main": [
+                    [
+                        {
+                            "node": "Corresponde Mover",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Corresponde Mover": {
+                "main": [
+                    [
+                        {
+                            "node": "Mover a Lo Tomo",
                             "type": "main",
                             "index": 0
                         }
@@ -436,18 +784,18 @@
         "autosaved": false,
         "workflowPublishHistory": [
             {
-                "createdAt": "2026-07-28T16:35:26.811Z",
-                "id": 255,
+                "createdAt": "2026-07-28T16:42:09.869Z",
+                "id": 259,
                 "workflowId": "JPYTBT00v78HcBsB",
-                "versionId": "7dd53623-05f7-40c8-91c8-a0d6d2be2f96",
+                "versionId": "49dd3451-116f-473e-ad8e-bfc10885ce8e",
                 "event": "activated",
                 "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
             },
             {
-                "createdAt": "2026-07-28T16:35:25.767Z",
-                "id": 254,
+                "createdAt": "2026-07-28T16:42:08.840Z",
+                "id": 258,
                 "workflowId": "JPYTBT00v78HcBsB",
-                "versionId": "7dd53623-05f7-40c8-91c8-a0d6d2be2f96",
+                "versionId": "49dd3451-116f-473e-ad8e-bfc10885ce8e",
                 "event": "deactivated",
                 "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
             }
