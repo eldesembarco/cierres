@@ -1,5 +1,5 @@
 {
-    "updatedAt": "2026-07-28T16:42:08.796Z",
+    "updatedAt": "2026-07-28T16:57:34.923Z",
     "createdAt": "2026-07-28T14:13:32.784Z",
     "id": "JPYTBT00v78HcBsB",
     "name": "WA Requerimientos - Respuestas Mesa de Ayuda",
@@ -26,7 +26,7 @@
                 },
                 "simple": true,
                 "filters": {
-                    "q": "(from:seincomp.com.ar OR subject:\"[El Desembarco]\") -from:lrecchini@eldesembarco.com"
+                    "q": "(from:seincomp.com.ar OR from:actionsales.com.ar OR subject:\"[El Desembarco]\") -from:lrecchini@eldesembarco.com"
                 },
                 "options": {}
             },
@@ -378,19 +378,19 @@
     "staticData": {
         "node:Nueva Respuesta Mesa": {
             "Nueva Respuesta Mesa": {
-                "lastTimeChecked": 1785257129,
+                "lastTimeChecked": 1785257436,
                 "possibleDuplicates": [
-                    "19fa99dfcabb3f41",
-                    "19fa994ed84259c1"
+                    "19fa9a2ac3522f98",
+                    "19fa99dfcabb3f41"
                 ]
             }
         }
     },
     "meta": null,
     "pinData": null,
-    "versionId": "49dd3451-116f-473e-ad8e-bfc10885ce8e",
-    "activeVersionId": "49dd3451-116f-473e-ad8e-bfc10885ce8e",
-    "versionCounter": 19,
+    "versionId": "93dd8a3f-4224-4b60-a06d-a0b506f7ae3d",
+    "activeVersionId": "93dd8a3f-4224-4b60-a06d-a0b506f7ae3d",
+    "versionCounter": 23,
     "triggerCount": 1,
     "shared": [
         {
@@ -413,9 +413,9 @@
     ],
     "tags": [],
     "activeVersion": {
-        "updatedAt": "2026-07-28T16:42:08.797Z",
-        "createdAt": "2026-07-28T16:42:08.797Z",
-        "versionId": "49dd3451-116f-473e-ad8e-bfc10885ce8e",
+        "updatedAt": "2026-07-28T16:57:34.924Z",
+        "createdAt": "2026-07-28T16:57:34.924Z",
+        "versionId": "93dd8a3f-4224-4b60-a06d-a0b506f7ae3d",
         "workflowId": "JPYTBT00v78HcBsB",
         "nodes": [
             {
@@ -437,7 +437,7 @@
                     },
                     "simple": true,
                     "filters": {
-                        "q": "(from:seincomp.com.ar OR subject:\"[El Desembarco]\") -from:lrecchini@eldesembarco.com"
+                        "q": "(from:seincomp.com.ar OR from:actionsales.com.ar OR subject:\"[El Desembarco]\") -from:lrecchini@eldesembarco.com"
                     },
                     "options": {}
                 },
@@ -784,18 +784,18 @@
         "autosaved": false,
         "workflowPublishHistory": [
             {
-                "createdAt": "2026-07-28T16:42:09.869Z",
-                "id": 259,
+                "createdAt": "2026-07-28T16:57:36.363Z",
+                "id": 269,
                 "workflowId": "JPYTBT00v78HcBsB",
-                "versionId": "49dd3451-116f-473e-ad8e-bfc10885ce8e",
+                "versionId": "93dd8a3f-4224-4b60-a06d-a0b506f7ae3d",
                 "event": "activated",
                 "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
             },
             {
-                "createdAt": "2026-07-28T16:42:08.840Z",
-                "id": 258,
+                "createdAt": "2026-07-28T16:57:34.964Z",
+                "id": 268,
                 "workflowId": "JPYTBT00v78HcBsB",
-                "versionId": "49dd3451-116f-473e-ad8e-bfc10885ce8e",
+                "versionId": "93dd8a3f-4224-4b60-a06d-a0b506f7ae3d",
                 "event": "deactivated",
                 "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
             }
