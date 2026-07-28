@@ -1,5 +1,5 @@
 {
-    "updatedAt": "2026-07-28T17:26:38.175Z",
+    "updatedAt": "2026-07-28T19:13:43.435Z",
     "createdAt": "2026-07-28T14:13:32.784Z",
     "id": "JPYTBT00v78HcBsB",
     "name": "WA Requerimientos - Respuestas Mesa de Ayuda",
@@ -330,6 +330,120 @@
             "retryOnFail": true,
             "maxTries": 2,
             "waitBetweenTries": 3000
+        },
+        {
+            "id": "if-falta-card",
+            "name": "Falta Card",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2.2,
+            "position": [
+                560,
+                -240
+            ],
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "version": 2,
+                        "leftValue": "",
+                        "caseSensitive": true,
+                        "typeValidation": "loose"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                        {
+                            "leftValue": "={{ $json.cardShort }}",
+                            "rightValue": "",
+                            "operator": {
+                                "type": "string",
+                                "operation": "empty",
+                                "singleValue": true
+                            },
+                            "id": "condition-1785266023306-kmu7s3ijx"
+                        },
+                        {
+                            "leftValue": "={{ $json.ticketNum }}",
+                            "rightValue": "",
+                            "operator": {
+                                "type": "string",
+                                "operation": "notEmpty",
+                                "singleValue": true
+                            },
+                            "id": "condition-1785266023306-nsul0zirh"
+                        }
+                    ]
+                },
+                "options": {}
+            }
+        },
+        {
+            "id": "http-buscar-card",
+            "name": "Buscar Card por Ticket",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.4,
+            "position": [
+                760,
+                -320
+            ],
+            "parameters": {
+                "method": "GET",
+                "url": "https://api.trello.com/1/search",
+                "authentication": "predefinedCredentialType",
+                "nodeCredentialType": "trelloApi",
+                "sendQuery": true,
+                "queryParameters": {
+                    "parameters": [
+                        {
+                            "name": "query",
+                            "value": "={{ '#' + $json.ticketNum }}"
+                        },
+                        {
+                            "name": "modelTypes",
+                            "value": "cards"
+                        },
+                        {
+                            "name": "cards_limit",
+                            "value": "1"
+                        },
+                        {
+                            "name": "card_fields",
+                            "value": "shortLink"
+                        },
+                        {
+                            "name": "idBoards",
+                            "value": "6a688f05702942bef18337d2"
+                        }
+                    ]
+                },
+                "options": {
+                    "response": {
+                        "response": {
+                            "responseFormat": "json"
+                        }
+                    },
+                    "timeout": 20000
+                }
+            },
+            "credentials": {
+                "trelloApi": {
+                    "id": "MUcIdiWUZ1Vhdf2h",
+                    "name": "Trello Desembarco"
+                }
+            },
+            "onError": "continueRegularOutput"
+        },
+        {
+            "id": "code-fusionar-busq",
+            "name": "Fusionar Busqueda",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                960,
+                -320
+            ],
+            "parameters": {
+                "mode": "runOnceForEachItem",
+                "jsCode": "const src = $('Parsear Respuesta').item.json;\nconst cards = ($json && $json.cards) || [];\nconst cardShort = cards.length ? (cards[0].shortLink || cards[0].id) : '';\nif (cardShort && src.ticketNum) {\n  const sd = $getWorkflowStaticData('global');\n  if (!sd.ticketMap) sd.ticketMap = {};\n  sd.ticketMap[src.ticketNum] = cardShort;\n}\nreturn { json: { ...src, cardShort } };"
+            }
         }
     ],
     "connections": {
@@ -349,17 +463,6 @@
                 [
                     {
                         "node": "Parsear Respuesta",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Parsear Respuesta": {
-            "main": [
-                [
-                    {
-                        "node": "Hay Card",
                         "type": "main",
                         "index": 0
                     }
@@ -436,6 +539,57 @@
                     }
                 ]
             ]
+        },
+        "Parsear Respuesta": {
+            "main": [
+                [
+                    {
+                        "node": "Falta Card",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Falta Card": {
+            "main": [
+                [
+                    {
+                        "node": "Buscar Card por Ticket",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Hay Card",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Buscar Card por Ticket": {
+            "main": [
+                [
+                    {
+                        "node": "Fusionar Busqueda",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Fusionar Busqueda": {
+            "main": [
+                [
+                    {
+                        "node": "Hay Card",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
         }
     },
     "settings": {
@@ -449,10 +603,9 @@
     "staticData": {
         "node:Nueva Respuesta Mesa": {
             "Nueva Respuesta Mesa": {
-                "lastTimeChecked": 1785259616,
+                "lastTimeChecked": 1785263763,
                 "possibleDuplicates": [
-                    "19fa9c3ef495c756",
-                    "19fa9be8f5798f22"
+                    "19faa035ff978352"
                 ]
             }
         },
@@ -464,9 +617,9 @@
     },
     "meta": null,
     "pinData": null,
-    "versionId": "de76e880-1232-4dda-a663-970321698146",
-    "activeVersionId": "de76e880-1232-4dda-a663-970321698146",
-    "versionCounter": 47,
+    "versionId": "d79f7686-42f3-4a06-9f93-494afcb34b14",
+    "activeVersionId": "d79f7686-42f3-4a06-9f93-494afcb34b14",
+    "versionCounter": 54,
     "triggerCount": 1,
     "shared": [
         {
@@ -489,9 +642,9 @@
     ],
     "tags": [],
     "activeVersion": {
-        "updatedAt": "2026-07-28T17:12:42.530Z",
-        "createdAt": "2026-07-28T17:12:42.530Z",
-        "versionId": "de76e880-1232-4dda-a663-970321698146",
+        "updatedAt": "2026-07-28T19:13:43.435Z",
+        "createdAt": "2026-07-28T19:13:43.435Z",
+        "versionId": "d79f7686-42f3-4a06-9f93-494afcb34b14",
         "workflowId": "JPYTBT00v78HcBsB",
         "nodes": [
             {
@@ -817,6 +970,120 @@
                 "retryOnFail": true,
                 "maxTries": 2,
                 "waitBetweenTries": 3000
+            },
+            {
+                "id": "if-falta-card",
+                "name": "Falta Card",
+                "type": "n8n-nodes-base.if",
+                "typeVersion": 2.2,
+                "position": [
+                    560,
+                    -240
+                ],
+                "parameters": {
+                    "conditions": {
+                        "options": {
+                            "version": 2,
+                            "leftValue": "",
+                            "caseSensitive": true,
+                            "typeValidation": "loose"
+                        },
+                        "combinator": "and",
+                        "conditions": [
+                            {
+                                "leftValue": "={{ $json.cardShort }}",
+                                "rightValue": "",
+                                "operator": {
+                                    "type": "string",
+                                    "operation": "empty",
+                                    "singleValue": true
+                                },
+                                "id": "condition-1785266023306-kmu7s3ijx"
+                            },
+                            {
+                                "leftValue": "={{ $json.ticketNum }}",
+                                "rightValue": "",
+                                "operator": {
+                                    "type": "string",
+                                    "operation": "notEmpty",
+                                    "singleValue": true
+                                },
+                                "id": "condition-1785266023306-nsul0zirh"
+                            }
+                        ]
+                    },
+                    "options": {}
+                }
+            },
+            {
+                "id": "http-buscar-card",
+                "name": "Buscar Card por Ticket",
+                "type": "n8n-nodes-base.httpRequest",
+                "typeVersion": 4.4,
+                "position": [
+                    760,
+                    -320
+                ],
+                "parameters": {
+                    "method": "GET",
+                    "url": "https://api.trello.com/1/search",
+                    "authentication": "predefinedCredentialType",
+                    "nodeCredentialType": "trelloApi",
+                    "sendQuery": true,
+                    "queryParameters": {
+                        "parameters": [
+                            {
+                                "name": "query",
+                                "value": "={{ '#' + $json.ticketNum }}"
+                            },
+                            {
+                                "name": "modelTypes",
+                                "value": "cards"
+                            },
+                            {
+                                "name": "cards_limit",
+                                "value": "1"
+                            },
+                            {
+                                "name": "card_fields",
+                                "value": "shortLink"
+                            },
+                            {
+                                "name": "idBoards",
+                                "value": "6a688f05702942bef18337d2"
+                            }
+                        ]
+                    },
+                    "options": {
+                        "response": {
+                            "response": {
+                                "responseFormat": "json"
+                            }
+                        },
+                        "timeout": 20000
+                    }
+                },
+                "credentials": {
+                    "trelloApi": {
+                        "id": "MUcIdiWUZ1Vhdf2h",
+                        "name": "Trello Desembarco"
+                    }
+                },
+                "onError": "continueRegularOutput"
+            },
+            {
+                "id": "code-fusionar-busq",
+                "name": "Fusionar Busqueda",
+                "type": "n8n-nodes-base.code",
+                "typeVersion": 2,
+                "position": [
+                    960,
+                    -320
+                ],
+                "parameters": {
+                    "mode": "runOnceForEachItem",
+                    "jsCode": "const src = $('Parsear Respuesta').item.json;\nconst cards = ($json && $json.cards) || [];\nconst cardShort = cards.length ? (cards[0].shortLink || cards[0].id) : '';\nif (cardShort && src.ticketNum) {\n  const sd = $getWorkflowStaticData('global');\n  if (!sd.ticketMap) sd.ticketMap = {};\n  sd.ticketMap[src.ticketNum] = cardShort;\n}\nreturn { json: { ...src, cardShort } };"
+                }
             }
         ],
         "connections": {
@@ -836,17 +1103,6 @@
                     [
                         {
                             "node": "Parsear Respuesta",
-                            "type": "main",
-                            "index": 0
-                        }
-                    ]
-                ]
-            },
-            "Parsear Respuesta": {
-                "main": [
-                    [
-                        {
-                            "node": "Hay Card",
                             "type": "main",
                             "index": 0
                         }
@@ -923,6 +1179,57 @@
                         }
                     ]
                 ]
+            },
+            "Parsear Respuesta": {
+                "main": [
+                    [
+                        {
+                            "node": "Falta Card",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Falta Card": {
+                "main": [
+                    [
+                        {
+                            "node": "Buscar Card por Ticket",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ],
+                    [
+                        {
+                            "node": "Hay Card",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Buscar Card por Ticket": {
+                "main": [
+                    [
+                        {
+                            "node": "Fusionar Busqueda",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Fusionar Busqueda": {
+                "main": [
+                    [
+                        {
+                            "node": "Hay Card",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
             }
         },
         "authors": "Sistemas Desembarco",
@@ -931,50 +1238,18 @@
         "autosaved": false,
         "workflowPublishHistory": [
             {
-                "createdAt": "2026-07-28T17:12:43.567Z",
-                "id": 274,
+                "createdAt": "2026-07-28T19:13:44.456Z",
+                "id": 285,
                 "workflowId": "JPYTBT00v78HcBsB",
-                "versionId": "de76e880-1232-4dda-a663-970321698146",
+                "versionId": "d79f7686-42f3-4a06-9f93-494afcb34b14",
                 "event": "activated",
                 "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
             },
             {
-                "createdAt": "2026-07-28T17:26:29.984Z",
-                "id": 276,
+                "createdAt": "2026-07-28T19:13:43.475Z",
+                "id": 284,
                 "workflowId": "JPYTBT00v78HcBsB",
-                "versionId": "de76e880-1232-4dda-a663-970321698146",
-                "event": "activated",
-                "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
-            },
-            {
-                "createdAt": "2026-07-28T17:26:39.453Z",
-                "id": 278,
-                "workflowId": "JPYTBT00v78HcBsB",
-                "versionId": "de76e880-1232-4dda-a663-970321698146",
-                "event": "activated",
-                "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
-            },
-            {
-                "createdAt": "2026-07-28T17:12:42.582Z",
-                "id": 273,
-                "workflowId": "JPYTBT00v78HcBsB",
-                "versionId": "de76e880-1232-4dda-a663-970321698146",
-                "event": "deactivated",
-                "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
-            },
-            {
-                "createdAt": "2026-07-28T17:26:28.918Z",
-                "id": 275,
-                "workflowId": "JPYTBT00v78HcBsB",
-                "versionId": "de76e880-1232-4dda-a663-970321698146",
-                "event": "deactivated",
-                "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
-            },
-            {
-                "createdAt": "2026-07-28T17:26:30.318Z",
-                "id": 277,
-                "workflowId": "JPYTBT00v78HcBsB",
-                "versionId": "de76e880-1232-4dda-a663-970321698146",
+                "versionId": "d79f7686-42f3-4a06-9f93-494afcb34b14",
                 "event": "deactivated",
                 "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
             }
