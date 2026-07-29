@@ -1,5 +1,5 @@
 {
-    "updatedAt": "2026-07-29T15:52:00.336Z",
+    "updatedAt": "2026-07-29T16:26:52.599Z",
     "createdAt": "2026-07-28T14:13:32.784Z",
     "id": "JPYTBT00v78HcBsB",
     "name": "WA Requerimientos - Respuestas Mesa de Ayuda",
@@ -7,32 +7,6 @@
     "active": true,
     "isArchived": false,
     "nodes": [
-        {
-            "id": "gmail-get",
-            "name": "Leer Mail Completo",
-            "type": "n8n-nodes-base.gmail",
-            "typeVersion": 2.1,
-            "position": [
-                220,
-                0
-            ],
-            "parameters": {
-                "resource": "message",
-                "operation": "get",
-                "messageId": "={{ $json.id }}",
-                "simple": false,
-                "options": {}
-            },
-            "credentials": {
-                "gmailOAuth2": {
-                    "id": "f1LNQxtkdbexNoiC",
-                    "name": "Gmail account 3"
-                }
-            },
-            "retryOnFail": true,
-            "maxTries": 2,
-            "waitBetweenTries": 3000
-        },
         {
             "id": "code-parsear",
             "name": "Parsear Respuesta",
@@ -43,7 +17,7 @@
                 0
             ],
             "parameters": {
-                "jsCode": "// Extrae texto del mail, matchea la card (Ref en asunto/cuerpo, link, o nro de ticket conocido)\n// y detecta si la mesa dio por resuelto el caso.\nfunction b64url(s) { try { return Buffer.from((s || '').replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8'); } catch (e) { return ''; } }\nfunction collectText(payload, out) {\n  if (!payload) return;\n  if (payload.mimeType === 'text/plain' && payload.body && payload.body.data) out.plain.push(b64url(payload.body.data));\n  if (payload.mimeType === 'text/html' && payload.body && payload.body.data) out.html.push(b64url(payload.body.data));\n  for (const p of payload.parts || []) collectText(p, out);\n}\nconst sd = $getWorkflowStaticData('global');\nif (!sd.ticketMap) sd.ticketMap = {};\nif (!sd.ticketMap['271212']) sd.ticketMap['271212'] = 'tAnZsa3n'; // seed: primer ticket real, mapeado a mano\nconst out = [];\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  const raw = items[i].json;\n  const meta = $('Filtrar Nuevos').all()[i] ? $('Filtrar Nuevos').all()[i].json : {};\n  const buf = { plain: [], html: [] };\n  collectText(raw.payload, buf);\n  let texto = buf.plain.join('\\n');\n  if (!texto && typeof raw.text === 'string' && raw.text) texto = raw.text;\n  if (!texto && typeof raw.textPlain === 'string' && raw.textPlain) texto = raw.textPlain;\n  if (!texto) {\n    const h = buf.html.join('\\n') || raw.html || raw.textHtml || raw.textAsHtml || '';\n    if (h) texto = String(h).replace(/<style[\\s\\S]*?<\\/style>/gi, ' ').replace(/<[^>]+>/g, ' ');\n  }\n  if (!texto) texto = raw.snippet || meta.snippet || '';\n  const headers = {};\n  for (const h of (raw.payload && raw.payload.headers) || []) headers[h.name.toLowerCase()] = h.value;\n  const subject = headers['subject'] || meta.Subject || meta.subject || '(sin asunto)';\n  const from = headers['from'] || meta.From || meta.from || '';\n  let mCard = (subject + '\\n' + texto).match(/\\(Ref[:\\s]+([A-Za-z0-9]{6,12})\\)/i);\n  if (!mCard) mCard = texto.match(/https:\\/\\/trello\\.com\\/c\\/([A-Za-z0-9]+)/);\n  const mTicket = (subject + '\\n' + texto).match(/(?:ticket|caso|incidente|solicitud|numero|n\u00c3\u00bamero|nro\\.?|#)\\s*[:#]?\\s*(\\d{3,10})/i);\n  let cardShort = mCard ? mCard[1] : '';\n  const ticketNum = mTicket ? mTicket[1] : '';\n  if (cardShort && ticketNum) {\n    sd.ticketMap[ticketNum] = cardShort;\n    const ks = Object.keys(sd.ticketMap);\n    if (ks.length > 200) { for (const k of ks.slice(0, ks.length - 150)) delete sd.ticketMap[k]; }\n  }\n  if (!cardShort && ticketNum && sd.ticketMap[ticketNum]) cardShort = sd.ticketMap[ticketNum];\n  const esResuelto = /(resuelt|solucionad|cerrad|finalizad)/i.test(subject + ' ' + texto.slice(0, 3000));\n  const resumen = texto.replace(/\\s+/g, ' ').trim().slice(0, 500);\n  out.push({ json: { cardShort, ticketNum, esResuelto, from, subject, resumen } });\n}\nreturn out;"
+                "jsCode": "// Extrae texto del mail, matchea la card (Ref en asunto/cuerpo, link, o nro de ticket conocido)\n// y detecta si la mesa dio por resuelto el caso.\nfunction b64url(s) { try { return Buffer.from((s || '').replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8'); } catch (e) { return ''; } }\nfunction collectText(payload, out) {\n  if (!payload) return;\n  if (payload.mimeType === 'text/plain' && payload.body && payload.body.data) out.plain.push(b64url(payload.body.data));\n  if (payload.mimeType === 'text/html' && payload.body && payload.body.data) out.html.push(b64url(payload.body.data));\n  for (const p of payload.parts || []) collectText(p, out);\n}\nconst sd = $getWorkflowStaticData('global');\nif (!sd.ticketMap) sd.ticketMap = {};\nif (!sd.ticketMap['271212']) sd.ticketMap['271212'] = 'tAnZsa3n'; // seed: primer ticket real, mapeado a mano\nconst out = [];\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  const raw = items[i].json;\n  const meta = $('Filtrar Nuevos').all()[i] ? $('Filtrar Nuevos').all()[i].json : {};\n  const buf = { plain: [], html: [] };\n  collectText(raw.payload, buf);\n  let texto = buf.plain.join('\\n');\n  if (!texto && typeof raw.text === 'string' && raw.text) texto = raw.text;\n  if (!texto && typeof raw.textPlain === 'string' && raw.textPlain) texto = raw.textPlain;\n  if (!texto) {\n    const h = buf.html.join('\\n') || raw.html || raw.textHtml || raw.textAsHtml || '';\n    if (h) texto = String(h).replace(/<style[\\s\\S]*?<\\/style>/gi, ' ').replace(/<[^>]+>/g, ' ');\n  }\n  if (!texto) texto = raw.snippet || meta.snippet || '';\n  // el snippet siempre suma al texto buscable (los mails HTML de Action Sales a veces no decodifican)\n  const snip = raw.snippet || meta.snippet || '';\n  if (snip && !texto.includes(snip.slice(0, 40))) texto = texto + '\\n' + snip;\n  const headers = {};\n  for (const h of (raw.payload && raw.payload.headers) || []) headers[h.name.toLowerCase()] = h.value;\n  const subject = headers['subject'] || meta.Subject || meta.subject || '(sin asunto)';\n  const from = headers['from'] || meta.From || meta.from || '';\n  let mCard = (subject + '\\n' + texto).match(/\\(Ref[:\\s]+([A-Za-z0-9]{6,12})\\)/i);\n  if (!mCard) mCard = texto.match(/https:\\/\\/trello\\.com\\/c\\/([A-Za-z0-9]+)/);\n  const mTicket = (subject + '\\n' + texto).match(/(?:ticket|caso|incidente|solicitud|numero|n\u00c3\u00bamero|nro\\.?|#)\\s*[:#]?\\s*(\\d{3,10})/i);\n  let cardShort = mCard ? mCard[1] : '';\n  const ticketNum = mTicket ? mTicket[1] : '';\n  if (cardShort && ticketNum) {\n    sd.ticketMap[ticketNum] = cardShort;\n    const ks = Object.keys(sd.ticketMap);\n    if (ks.length > 200) { for (const k of ks.slice(0, ks.length - 150)) delete sd.ticketMap[k]; }\n  }\n  if (!cardShort && ticketNum && sd.ticketMap[ticketNum]) cardShort = sd.ticketMap[ticketNum];\n  const esResuelto = /(resuelt|resolvi|solucionad|cerrad|finalizad)/i.test(subject + ' ' + texto.slice(0, 3000));\n  const resumen = texto.replace(/\\s+/g, ' ').trim().slice(0, 500);\n  out.push({ json: { cardShort, ticketNum, esResuelto, from, subject, resumen } });\n}\nreturn out;"
             }
         },
         {
@@ -490,20 +464,42 @@
             "parameters": {
                 "jsCode": "// Dedupe por id de mail. En la primera corrida marca todo el backlog como visto\n// (ya fue procesado a mano) y solo procesa mails NUEVOS de ahi en adelante.\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.mailsVistos)) sd.mailsVistos = [];\nconst out = [];\nconst items = $input.all();\nif (!sd.mailInit) {\n  for (const item of items) { if (item.json && item.json.id) sd.mailsVistos.push(item.json.id); }\n  sd.mailInit = true;\n  return [];\n}\nfor (const item of items) {\n  const id = item.json && item.json.id;\n  if (!id || sd.mailsVistos.includes(id)) continue;\n  sd.mailsVistos.push(id);\n  out.push(item);\n}\nif (sd.mailsVistos.length > 500) sd.mailsVistos = sd.mailsVistos.slice(-400);\nreturn out;"
             }
+        },
+        {
+            "id": "http-leer-raw",
+            "name": "Leer Mail Completo",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.4,
+            "position": [
+                240,
+                0
+            ],
+            "parameters": {
+                "method": "GET",
+                "url": "=https://gmail.googleapis.com/gmail/v1/users/me/messages/{{ $json.id }}?format=full",
+                "authentication": "predefinedCredentialType",
+                "nodeCredentialType": "gmailOAuth2",
+                "options": {
+                    "response": {
+                        "response": {
+                            "responseFormat": "json"
+                        }
+                    },
+                    "timeout": 20000
+                }
+            },
+            "credentials": {
+                "gmailOAuth2": {
+                    "id": "f1LNQxtkdbexNoiC",
+                    "name": "Gmail account 3"
+                }
+            },
+            "retryOnFail": true,
+            "maxTries": 2,
+            "waitBetweenTries": 3000
         }
     ],
     "connections": {
-        "Leer Mail Completo": {
-            "main": [
-                [
-                    {
-                        "node": "Parsear Respuesta",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
         "Hay Card": {
             "main": [
                 [
@@ -676,6 +672,17 @@
                     }
                 ]
             ]
+        },
+        "Leer Mail Completo": {
+            "main": [
+                [
+                    {
+                        "node": "Parsear Respuesta",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
         }
     },
     "settings": {
@@ -730,9 +737,9 @@
     },
     "meta": null,
     "pinData": null,
-    "versionId": "4a3118bf-1bf4-474d-b834-066d4ced9cfd",
-    "activeVersionId": "4a3118bf-1bf4-474d-b834-066d4ced9cfd",
-    "versionCounter": 68,
+    "versionId": "ed939849-f756-4b41-86a0-47661230ba08",
+    "activeVersionId": "ed939849-f756-4b41-86a0-47661230ba08",
+    "versionCounter": 74,
     "triggerCount": 1,
     "shared": [
         {
@@ -755,37 +762,11 @@
     ],
     "tags": [],
     "activeVersion": {
-        "updatedAt": "2026-07-29T15:52:00.337Z",
-        "createdAt": "2026-07-29T15:52:00.337Z",
-        "versionId": "4a3118bf-1bf4-474d-b834-066d4ced9cfd",
+        "updatedAt": "2026-07-29T16:26:52.601Z",
+        "createdAt": "2026-07-29T16:26:52.601Z",
+        "versionId": "ed939849-f756-4b41-86a0-47661230ba08",
         "workflowId": "JPYTBT00v78HcBsB",
         "nodes": [
-            {
-                "id": "gmail-get",
-                "name": "Leer Mail Completo",
-                "type": "n8n-nodes-base.gmail",
-                "typeVersion": 2.1,
-                "position": [
-                    220,
-                    0
-                ],
-                "parameters": {
-                    "resource": "message",
-                    "operation": "get",
-                    "messageId": "={{ $json.id }}",
-                    "simple": false,
-                    "options": {}
-                },
-                "credentials": {
-                    "gmailOAuth2": {
-                        "id": "f1LNQxtkdbexNoiC",
-                        "name": "Gmail account 3"
-                    }
-                },
-                "retryOnFail": true,
-                "maxTries": 2,
-                "waitBetweenTries": 3000
-            },
             {
                 "id": "code-parsear",
                 "name": "Parsear Respuesta",
@@ -796,7 +777,7 @@
                     0
                 ],
                 "parameters": {
-                    "jsCode": "// Extrae texto del mail, matchea la card (Ref en asunto/cuerpo, link, o nro de ticket conocido)\n// y detecta si la mesa dio por resuelto el caso.\nfunction b64url(s) { try { return Buffer.from((s || '').replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8'); } catch (e) { return ''; } }\nfunction collectText(payload, out) {\n  if (!payload) return;\n  if (payload.mimeType === 'text/plain' && payload.body && payload.body.data) out.plain.push(b64url(payload.body.data));\n  if (payload.mimeType === 'text/html' && payload.body && payload.body.data) out.html.push(b64url(payload.body.data));\n  for (const p of payload.parts || []) collectText(p, out);\n}\nconst sd = $getWorkflowStaticData('global');\nif (!sd.ticketMap) sd.ticketMap = {};\nif (!sd.ticketMap['271212']) sd.ticketMap['271212'] = 'tAnZsa3n'; // seed: primer ticket real, mapeado a mano\nconst out = [];\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  const raw = items[i].json;\n  const meta = $('Filtrar Nuevos').all()[i] ? $('Filtrar Nuevos').all()[i].json : {};\n  const buf = { plain: [], html: [] };\n  collectText(raw.payload, buf);\n  let texto = buf.plain.join('\\n');\n  if (!texto && typeof raw.text === 'string' && raw.text) texto = raw.text;\n  if (!texto && typeof raw.textPlain === 'string' && raw.textPlain) texto = raw.textPlain;\n  if (!texto) {\n    const h = buf.html.join('\\n') || raw.html || raw.textHtml || raw.textAsHtml || '';\n    if (h) texto = String(h).replace(/<style[\\s\\S]*?<\\/style>/gi, ' ').replace(/<[^>]+>/g, ' ');\n  }\n  if (!texto) texto = raw.snippet || meta.snippet || '';\n  const headers = {};\n  for (const h of (raw.payload && raw.payload.headers) || []) headers[h.name.toLowerCase()] = h.value;\n  const subject = headers['subject'] || meta.Subject || meta.subject || '(sin asunto)';\n  const from = headers['from'] || meta.From || meta.from || '';\n  let mCard = (subject + '\\n' + texto).match(/\\(Ref[:\\s]+([A-Za-z0-9]{6,12})\\)/i);\n  if (!mCard) mCard = texto.match(/https:\\/\\/trello\\.com\\/c\\/([A-Za-z0-9]+)/);\n  const mTicket = (subject + '\\n' + texto).match(/(?:ticket|caso|incidente|solicitud|numero|n\u00c3\u00bamero|nro\\.?|#)\\s*[:#]?\\s*(\\d{3,10})/i);\n  let cardShort = mCard ? mCard[1] : '';\n  const ticketNum = mTicket ? mTicket[1] : '';\n  if (cardShort && ticketNum) {\n    sd.ticketMap[ticketNum] = cardShort;\n    const ks = Object.keys(sd.ticketMap);\n    if (ks.length > 200) { for (const k of ks.slice(0, ks.length - 150)) delete sd.ticketMap[k]; }\n  }\n  if (!cardShort && ticketNum && sd.ticketMap[ticketNum]) cardShort = sd.ticketMap[ticketNum];\n  const esResuelto = /(resuelt|solucionad|cerrad|finalizad)/i.test(subject + ' ' + texto.slice(0, 3000));\n  const resumen = texto.replace(/\\s+/g, ' ').trim().slice(0, 500);\n  out.push({ json: { cardShort, ticketNum, esResuelto, from, subject, resumen } });\n}\nreturn out;"
+                    "jsCode": "// Extrae texto del mail, matchea la card (Ref en asunto/cuerpo, link, o nro de ticket conocido)\n// y detecta si la mesa dio por resuelto el caso.\nfunction b64url(s) { try { return Buffer.from((s || '').replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8'); } catch (e) { return ''; } }\nfunction collectText(payload, out) {\n  if (!payload) return;\n  if (payload.mimeType === 'text/plain' && payload.body && payload.body.data) out.plain.push(b64url(payload.body.data));\n  if (payload.mimeType === 'text/html' && payload.body && payload.body.data) out.html.push(b64url(payload.body.data));\n  for (const p of payload.parts || []) collectText(p, out);\n}\nconst sd = $getWorkflowStaticData('global');\nif (!sd.ticketMap) sd.ticketMap = {};\nif (!sd.ticketMap['271212']) sd.ticketMap['271212'] = 'tAnZsa3n'; // seed: primer ticket real, mapeado a mano\nconst out = [];\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  const raw = items[i].json;\n  const meta = $('Filtrar Nuevos').all()[i] ? $('Filtrar Nuevos').all()[i].json : {};\n  const buf = { plain: [], html: [] };\n  collectText(raw.payload, buf);\n  let texto = buf.plain.join('\\n');\n  if (!texto && typeof raw.text === 'string' && raw.text) texto = raw.text;\n  if (!texto && typeof raw.textPlain === 'string' && raw.textPlain) texto = raw.textPlain;\n  if (!texto) {\n    const h = buf.html.join('\\n') || raw.html || raw.textHtml || raw.textAsHtml || '';\n    if (h) texto = String(h).replace(/<style[\\s\\S]*?<\\/style>/gi, ' ').replace(/<[^>]+>/g, ' ');\n  }\n  if (!texto) texto = raw.snippet || meta.snippet || '';\n  // el snippet siempre suma al texto buscable (los mails HTML de Action Sales a veces no decodifican)\n  const snip = raw.snippet || meta.snippet || '';\n  if (snip && !texto.includes(snip.slice(0, 40))) texto = texto + '\\n' + snip;\n  const headers = {};\n  for (const h of (raw.payload && raw.payload.headers) || []) headers[h.name.toLowerCase()] = h.value;\n  const subject = headers['subject'] || meta.Subject || meta.subject || '(sin asunto)';\n  const from = headers['from'] || meta.From || meta.from || '';\n  let mCard = (subject + '\\n' + texto).match(/\\(Ref[:\\s]+([A-Za-z0-9]{6,12})\\)/i);\n  if (!mCard) mCard = texto.match(/https:\\/\\/trello\\.com\\/c\\/([A-Za-z0-9]+)/);\n  const mTicket = (subject + '\\n' + texto).match(/(?:ticket|caso|incidente|solicitud|numero|n\u00c3\u00bamero|nro\\.?|#)\\s*[:#]?\\s*(\\d{3,10})/i);\n  let cardShort = mCard ? mCard[1] : '';\n  const ticketNum = mTicket ? mTicket[1] : '';\n  if (cardShort && ticketNum) {\n    sd.ticketMap[ticketNum] = cardShort;\n    const ks = Object.keys(sd.ticketMap);\n    if (ks.length > 200) { for (const k of ks.slice(0, ks.length - 150)) delete sd.ticketMap[k]; }\n  }\n  if (!cardShort && ticketNum && sd.ticketMap[ticketNum]) cardShort = sd.ticketMap[ticketNum];\n  const esResuelto = /(resuelt|resolvi|solucionad|cerrad|finalizad)/i.test(subject + ' ' + texto.slice(0, 3000));\n  const resumen = texto.replace(/\\s+/g, ' ').trim().slice(0, 500);\n  out.push({ json: { cardShort, ticketNum, esResuelto, from, subject, resumen } });\n}\nreturn out;"
                 }
             },
             {
@@ -1243,20 +1224,42 @@
                 "parameters": {
                     "jsCode": "// Dedupe por id de mail. En la primera corrida marca todo el backlog como visto\n// (ya fue procesado a mano) y solo procesa mails NUEVOS de ahi en adelante.\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.mailsVistos)) sd.mailsVistos = [];\nconst out = [];\nconst items = $input.all();\nif (!sd.mailInit) {\n  for (const item of items) { if (item.json && item.json.id) sd.mailsVistos.push(item.json.id); }\n  sd.mailInit = true;\n  return [];\n}\nfor (const item of items) {\n  const id = item.json && item.json.id;\n  if (!id || sd.mailsVistos.includes(id)) continue;\n  sd.mailsVistos.push(id);\n  out.push(item);\n}\nif (sd.mailsVistos.length > 500) sd.mailsVistos = sd.mailsVistos.slice(-400);\nreturn out;"
                 }
+            },
+            {
+                "id": "http-leer-raw",
+                "name": "Leer Mail Completo",
+                "type": "n8n-nodes-base.httpRequest",
+                "typeVersion": 4.4,
+                "position": [
+                    240,
+                    0
+                ],
+                "parameters": {
+                    "method": "GET",
+                    "url": "=https://gmail.googleapis.com/gmail/v1/users/me/messages/{{ $json.id }}?format=full",
+                    "authentication": "predefinedCredentialType",
+                    "nodeCredentialType": "gmailOAuth2",
+                    "options": {
+                        "response": {
+                            "response": {
+                                "responseFormat": "json"
+                            }
+                        },
+                        "timeout": 20000
+                    }
+                },
+                "credentials": {
+                    "gmailOAuth2": {
+                        "id": "f1LNQxtkdbexNoiC",
+                        "name": "Gmail account 3"
+                    }
+                },
+                "retryOnFail": true,
+                "maxTries": 2,
+                "waitBetweenTries": 3000
             }
         ],
         "connections": {
-            "Leer Mail Completo": {
-                "main": [
-                    [
-                        {
-                            "node": "Parsear Respuesta",
-                            "type": "main",
-                            "index": 0
-                        }
-                    ]
-                ]
-            },
             "Hay Card": {
                 "main": [
                     [
@@ -1429,6 +1432,17 @@
                         }
                     ]
                 ]
+            },
+            "Leer Mail Completo": {
+                "main": [
+                    [
+                        {
+                            "node": "Parsear Respuesta",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
             }
         },
         "authors": "Sistemas Desembarco",
@@ -1437,18 +1451,18 @@
         "autosaved": false,
         "workflowPublishHistory": [
             {
-                "createdAt": "2026-07-29T15:52:00.405Z",
-                "id": 293,
+                "createdAt": "2026-07-29T16:26:52.651Z",
+                "id": 304,
                 "workflowId": "JPYTBT00v78HcBsB",
-                "versionId": "4a3118bf-1bf4-474d-b834-066d4ced9cfd",
+                "versionId": "ed939849-f756-4b41-86a0-47661230ba08",
                 "event": "activated",
                 "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
             },
             {
-                "createdAt": "2026-07-29T15:52:00.379Z",
-                "id": 292,
+                "createdAt": "2026-07-29T16:26:52.633Z",
+                "id": 303,
                 "workflowId": "JPYTBT00v78HcBsB",
-                "versionId": "4a3118bf-1bf4-474d-b834-066d4ced9cfd",
+                "versionId": "ed939849-f756-4b41-86a0-47661230ba08",
                 "event": "deactivated",
                 "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
             }
