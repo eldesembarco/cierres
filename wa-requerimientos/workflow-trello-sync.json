@@ -1,5 +1,5 @@
 {
-    "updatedAt": "2026-07-28T19:25:12.847Z",
+    "updatedAt": "2026-07-29T16:33:25.983Z",
     "createdAt": "2026-07-28T12:07:57.406Z",
     "id": "LHbJVS18ZULzqToG",
     "name": "WA Requerimientos - Trello Sync (mesa de ayuda + resueltos)",
@@ -411,7 +411,7 @@
             ],
             "parameters": {
                 "mode": "runOnceForEachItem",
-                "jsCode": "// La card se queda en la columna 'Pas\u00c3\u00b3 a...'; este registro evita reenv\u00c3\u00ados del cron.\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.sentMesa)) sd.sentMesa = [];\nconst src = $('Preparar Email').item.json;\nif (!sd.sentMesa.includes(src.cardId)) sd.sentMesa.push(src.cardId);\nif (sd.sentMesa.length > 300) sd.sentMesa = sd.sentMesa.slice(-200);\nreturn { json: src };"
+                "jsCode": "// La card se queda en la columna 'Pas\u00c3\u00b3 a...'; este registro evita reenv\u00c3\u00ados del cron.\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.sentMesa)) sd.sentMesa = [];\nconst src = $('Preparar Email').item.json;\nif (!sd.sentMesa.includes(src.cardId)) sd.sentMesa.push(src.cardId);\nif (!sd.sentMesaAt) sd.sentMesaAt = {};\nsd.sentMesaAt[src.cardId] = Date.now();\nif (sd.sentMesa.length > 300) sd.sentMesa = sd.sentMesa.slice(-200);\nreturn { json: src };"
             }
         },
         {
@@ -488,6 +488,61 @@
             "retryOnFail": true,
             "maxTries": 2,
             "waitBetweenTries": 3000
+        },
+        {
+            "id": "code-watchdog",
+            "name": "Watchdog Confirmacion",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                440,
+                -460
+            ],
+            "parameters": {
+                "jsCode": "// Card enviada a la mesa hace >45 min y sigue en 'Paso a Mesa...' (la mesa no confirmo creacion): alerta a Pablo, una sola vez por card.\nconst sd = $getWorkflowStaticData('global');\nif (!sd.sentMesaAt) sd.sentMesaAt = {};\nif (!Array.isArray(sd.alertConfirm)) sd.alertConfirm = [];\nconst LIMITE_MS = 45 * 60 * 1000;\nconst out = [];\nfor (const item of $input.all()) {\n  const c = item.json;\n  if (!c || !c.id) continue;\n  const ts = sd.sentMesaAt[c.id];\n  if (!ts) continue;\n  if (Date.now() - ts < LIMITE_MS) continue;\n  if (sd.alertConfirm.includes(c.id)) continue;\n  sd.alertConfirm.push(c.id);\n  if (sd.alertConfirm.length > 200) sd.alertConfirm = sd.alertConfirm.slice(-150);\n  out.push({ json: {\n    recipient: '5491157935007@s.whatsapp.net',\n    message: `\u00e2\u0161\u00a0\u00ef\u00b8\udc8f La mesa de ayuda NO confirm\u00c3\u00b3 la creaci\u00c3\u00b3n del ticket (pasaron 45+ min desde el env\u00c3\u00ado):\\n\\\"${c.name}\\\"\\n${c.shortUrl}\\n\\nVerificar si lleg\u00c3\u00b3 el requerimiento.`\n  } });\n}\nreturn out;"
+            }
+        },
+        {
+            "id": "http-outbox-watchdog",
+            "name": "Outbox Watchdog",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.4,
+            "position": [
+                660,
+                -460
+            ],
+            "parameters": {
+                "method": "POST",
+                "url": "https://n8n.srv1312396.hstgr.cloud/api/v1/data-tables/W7rPitDcioXfqBfb/rows",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "X-N8N-API-KEY",
+                            "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJiNjBkNWU1YS1lYjNmLTQ4ZTItYTZlOC1iYzUyMTUzZTFhYzMiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiZDFhY2E0YWYtYjExMS00ZmU2LTlkZTItZmIyNWE3ODk1ZDRkIiwiaWF0IjoxNzc2OTUwMjc3fQ.K3a87ubNNw-N_ri3Q7mnYgDD2etP2l9OyoMA9Ut3L5Y"
+                        },
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ JSON.stringify({ data: [{ recipient: $json.recipient, message: $json.message, quoted_message_id: '', quoted_sender_jid: '', quoted_content: '', status: 'pending' }] }) }}",
+                "options": {
+                    "response": {
+                        "response": {
+                            "responseFormat": "json"
+                        }
+                    },
+                    "timeout": 20000
+                }
+            },
+            "onError": "continueRegularOutput",
+            "retryOnFail": true,
+            "maxTries": 2,
+            "waitBetweenTries": 3000
         }
     ],
     "connections": {
@@ -517,6 +572,11 @@
                 [
                     {
                         "node": "Preparar Email",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Watchdog Confirmacion",
                         "type": "main",
                         "index": 0
                     }
@@ -579,6 +639,11 @@
                 [
                     {
                         "node": "Preparar Email",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Watchdog Confirmacion",
                         "type": "main",
                         "index": 0
                     }
@@ -668,6 +733,17 @@
                     }
                 ]
             ]
+        },
+        "Watchdog Confirmacion": {
+            "main": [
+                [
+                    {
+                        "node": "Outbox Watchdog",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
         }
     },
     "settings": {
@@ -686,20 +762,32 @@
         "global": {
             "notified": [
                 "6a689c015de378b6b56ec13f",
-                "6a68ca46a1a832d6a2e360ac"
+                "6a68ca46a1a832d6a2e360ac",
+                "6a68e40a3dd83d8b40a5ac31",
+                "6a689d2852e19d5f59cfd4b0",
+                "6a68f084ffbc0c314b82182b",
+                "6a68f1ed048ba5616a7fc2a0",
+                "6a68f2305f0861bf5d67aef7",
+                "6a6a1735b1cb611f4bf5bdfc",
+                "6a6a16f8c832a60e51acdb1c",
+                "6a689d2faa135d5a190ddc7c",
+                "6a689d6a4bb58f8c5d8d409c",
+                "6a6a15d9a3fc835f9e495b82",
+                "6a6a25cf94d6f678a1ce6c43"
             ],
             "sentMesa": [
                 "6a68dc2f5209629993edcc67",
                 "6a68ca46a1a832d6a2e360ac",
-                "6a68d760896a1b709d5fc894"
+                "6a68d760896a1b709d5fc894",
+                "6a6a15d9a3fc835f9e495b82"
             ]
         }
     },
     "meta": null,
     "pinData": null,
-    "versionId": "e6382cdc-5058-46fa-b7af-501a883ac126",
-    "activeVersionId": "e6382cdc-5058-46fa-b7af-501a883ac126",
-    "versionCounter": 35,
+    "versionId": "5975f8a6-99fc-4c9e-8b40-fd4fb46fc959",
+    "activeVersionId": "5975f8a6-99fc-4c9e-8b40-fd4fb46fc959",
+    "versionCounter": 45,
     "triggerCount": 1,
     "shared": [
         {
@@ -722,9 +810,9 @@
     ],
     "tags": [],
     "activeVersion": {
-        "updatedAt": "2026-07-28T19:25:12.848Z",
-        "createdAt": "2026-07-28T19:25:12.848Z",
-        "versionId": "e6382cdc-5058-46fa-b7af-501a883ac126",
+        "updatedAt": "2026-07-29T16:33:25.984Z",
+        "createdAt": "2026-07-29T16:33:25.984Z",
+        "versionId": "5975f8a6-99fc-4c9e-8b40-fd4fb46fc959",
         "workflowId": "LHbJVS18ZULzqToG",
         "nodes": [
             {
@@ -1131,7 +1219,7 @@
                 ],
                 "parameters": {
                     "mode": "runOnceForEachItem",
-                    "jsCode": "// La card se queda en la columna 'Pas\u00c3\u00b3 a...'; este registro evita reenv\u00c3\u00ados del cron.\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.sentMesa)) sd.sentMesa = [];\nconst src = $('Preparar Email').item.json;\nif (!sd.sentMesa.includes(src.cardId)) sd.sentMesa.push(src.cardId);\nif (sd.sentMesa.length > 300) sd.sentMesa = sd.sentMesa.slice(-200);\nreturn { json: src };"
+                    "jsCode": "// La card se queda en la columna 'Pas\u00c3\u00b3 a...'; este registro evita reenv\u00c3\u00ados del cron.\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.sentMesa)) sd.sentMesa = [];\nconst src = $('Preparar Email').item.json;\nif (!sd.sentMesa.includes(src.cardId)) sd.sentMesa.push(src.cardId);\nif (!sd.sentMesaAt) sd.sentMesaAt = {};\nsd.sentMesaAt[src.cardId] = Date.now();\nif (sd.sentMesa.length > 300) sd.sentMesa = sd.sentMesa.slice(-200);\nreturn { json: src };"
                 }
             },
             {
@@ -1208,6 +1296,61 @@
                 "retryOnFail": true,
                 "maxTries": 2,
                 "waitBetweenTries": 3000
+            },
+            {
+                "id": "code-watchdog",
+                "name": "Watchdog Confirmacion",
+                "type": "n8n-nodes-base.code",
+                "typeVersion": 2,
+                "position": [
+                    440,
+                    -460
+                ],
+                "parameters": {
+                    "jsCode": "// Card enviada a la mesa hace >45 min y sigue en 'Paso a Mesa...' (la mesa no confirmo creacion): alerta a Pablo, una sola vez por card.\nconst sd = $getWorkflowStaticData('global');\nif (!sd.sentMesaAt) sd.sentMesaAt = {};\nif (!Array.isArray(sd.alertConfirm)) sd.alertConfirm = [];\nconst LIMITE_MS = 45 * 60 * 1000;\nconst out = [];\nfor (const item of $input.all()) {\n  const c = item.json;\n  if (!c || !c.id) continue;\n  const ts = sd.sentMesaAt[c.id];\n  if (!ts) continue;\n  if (Date.now() - ts < LIMITE_MS) continue;\n  if (sd.alertConfirm.includes(c.id)) continue;\n  sd.alertConfirm.push(c.id);\n  if (sd.alertConfirm.length > 200) sd.alertConfirm = sd.alertConfirm.slice(-150);\n  out.push({ json: {\n    recipient: '5491157935007@s.whatsapp.net',\n    message: `\u00e2\u0161\u00a0\u00ef\u00b8\udc8f La mesa de ayuda NO confirm\u00c3\u00b3 la creaci\u00c3\u00b3n del ticket (pasaron 45+ min desde el env\u00c3\u00ado):\\n\\\"${c.name}\\\"\\n${c.shortUrl}\\n\\nVerificar si lleg\u00c3\u00b3 el requerimiento.`\n  } });\n}\nreturn out;"
+                }
+            },
+            {
+                "id": "http-outbox-watchdog",
+                "name": "Outbox Watchdog",
+                "type": "n8n-nodes-base.httpRequest",
+                "typeVersion": 4.4,
+                "position": [
+                    660,
+                    -460
+                ],
+                "parameters": {
+                    "method": "POST",
+                    "url": "https://n8n.srv1312396.hstgr.cloud/api/v1/data-tables/W7rPitDcioXfqBfb/rows",
+                    "sendHeaders": true,
+                    "headerParameters": {
+                        "parameters": [
+                            {
+                                "name": "X-N8N-API-KEY",
+                                "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJiNjBkNWU1YS1lYjNmLTQ4ZTItYTZlOC1iYzUyMTUzZTFhYzMiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiZDFhY2E0YWYtYjExMS00ZmU2LTlkZTItZmIyNWE3ODk1ZDRkIiwiaWF0IjoxNzc2OTUwMjc3fQ.K3a87ubNNw-N_ri3Q7mnYgDD2etP2l9OyoMA9Ut3L5Y"
+                            },
+                            {
+                                "name": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ]
+                    },
+                    "sendBody": true,
+                    "specifyBody": "json",
+                    "jsonBody": "={{ JSON.stringify({ data: [{ recipient: $json.recipient, message: $json.message, quoted_message_id: '', quoted_sender_jid: '', quoted_content: '', status: 'pending' }] }) }}",
+                    "options": {
+                        "response": {
+                            "response": {
+                                "responseFormat": "json"
+                            }
+                        },
+                        "timeout": 20000
+                    }
+                },
+                "onError": "continueRegularOutput",
+                "retryOnFail": true,
+                "maxTries": 2,
+                "waitBetweenTries": 3000
             }
         ],
         "connections": {
@@ -1237,6 +1380,11 @@
                     [
                         {
                             "node": "Preparar Email",
+                            "type": "main",
+                            "index": 0
+                        },
+                        {
+                            "node": "Watchdog Confirmacion",
                             "type": "main",
                             "index": 0
                         }
@@ -1299,6 +1447,11 @@
                     [
                         {
                             "node": "Preparar Email",
+                            "type": "main",
+                            "index": 0
+                        },
+                        {
+                            "node": "Watchdog Confirmacion",
                             "type": "main",
                             "index": 0
                         }
@@ -1388,6 +1541,17 @@
                         }
                     ]
                 ]
+            },
+            "Watchdog Confirmacion": {
+                "main": [
+                    [
+                        {
+                            "node": "Outbox Watchdog",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
             }
         },
         "authors": "Sistemas Desembarco",
@@ -1396,18 +1560,18 @@
         "autosaved": false,
         "workflowPublishHistory": [
             {
-                "createdAt": "2026-07-28T19:25:12.934Z",
-                "id": 289,
+                "createdAt": "2026-07-29T16:33:26.061Z",
+                "id": 306,
                 "workflowId": "LHbJVS18ZULzqToG",
-                "versionId": "e6382cdc-5058-46fa-b7af-501a883ac126",
+                "versionId": "5975f8a6-99fc-4c9e-8b40-fd4fb46fc959",
                 "event": "activated",
                 "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
             },
             {
-                "createdAt": "2026-07-28T19:25:12.904Z",
-                "id": 288,
+                "createdAt": "2026-07-29T16:33:26.041Z",
+                "id": 305,
                 "workflowId": "LHbJVS18ZULzqToG",
-                "versionId": "e6382cdc-5058-46fa-b7af-501a883ac126",
+                "versionId": "5975f8a6-99fc-4c9e-8b40-fd4fb46fc959",
                 "event": "deactivated",
                 "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
             }
