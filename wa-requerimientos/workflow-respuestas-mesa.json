@@ -1,5 +1,5 @@
 {
-    "updatedAt": "2026-07-28T19:15:32.713Z",
+    "updatedAt": "2026-07-29T15:52:00.336Z",
     "createdAt": "2026-07-28T14:13:32.784Z",
     "id": "JPYTBT00v78HcBsB",
     "name": "WA Requerimientos - Respuestas Mesa de Ayuda",
@@ -7,36 +7,6 @@
     "active": true,
     "isArchived": false,
     "nodes": [
-        {
-            "id": "trigger-gmail",
-            "name": "Nueva Respuesta Mesa",
-            "type": "n8n-nodes-base.gmailTrigger",
-            "typeVersion": 1.2,
-            "position": [
-                0,
-                0
-            ],
-            "parameters": {
-                "pollTimes": {
-                    "item": [
-                        {
-                            "mode": "everyMinute"
-                        }
-                    ]
-                },
-                "simple": true,
-                "filters": {
-                    "q": "(from:seincomp.com.ar OR from:actionsales.com.ar OR subject:\"[El Desembarco]\") -from:lrecchini@eldesembarco.com"
-                },
-                "options": {}
-            },
-            "credentials": {
-                "gmailOAuth2": {
-                    "id": "f1LNQxtkdbexNoiC",
-                    "name": "Gmail account 3"
-                }
-            }
-        },
         {
             "id": "gmail-get",
             "name": "Leer Mail Completo",
@@ -73,7 +43,7 @@
                 0
             ],
             "parameters": {
-                "jsCode": "// Extrae texto del mail, matchea la card (Ref en asunto/cuerpo, link, o nro de ticket conocido)\n// y detecta si la mesa dio por resuelto el caso.\nfunction b64url(s) { try { return Buffer.from((s || '').replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8'); } catch (e) { return ''; } }\nfunction collectText(payload, out) {\n  if (!payload) return;\n  if (payload.mimeType === 'text/plain' && payload.body && payload.body.data) out.plain.push(b64url(payload.body.data));\n  if (payload.mimeType === 'text/html' && payload.body && payload.body.data) out.html.push(b64url(payload.body.data));\n  for (const p of payload.parts || []) collectText(p, out);\n}\nconst sd = $getWorkflowStaticData('global');\nif (!sd.ticketMap) sd.ticketMap = {};\nif (!sd.ticketMap['271212']) sd.ticketMap['271212'] = 'tAnZsa3n'; // seed: primer ticket real, mapeado a mano\nconst out = [];\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  const raw = items[i].json;\n  const meta = $('Nueva Respuesta Mesa').all()[i] ? $('Nueva Respuesta Mesa').all()[i].json : {};\n  const buf = { plain: [], html: [] };\n  collectText(raw.payload, buf);\n  let texto = buf.plain.join('\\n');\n  if (!texto && typeof raw.text === 'string' && raw.text) texto = raw.text;\n  if (!texto && typeof raw.textPlain === 'string' && raw.textPlain) texto = raw.textPlain;\n  if (!texto) {\n    const h = buf.html.join('\\n') || raw.html || raw.textHtml || raw.textAsHtml || '';\n    if (h) texto = String(h).replace(/<style[\\s\\S]*?<\\/style>/gi, ' ').replace(/<[^>]+>/g, ' ');\n  }\n  if (!texto) texto = raw.snippet || meta.snippet || '';\n  const headers = {};\n  for (const h of (raw.payload && raw.payload.headers) || []) headers[h.name.toLowerCase()] = h.value;\n  const subject = headers['subject'] || meta.Subject || meta.subject || '(sin asunto)';\n  const from = headers['from'] || meta.From || meta.from || '';\n  let mCard = (subject + '\\n' + texto).match(/\\(Ref[:\\s]+([A-Za-z0-9]{6,12})\\)/i);\n  if (!mCard) mCard = texto.match(/https:\\/\\/trello\\.com\\/c\\/([A-Za-z0-9]+)/);\n  const mTicket = (subject + '\\n' + texto).match(/(?:ticket|caso|incidente|solicitud|numero|n\u00c3\u00bamero|nro\\.?|#)\\s*[:#]?\\s*(\\d{3,10})/i);\n  let cardShort = mCard ? mCard[1] : '';\n  const ticketNum = mTicket ? mTicket[1] : '';\n  if (cardShort && ticketNum) {\n    sd.ticketMap[ticketNum] = cardShort;\n    const ks = Object.keys(sd.ticketMap);\n    if (ks.length > 200) { for (const k of ks.slice(0, ks.length - 150)) delete sd.ticketMap[k]; }\n  }\n  if (!cardShort && ticketNum && sd.ticketMap[ticketNum]) cardShort = sd.ticketMap[ticketNum];\n  const esResuelto = /(resuelt|solucionad|cerrad|finalizad)/i.test(subject + ' ' + texto.slice(0, 3000));\n  const resumen = texto.replace(/\\s+/g, ' ').trim().slice(0, 500);\n  out.push({ json: { cardShort, ticketNum, esResuelto, from, subject, resumen } });\n}\nreturn out;"
+                "jsCode": "// Extrae texto del mail, matchea la card (Ref en asunto/cuerpo, link, o nro de ticket conocido)\n// y detecta si la mesa dio por resuelto el caso.\nfunction b64url(s) { try { return Buffer.from((s || '').replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8'); } catch (e) { return ''; } }\nfunction collectText(payload, out) {\n  if (!payload) return;\n  if (payload.mimeType === 'text/plain' && payload.body && payload.body.data) out.plain.push(b64url(payload.body.data));\n  if (payload.mimeType === 'text/html' && payload.body && payload.body.data) out.html.push(b64url(payload.body.data));\n  for (const p of payload.parts || []) collectText(p, out);\n}\nconst sd = $getWorkflowStaticData('global');\nif (!sd.ticketMap) sd.ticketMap = {};\nif (!sd.ticketMap['271212']) sd.ticketMap['271212'] = 'tAnZsa3n'; // seed: primer ticket real, mapeado a mano\nconst out = [];\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  const raw = items[i].json;\n  const meta = $('Filtrar Nuevos').all()[i] ? $('Filtrar Nuevos').all()[i].json : {};\n  const buf = { plain: [], html: [] };\n  collectText(raw.payload, buf);\n  let texto = buf.plain.join('\\n');\n  if (!texto && typeof raw.text === 'string' && raw.text) texto = raw.text;\n  if (!texto && typeof raw.textPlain === 'string' && raw.textPlain) texto = raw.textPlain;\n  if (!texto) {\n    const h = buf.html.join('\\n') || raw.html || raw.textHtml || raw.textAsHtml || '';\n    if (h) texto = String(h).replace(/<style[\\s\\S]*?<\\/style>/gi, ' ').replace(/<[^>]+>/g, ' ');\n  }\n  if (!texto) texto = raw.snippet || meta.snippet || '';\n  const headers = {};\n  for (const h of (raw.payload && raw.payload.headers) || []) headers[h.name.toLowerCase()] = h.value;\n  const subject = headers['subject'] || meta.Subject || meta.subject || '(sin asunto)';\n  const from = headers['from'] || meta.From || meta.from || '';\n  let mCard = (subject + '\\n' + texto).match(/\\(Ref[:\\s]+([A-Za-z0-9]{6,12})\\)/i);\n  if (!mCard) mCard = texto.match(/https:\\/\\/trello\\.com\\/c\\/([A-Za-z0-9]+)/);\n  const mTicket = (subject + '\\n' + texto).match(/(?:ticket|caso|incidente|solicitud|numero|n\u00c3\u00bamero|nro\\.?|#)\\s*[:#]?\\s*(\\d{3,10})/i);\n  let cardShort = mCard ? mCard[1] : '';\n  const ticketNum = mTicket ? mTicket[1] : '';\n  if (cardShort && ticketNum) {\n    sd.ticketMap[ticketNum] = cardShort;\n    const ks = Object.keys(sd.ticketMap);\n    if (ks.length > 200) { for (const k of ks.slice(0, ks.length - 150)) delete sd.ticketMap[k]; }\n  }\n  if (!cardShort && ticketNum && sd.ticketMap[ticketNum]) cardShort = sd.ticketMap[ticketNum];\n  const esResuelto = /(resuelt|solucionad|cerrad|finalizad)/i.test(subject + ' ' + texto.slice(0, 3000));\n  const resumen = texto.replace(/\\s+/g, ' ').trim().slice(0, 500);\n  out.push({ json: { cardShort, ticketNum, esResuelto, from, subject, resumen } });\n}\nreturn out;"
             }
         },
         {
@@ -457,20 +427,72 @@
             "parameters": {
                 "jsCode": "// Aviso de mesa que no se pudo vincular a ninguna card: alerta a Pablo para revision manual.\nconst out = [];\nfor (const item of $input.all()) {\n  const j = item.json;\n  out.push({ json: {\n    recipient: '5491157935007@s.whatsapp.net',\n    message: `\u00e2\u0161\u00a0\u00ef\u00b8\udc8f Aviso de la mesa de ayuda SIN ticket vinculado \u00e2\u20ac\u201d revisar a mano:\\nDe: ${j.from}\\nAsunto: ${j.subject}${j.ticketNum ? '\\nTicket mesa: #' + j.ticketNum : ''}\\n\\n${(j.resumen || '').slice(0, 200)}`\n  } });\n}\nreturn out;"
             }
+        },
+        {
+            "id": "cron-mesa",
+            "name": "Cada Minuto Mesa",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1.2,
+            "position": [
+                -420,
+                0
+            ],
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "minutes",
+                            "minutesInterval": 1
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "id": "gmail-buscar",
+            "name": "Buscar Mails Mesa",
+            "type": "n8n-nodes-base.gmail",
+            "typeVersion": 2.1,
+            "position": [
+                -200,
+                0
+            ],
+            "parameters": {
+                "resource": "message",
+                "operation": "getAll",
+                "returnAll": false,
+                "limit": 20,
+                "simple": true,
+                "filters": {
+                    "q": "(from:seincomp.com.ar OR from:actionsales.com.ar OR subject:\"[El Desembarco]\") -from:lrecchini@eldesembarco.com newer_than:2d"
+                },
+                "options": {}
+            },
+            "credentials": {
+                "gmailOAuth2": {
+                    "id": "f1LNQxtkdbexNoiC",
+                    "name": "Gmail account 3"
+                }
+            },
+            "retryOnFail": true,
+            "maxTries": 2,
+            "waitBetweenTries": 5000
+        },
+        {
+            "id": "code-filtrar-nuevos",
+            "name": "Filtrar Nuevos",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                20,
+                0
+            ],
+            "parameters": {
+                "jsCode": "// Dedupe por id de mail. En la primera corrida marca todo el backlog como visto\n// (ya fue procesado a mano) y solo procesa mails NUEVOS de ahi en adelante.\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.mailsVistos)) sd.mailsVistos = [];\nconst out = [];\nconst items = $input.all();\nif (!sd.mailInit) {\n  for (const item of items) { if (item.json && item.json.id) sd.mailsVistos.push(item.json.id); }\n  sd.mailInit = true;\n  return [];\n}\nfor (const item of items) {\n  const id = item.json && item.json.id;\n  if (!id || sd.mailsVistos.includes(id)) continue;\n  sd.mailsVistos.push(id);\n  out.push(item);\n}\nif (sd.mailsVistos.length > 500) sd.mailsVistos = sd.mailsVistos.slice(-400);\nreturn out;"
+            }
         }
     ],
     "connections": {
-        "Nueva Respuesta Mesa": {
-            "main": [
-                [
-                    {
-                        "node": "Leer Mail Completo",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
         "Leer Mail Completo": {
             "main": [
                 [
@@ -621,36 +643,96 @@
                     }
                 ]
             ]
+        },
+        "Cada Minuto Mesa": {
+            "main": [
+                [
+                    {
+                        "node": "Buscar Mails Mesa",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Buscar Mails Mesa": {
+            "main": [
+                [
+                    {
+                        "node": "Filtrar Nuevos",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Filtrar Nuevos": {
+            "main": [
+                [
+                    {
+                        "node": "Leer Mail Completo",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
         }
     },
     "settings": {
         "executionOrder": "v1",
         "timezone": "America/Argentina/Buenos_Aires",
         "saveDataErrorExecution": "all",
-        "saveDataSuccessExecution": "all",
+        "saveDataSuccessExecution": "none",
         "callerPolicy": "workflowsFromSameOwner",
         "availableInMCP": false
     },
     "staticData": {
         "node:Nueva Respuesta Mesa": {
             "Nueva Respuesta Mesa": {
-                "lastTimeChecked": 1785263763,
+                "lastTimeChecked": 1785338027,
                 "possibleDuplicates": [
-                    "19faa035ff978352"
+                    "19fae7065715902a",
+                    "19fae6dbf3c0a521"
                 ]
             }
         },
         "global": {
             "ticketMap": {
-                "271212": "tAnZsa3n"
-            }
+                "271212": "tAnZsa3n",
+                "660001": "92M4N5e8"
+            },
+            "mailsVistos": [
+                "19fae7065715902a",
+                "19fae6dbf3c0a521",
+                "19faae3331b87420",
+                "19faa035ff978352",
+                "19faa0070669a76a",
+                "19fa9f24c8ed11dd",
+                "19fa9c3ef495c756",
+                "19fa9be8f5798f22",
+                "19fa9b40c40fc24d",
+                "19fa9b3e5f9acd05",
+                "19fa9b35e9192cbd",
+                "19fa9a2ac3522f98",
+                "19fa99dfcabb3f41",
+                "19fa994ed84259c1",
+                "19fa98e7b8e2090f",
+                "19fa4a9b2759186f",
+                "19fa4777072ac1b5",
+                "19faea4248324272",
+                "19faea511920b9fa"
+            ],
+            "mailInit": true
+        },
+        "node:Cada Minuto Mesa": {
+            "recurrenceRules": []
         }
     },
     "meta": null,
     "pinData": null,
-    "versionId": "2242cd48-4c13-4d10-86cd-f4dd81dc0bab",
-    "activeVersionId": "2242cd48-4c13-4d10-86cd-f4dd81dc0bab",
-    "versionCounter": 58,
+    "versionId": "4a3118bf-1bf4-474d-b834-066d4ced9cfd",
+    "activeVersionId": "4a3118bf-1bf4-474d-b834-066d4ced9cfd",
+    "versionCounter": 68,
     "triggerCount": 1,
     "shared": [
         {
@@ -673,41 +755,11 @@
     ],
     "tags": [],
     "activeVersion": {
-        "updatedAt": "2026-07-28T19:15:32.715Z",
-        "createdAt": "2026-07-28T19:15:32.715Z",
-        "versionId": "2242cd48-4c13-4d10-86cd-f4dd81dc0bab",
+        "updatedAt": "2026-07-29T15:52:00.337Z",
+        "createdAt": "2026-07-29T15:52:00.337Z",
+        "versionId": "4a3118bf-1bf4-474d-b834-066d4ced9cfd",
         "workflowId": "JPYTBT00v78HcBsB",
         "nodes": [
-            {
-                "id": "trigger-gmail",
-                "name": "Nueva Respuesta Mesa",
-                "type": "n8n-nodes-base.gmailTrigger",
-                "typeVersion": 1.2,
-                "position": [
-                    0,
-                    0
-                ],
-                "parameters": {
-                    "pollTimes": {
-                        "item": [
-                            {
-                                "mode": "everyMinute"
-                            }
-                        ]
-                    },
-                    "simple": true,
-                    "filters": {
-                        "q": "(from:seincomp.com.ar OR from:actionsales.com.ar OR subject:\"[El Desembarco]\") -from:lrecchini@eldesembarco.com"
-                    },
-                    "options": {}
-                },
-                "credentials": {
-                    "gmailOAuth2": {
-                        "id": "f1LNQxtkdbexNoiC",
-                        "name": "Gmail account 3"
-                    }
-                }
-            },
             {
                 "id": "gmail-get",
                 "name": "Leer Mail Completo",
@@ -744,7 +796,7 @@
                     0
                 ],
                 "parameters": {
-                    "jsCode": "// Extrae texto del mail, matchea la card (Ref en asunto/cuerpo, link, o nro de ticket conocido)\n// y detecta si la mesa dio por resuelto el caso.\nfunction b64url(s) { try { return Buffer.from((s || '').replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8'); } catch (e) { return ''; } }\nfunction collectText(payload, out) {\n  if (!payload) return;\n  if (payload.mimeType === 'text/plain' && payload.body && payload.body.data) out.plain.push(b64url(payload.body.data));\n  if (payload.mimeType === 'text/html' && payload.body && payload.body.data) out.html.push(b64url(payload.body.data));\n  for (const p of payload.parts || []) collectText(p, out);\n}\nconst sd = $getWorkflowStaticData('global');\nif (!sd.ticketMap) sd.ticketMap = {};\nif (!sd.ticketMap['271212']) sd.ticketMap['271212'] = 'tAnZsa3n'; // seed: primer ticket real, mapeado a mano\nconst out = [];\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  const raw = items[i].json;\n  const meta = $('Nueva Respuesta Mesa').all()[i] ? $('Nueva Respuesta Mesa').all()[i].json : {};\n  const buf = { plain: [], html: [] };\n  collectText(raw.payload, buf);\n  let texto = buf.plain.join('\\n');\n  if (!texto && typeof raw.text === 'string' && raw.text) texto = raw.text;\n  if (!texto && typeof raw.textPlain === 'string' && raw.textPlain) texto = raw.textPlain;\n  if (!texto) {\n    const h = buf.html.join('\\n') || raw.html || raw.textHtml || raw.textAsHtml || '';\n    if (h) texto = String(h).replace(/<style[\\s\\S]*?<\\/style>/gi, ' ').replace(/<[^>]+>/g, ' ');\n  }\n  if (!texto) texto = raw.snippet || meta.snippet || '';\n  const headers = {};\n  for (const h of (raw.payload && raw.payload.headers) || []) headers[h.name.toLowerCase()] = h.value;\n  const subject = headers['subject'] || meta.Subject || meta.subject || '(sin asunto)';\n  const from = headers['from'] || meta.From || meta.from || '';\n  let mCard = (subject + '\\n' + texto).match(/\\(Ref[:\\s]+([A-Za-z0-9]{6,12})\\)/i);\n  if (!mCard) mCard = texto.match(/https:\\/\\/trello\\.com\\/c\\/([A-Za-z0-9]+)/);\n  const mTicket = (subject + '\\n' + texto).match(/(?:ticket|caso|incidente|solicitud|numero|n\u00c3\u00bamero|nro\\.?|#)\\s*[:#]?\\s*(\\d{3,10})/i);\n  let cardShort = mCard ? mCard[1] : '';\n  const ticketNum = mTicket ? mTicket[1] : '';\n  if (cardShort && ticketNum) {\n    sd.ticketMap[ticketNum] = cardShort;\n    const ks = Object.keys(sd.ticketMap);\n    if (ks.length > 200) { for (const k of ks.slice(0, ks.length - 150)) delete sd.ticketMap[k]; }\n  }\n  if (!cardShort && ticketNum && sd.ticketMap[ticketNum]) cardShort = sd.ticketMap[ticketNum];\n  const esResuelto = /(resuelt|solucionad|cerrad|finalizad)/i.test(subject + ' ' + texto.slice(0, 3000));\n  const resumen = texto.replace(/\\s+/g, ' ').trim().slice(0, 500);\n  out.push({ json: { cardShort, ticketNum, esResuelto, from, subject, resumen } });\n}\nreturn out;"
+                    "jsCode": "// Extrae texto del mail, matchea la card (Ref en asunto/cuerpo, link, o nro de ticket conocido)\n// y detecta si la mesa dio por resuelto el caso.\nfunction b64url(s) { try { return Buffer.from((s || '').replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8'); } catch (e) { return ''; } }\nfunction collectText(payload, out) {\n  if (!payload) return;\n  if (payload.mimeType === 'text/plain' && payload.body && payload.body.data) out.plain.push(b64url(payload.body.data));\n  if (payload.mimeType === 'text/html' && payload.body && payload.body.data) out.html.push(b64url(payload.body.data));\n  for (const p of payload.parts || []) collectText(p, out);\n}\nconst sd = $getWorkflowStaticData('global');\nif (!sd.ticketMap) sd.ticketMap = {};\nif (!sd.ticketMap['271212']) sd.ticketMap['271212'] = 'tAnZsa3n'; // seed: primer ticket real, mapeado a mano\nconst out = [];\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  const raw = items[i].json;\n  const meta = $('Filtrar Nuevos').all()[i] ? $('Filtrar Nuevos').all()[i].json : {};\n  const buf = { plain: [], html: [] };\n  collectText(raw.payload, buf);\n  let texto = buf.plain.join('\\n');\n  if (!texto && typeof raw.text === 'string' && raw.text) texto = raw.text;\n  if (!texto && typeof raw.textPlain === 'string' && raw.textPlain) texto = raw.textPlain;\n  if (!texto) {\n    const h = buf.html.join('\\n') || raw.html || raw.textHtml || raw.textAsHtml || '';\n    if (h) texto = String(h).replace(/<style[\\s\\S]*?<\\/style>/gi, ' ').replace(/<[^>]+>/g, ' ');\n  }\n  if (!texto) texto = raw.snippet || meta.snippet || '';\n  const headers = {};\n  for (const h of (raw.payload && raw.payload.headers) || []) headers[h.name.toLowerCase()] = h.value;\n  const subject = headers['subject'] || meta.Subject || meta.subject || '(sin asunto)';\n  const from = headers['from'] || meta.From || meta.from || '';\n  let mCard = (subject + '\\n' + texto).match(/\\(Ref[:\\s]+([A-Za-z0-9]{6,12})\\)/i);\n  if (!mCard) mCard = texto.match(/https:\\/\\/trello\\.com\\/c\\/([A-Za-z0-9]+)/);\n  const mTicket = (subject + '\\n' + texto).match(/(?:ticket|caso|incidente|solicitud|numero|n\u00c3\u00bamero|nro\\.?|#)\\s*[:#]?\\s*(\\d{3,10})/i);\n  let cardShort = mCard ? mCard[1] : '';\n  const ticketNum = mTicket ? mTicket[1] : '';\n  if (cardShort && ticketNum) {\n    sd.ticketMap[ticketNum] = cardShort;\n    const ks = Object.keys(sd.ticketMap);\n    if (ks.length > 200) { for (const k of ks.slice(0, ks.length - 150)) delete sd.ticketMap[k]; }\n  }\n  if (!cardShort && ticketNum && sd.ticketMap[ticketNum]) cardShort = sd.ticketMap[ticketNum];\n  const esResuelto = /(resuelt|solucionad|cerrad|finalizad)/i.test(subject + ' ' + texto.slice(0, 3000));\n  const resumen = texto.replace(/\\s+/g, ' ').trim().slice(0, 500);\n  out.push({ json: { cardShort, ticketNum, esResuelto, from, subject, resumen } });\n}\nreturn out;"
                 }
             },
             {
@@ -1128,20 +1180,72 @@
                 "parameters": {
                     "jsCode": "// Aviso de mesa que no se pudo vincular a ninguna card: alerta a Pablo para revision manual.\nconst out = [];\nfor (const item of $input.all()) {\n  const j = item.json;\n  out.push({ json: {\n    recipient: '5491157935007@s.whatsapp.net',\n    message: `\u00e2\u0161\u00a0\u00ef\u00b8\udc8f Aviso de la mesa de ayuda SIN ticket vinculado \u00e2\u20ac\u201d revisar a mano:\\nDe: ${j.from}\\nAsunto: ${j.subject}${j.ticketNum ? '\\nTicket mesa: #' + j.ticketNum : ''}\\n\\n${(j.resumen || '').slice(0, 200)}`\n  } });\n}\nreturn out;"
                 }
+            },
+            {
+                "id": "cron-mesa",
+                "name": "Cada Minuto Mesa",
+                "type": "n8n-nodes-base.scheduleTrigger",
+                "typeVersion": 1.2,
+                "position": [
+                    -420,
+                    0
+                ],
+                "parameters": {
+                    "rule": {
+                        "interval": [
+                            {
+                                "field": "minutes",
+                                "minutesInterval": 1
+                            }
+                        ]
+                    }
+                }
+            },
+            {
+                "id": "gmail-buscar",
+                "name": "Buscar Mails Mesa",
+                "type": "n8n-nodes-base.gmail",
+                "typeVersion": 2.1,
+                "position": [
+                    -200,
+                    0
+                ],
+                "parameters": {
+                    "resource": "message",
+                    "operation": "getAll",
+                    "returnAll": false,
+                    "limit": 20,
+                    "simple": true,
+                    "filters": {
+                        "q": "(from:seincomp.com.ar OR from:actionsales.com.ar OR subject:\"[El Desembarco]\") -from:lrecchini@eldesembarco.com newer_than:2d"
+                    },
+                    "options": {}
+                },
+                "credentials": {
+                    "gmailOAuth2": {
+                        "id": "f1LNQxtkdbexNoiC",
+                        "name": "Gmail account 3"
+                    }
+                },
+                "retryOnFail": true,
+                "maxTries": 2,
+                "waitBetweenTries": 5000
+            },
+            {
+                "id": "code-filtrar-nuevos",
+                "name": "Filtrar Nuevos",
+                "type": "n8n-nodes-base.code",
+                "typeVersion": 2,
+                "position": [
+                    20,
+                    0
+                ],
+                "parameters": {
+                    "jsCode": "// Dedupe por id de mail. En la primera corrida marca todo el backlog como visto\n// (ya fue procesado a mano) y solo procesa mails NUEVOS de ahi en adelante.\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.mailsVistos)) sd.mailsVistos = [];\nconst out = [];\nconst items = $input.all();\nif (!sd.mailInit) {\n  for (const item of items) { if (item.json && item.json.id) sd.mailsVistos.push(item.json.id); }\n  sd.mailInit = true;\n  return [];\n}\nfor (const item of items) {\n  const id = item.json && item.json.id;\n  if (!id || sd.mailsVistos.includes(id)) continue;\n  sd.mailsVistos.push(id);\n  out.push(item);\n}\nif (sd.mailsVistos.length > 500) sd.mailsVistos = sd.mailsVistos.slice(-400);\nreturn out;"
+                }
             }
         ],
         "connections": {
-            "Nueva Respuesta Mesa": {
-                "main": [
-                    [
-                        {
-                            "node": "Leer Mail Completo",
-                            "type": "main",
-                            "index": 0
-                        }
-                    ]
-                ]
-            },
             "Leer Mail Completo": {
                 "main": [
                     [
@@ -1292,6 +1396,39 @@
                         }
                     ]
                 ]
+            },
+            "Cada Minuto Mesa": {
+                "main": [
+                    [
+                        {
+                            "node": "Buscar Mails Mesa",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Buscar Mails Mesa": {
+                "main": [
+                    [
+                        {
+                            "node": "Filtrar Nuevos",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Filtrar Nuevos": {
+                "main": [
+                    [
+                        {
+                            "node": "Leer Mail Completo",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
             }
         },
         "authors": "Sistemas Desembarco",
@@ -1300,18 +1437,18 @@
         "autosaved": false,
         "workflowPublishHistory": [
             {
-                "createdAt": "2026-07-28T19:15:33.812Z",
-                "id": 287,
+                "createdAt": "2026-07-29T15:52:00.405Z",
+                "id": 293,
                 "workflowId": "JPYTBT00v78HcBsB",
-                "versionId": "2242cd48-4c13-4d10-86cd-f4dd81dc0bab",
+                "versionId": "4a3118bf-1bf4-474d-b834-066d4ced9cfd",
                 "event": "activated",
                 "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
             },
             {
-                "createdAt": "2026-07-28T19:15:32.828Z",
-                "id": 286,
+                "createdAt": "2026-07-29T15:52:00.379Z",
+                "id": 292,
                 "workflowId": "JPYTBT00v78HcBsB",
-                "versionId": "2242cd48-4c13-4d10-86cd-f4dd81dc0bab",
+                "versionId": "4a3118bf-1bf4-474d-b834-066d4ced9cfd",
                 "event": "deactivated",
                 "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
             }
