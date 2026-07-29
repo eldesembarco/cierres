@@ -1,5 +1,5 @@
 {
-    "updatedAt": "2026-07-29T22:02:21.338Z",
+    "updatedAt": "2026-07-29T23:55:12.690Z",
     "createdAt": "2026-07-27T17:19:45.942Z",
     "id": "G3YDTzNlb8i1x1Z4",
     "name": "WA Requerimientos \u00e2\u2020\u2019 Trello",
@@ -109,7 +109,7 @@
                 200
             ],
             "parameters": {
-                "jsCode": "const out = [];\nfor (const item of $input.all()) {\n  const j = item.json;\n  const parts = [];\n  if (j.mediaBase64 && (j.mimeType || '').startsWith('image/')) {\n    parts.push({ inline_data: { mime_type: j.mimeType, data: j.mediaBase64 } });\n  }\n  const ctx = j.quotedContent ? `\\n\\nMensaje citado (contexto): \\\"${j.quotedContent}\\\"` : '';\n  parts.push({ text: `Sos el asistente de sistemas del grupo gastronomico El Desembarco (hamburgueserias: El Desembarco, Mr Tasty, Mila&Go; ~18 locales propios en Buenos Aires). Convertis requerimientos que llegan por WhatsApp en tickets de trabajo.\\n\\nRequerimiento recibido de ${j.sender}:\\n\\\"\\\"\\\"${j.texto}\\\"\\\"\\\"${ctx}\\n\\nSi hay una imagen adjunta, usala como contexto (ej: foto de equipo roto, pantalla con error, comprobante).\\n\\nDevolve SOLO JSON con:\\n- titulo: resumen imperativo, max 70 caracteres (ej: \\\"Reparar freidora en Palermo\\\")\\n- descripcion: el requerimiento completo, redactado claro, sin perder ningun detalle\\n- categoria: \\\"Mantenimiento\\\" | \\\"Equipamiento\\\" | \\\"Sistemas\\\" | \\\"Google Workspace\\\" (cuentas de email @eldesembarco.com, contrase\u00c3\u00b1as de Google, Drive, permisos de carpetas/archivos, Calendar, Meet, grupos de correo, licencias Workspace) | \\\"Compras\\\" | \\\"RRHH\\\" | \\\"Proveedores\\\" | \\\"Otro\\\"\\n- prioridad: \\\"Alta\\\" (urgente / bloquea la operacion) | \\\"Media\\\" | \\\"Baja\\\"\\n- local: nombre del local/sucursal si se menciona (ej: Palermo, Nunez, Recoleta, Devoto, San Telmo, Caballito, Olivos, Pacheco, Quilmes, Nordelta, Microcentro, Hurlingham, Ramos, Martinez, Merlo, San Fernando, San Martin, Belgrano, Boedo, Pacifico), sino \\\"\\\"` });\n  const geminiBody = {\n    contents: [{ role: 'user', parts }],\n    generationConfig: {\n      responseMimeType: 'application/json',\n      responseSchema: {\n        type: 'object',\n        properties: {\n          titulo: { type: 'string' },\n          descripcion: { type: 'string' },\n          categoria: { type: 'string', enum: ['Mantenimiento', 'Equipamiento', 'Sistemas', 'Google Workspace', 'Compras', 'RRHH', 'Proveedores', 'Otro'] },\n          prioridad: { type: 'string', enum: ['Alta', 'Media', 'Baja'] },\n          local: { type: 'string' }\n        },\n        required: ['titulo', 'descripcion', 'prioridad']\n      }\n    }\n  };\n  out.push({ json: { ...j, geminiBody } });\n}\nreturn out;"
+                "jsCode": "const out = [];\nfor (const item of $input.all()) {\n  const j = item.json;\n  const parts = [];\n  if (j.mediaBase64 && (j.mimeType || '').startsWith('image/')) {\n    parts.push({ inline_data: { mime_type: j.mimeType, data: j.mediaBase64 } });\n  }\n  const ctx = j.quotedContent ? `\\n\\nMensaje citado (contexto): \\\"${j.quotedContent}\\\"` : '';\n  parts.push({ text: `Sos el asistente de sistemas del grupo gastronomico El Desembarco (hamburgueserias: El Desembarco, Mr Tasty, Mila&Go; ~18 locales propios en Buenos Aires). Convertis requerimientos que llegan por WhatsApp en tickets de trabajo.\\n\\nRequerimiento recibido de ${j.sender}:\\n\\\"\\\"\\\"${j.texto}\\\"\\\"\\\"${ctx}\\n\\nSi hay una imagen adjunta, usala como contexto (ej: foto de equipo roto, pantalla con error, comprobante).\\n\\nDevolve SOLO JSON con:\\n- titulo: resumen imperativo, max 70 caracteres (ej: \\\"Reparar freidora en Palermo\\\")\\n- descripcion: el requerimiento completo, redactado claro, sin perder ningun detalle\\n- categoria: \\\"Mantenimiento\\\" | \\\"Equipamiento\\\" | \\\"Sistemas\\\" | \\\"Google Workspace\\\" (cuentas de email @eldesembarco.com, contrase\u00c3\u00b1as de Google, Drive, permisos de carpetas/archivos, Calendar, Meet, grupos de correo, licencias Workspace) | \\\"Qlik\\\" (tableros/dashboards de Qlik, indicadores y KPIs, reportes de ventas del QS, datos que no actualizan en el dashboard, usuarios/licencias de Qlik) | \\\"Compras\\\" | \\\"RRHH\\\" | \\\"Proveedores\\\" | \\\"Otro\\\"\\n- prioridad: \\\"Alta\\\" (urgente / bloquea la operacion) | \\\"Media\\\" | \\\"Baja\\\"\\n- local: nombre del local/sucursal si se menciona (ej: Palermo, Nunez, Recoleta, Devoto, San Telmo, Caballito, Olivos, Pacheco, Quilmes, Nordelta, Microcentro, Hurlingham, Ramos, Martinez, Merlo, San Fernando, San Martin, Belgrano, Boedo, Pacifico), sino \\\"\\\"` });\n  const geminiBody = {\n    contents: [{ role: 'user', parts }],\n    generationConfig: {\n      responseMimeType: 'application/json',\n      responseSchema: {\n        type: 'object',\n        properties: {\n          titulo: { type: 'string' },\n          descripcion: { type: 'string' },\n          categoria: { type: 'string', enum: ['Mantenimiento', 'Equipamiento', 'Sistemas', 'Google Workspace', 'Qlik', 'Compras', 'RRHH', 'Proveedores', 'Otro'] },\n          prioridad: { type: 'string', enum: ['Alta', 'Media', 'Baja'] },\n          local: { type: 'string' }\n        },\n        required: ['titulo', 'descripcion', 'prioridad']\n      }\n    }\n  };\n  out.push({ json: { ...j, geminiBody } });\n}\nreturn out;"
             }
         },
         {
@@ -197,7 +197,7 @@
             ],
             "parameters": {
                 "mode": "runOnceForEachItem",
-                "jsCode": "const j = $json;\nconst prio = j.prioridad === 'Alta' ? '\u00f0\u0178\u201d\u00b4' : j.prioridad === 'Baja' ? '\u00f0\u0178\u0178\u00a2' : '\u00f0\u0178\u0178\u00a1';\nconst name = `${prio} ${j.local ? '[' + j.local + '] ' : ''}${j.titulo}`;\nconst desc = [\n  j.descripcion,\n  '',\n  '---',\n  `**Solicitante:** ${j.sender}${j.isFromMe ? ' (Pablo)' : ''}`,\n  `**Chat:** ${j.chatJID}`,\n  `**Categoria:** ${j.categoria} \u00c2\u00b7 **Prioridad:** ${j.prioridad}${j.local ? ' \u00c2\u00b7 **Local:** ' + j.local : ''}`,\n  `**Recibido:** ${j.recibido}`,\n  '**Via:** WhatsApp \u00e2\u2020\u2019 n8n (auto)'\n].join('\\n');\n// Los pedidos de Google Workspace caen en su propia columna; el resto en Entrantes.\nconst ENTRANTES = '6a688f0999af992e29aedfc4';\nconst WORKSPACE = '6a68efc313b85c987f319d57';\nconst idListDestino = (j.categoria === 'Google Workspace') ? WORKSPACE : ENTRANTES;\nreturn { json: { ...j, cardName: name, cardDesc: desc, idListDestino } };"
+                "jsCode": "const j = $json;\nconst prio = j.prioridad === 'Alta' ? '\u00f0\u0178\u201d\u00b4' : j.prioridad === 'Baja' ? '\u00f0\u0178\u0178\u00a2' : '\u00f0\u0178\u0178\u00a1';\nconst name = `${prio} ${j.local ? '[' + j.local + '] ' : ''}${j.titulo}`;\nconst desc = [\n  j.descripcion,\n  '',\n  '---',\n  `**Solicitante:** ${j.sender}${j.isFromMe ? ' (Pablo)' : ''}`,\n  `**Chat:** ${j.chatJID}`,\n  `**Categoria:** ${j.categoria} \u00c2\u00b7 **Prioridad:** ${j.prioridad}${j.local ? ' \u00c2\u00b7 **Local:** ' + j.local : ''}`,\n  `**Recibido:** ${j.recibido}`,\n  '**Via:** WhatsApp \u00e2\u2020\u2019 n8n (auto)'\n].join('\\n');\n// Los pedidos de Google Workspace caen en su propia columna; el resto en Entrantes.\nconst ENTRANTES = '6a688f0999af992e29aedfc4';\nconst WORKSPACE = '6a68efc313b85c987f319d57';\nconst QLIK = '6a6a92cb2235076b929d30fa';\nconst idListDestino = (j.categoria === 'Google Workspace') ? WORKSPACE : (j.categoria === 'Qlik') ? QLIK : ENTRANTES;\nreturn { json: { ...j, cardName: name, cardDesc: desc, idListDestino } };"
             }
         },
         {
@@ -647,7 +647,7 @@
                 420
             ],
             "parameters": {
-                "jsCode": "const out = [];\nfor (const item of $input.all()) {\n  const j = item.json;\n  const geminiBody = {\n    contents: [{ role: 'user', parts: [{ text: `Sos el asistente de sistemas del grupo gastronomico El Desembarco. Un remitente de WhatsApp ya tiene un ticket abierto hace minutos y acaba de mandar OTRO mensaje. La gente suele partir UNA idea en varios mensajes seguidos.\\n\\nTICKET EXISTENTE: \\\"${j.cardName}\\\"\\nMensajes que lo componen:\\n\\\"\\\"\\\"${j.prevTextos}\\\"\\\"\\\"\\n\\nMENSAJE NUEVO de ${j.sender}:\\n\\\"\\\"\\\"${j.texto}\\\"\\\"\\\"\\n\\nDecidi: \u00c2\u00bfel mensaje nuevo es CONTINUACION del mismo requerimiento, o un TEMA DIFERENTE?\\n\\nDevolve SOLO JSON:\\n- esContinuacion: true si es el mismo tema/requerimiento, false si es otro pedido distinto\\n- titulo: max 70 caracteres, imperativo. Si esContinuacion, representa el requerimiento COMPLETO (mensajes previos + nuevo). Si no, representa SOLO el mensaje nuevo.\\n- descripcion: idem criterio del titulo, clara y completa sin perder detalles\\n- categoria: \\\"Mantenimiento\\\" | \\\"Equipamiento\\\" | \\\"Sistemas\\\" | \\\"Google Workspace\\\" | \\\"Compras\\\" | \\\"RRHH\\\" | \\\"Proveedores\\\" | \\\"Otro\\\"\\n- prioridad: \\\"Alta\\\" | \\\"Media\\\" | \\\"Baja\\\"\\n- local: nombre del local si se menciona, sino \\\"\\\"` }] }],\n    generationConfig: {\n      responseMimeType: 'application/json',\n      responseSchema: {\n        type: 'object',\n        properties: {\n          esContinuacion: { type: 'boolean' },\n          titulo: { type: 'string' },\n          descripcion: { type: 'string' },\n          categoria: { type: 'string', enum: ['Mantenimiento', 'Equipamiento', 'Sistemas', 'Google Workspace', 'Compras', 'RRHH', 'Proveedores', 'Otro'] },\n          prioridad: { type: 'string', enum: ['Alta', 'Media', 'Baja'] },\n          local: { type: 'string' }\n        },\n        required: ['esContinuacion', 'titulo', 'descripcion', 'prioridad']\n      }\n    }\n  };\n  out.push({ json: { ...j, geminiBody } });\n}\nreturn out;"
+                "jsCode": "const out = [];\nfor (const item of $input.all()) {\n  const j = item.json;\n  const geminiBody = {\n    contents: [{ role: 'user', parts: [{ text: `Sos el asistente de sistemas del grupo gastronomico El Desembarco. Un remitente de WhatsApp ya tiene un ticket abierto hace minutos y acaba de mandar OTRO mensaje. La gente suele partir UNA idea en varios mensajes seguidos.\\n\\nTICKET EXISTENTE: \\\"${j.cardName}\\\"\\nMensajes que lo componen:\\n\\\"\\\"\\\"${j.prevTextos}\\\"\\\"\\\"\\n\\nMENSAJE NUEVO de ${j.sender}:\\n\\\"\\\"\\\"${j.texto}\\\"\\\"\\\"\\n\\nDecidi: \u00c2\u00bfel mensaje nuevo es CONTINUACION del mismo requerimiento, o un TEMA DIFERENTE?\\n\\nDevolve SOLO JSON:\\n- esContinuacion: true si es el mismo tema/requerimiento, false si es otro pedido distinto\\n- titulo: max 70 caracteres, imperativo. Si esContinuacion, representa el requerimiento COMPLETO (mensajes previos + nuevo). Si no, representa SOLO el mensaje nuevo.\\n- descripcion: idem criterio del titulo, clara y completa sin perder detalles\\n- categoria: \\\"Mantenimiento\\\" | \\\"Equipamiento\\\" | \\\"Sistemas\\\" | \\\"Google Workspace\\\" | \\\"Compras\\\" | \\\"RRHH\\\" | \\\"Proveedores\\\" | \\\"Otro\\\"\\n- prioridad: \\\"Alta\\\" | \\\"Media\\\" | \\\"Baja\\\"\\n- local: nombre del local si se menciona, sino \\\"\\\"` }] }],\n    generationConfig: {\n      responseMimeType: 'application/json',\n      responseSchema: {\n        type: 'object',\n        properties: {\n          esContinuacion: { type: 'boolean' },\n          titulo: { type: 'string' },\n          descripcion: { type: 'string' },\n          categoria: { type: 'string', enum: ['Mantenimiento', 'Equipamiento', 'Sistemas', 'Google Workspace', 'Qlik', 'Compras', 'RRHH', 'Proveedores', 'Otro'] },\n          prioridad: { type: 'string', enum: ['Alta', 'Media', 'Baja'] },\n          local: { type: 'string' }\n        },\n        required: ['esContinuacion', 'titulo', 'descripcion', 'prioridad']\n      }\n    }\n  };\n  out.push({ json: { ...j, geminiBody } });\n}\nreturn out;"
             }
         },
         {
@@ -1599,16 +1599,17 @@
                 "h-1758625071",
                 "QA-950",
                 "PRUEBA-CICLO-001",
-                "h-1152262273"
+                "h-1152262273",
+                "QA-QLIK-1"
             ],
             "lastTicket": {
                 "5491157935007@s.whatsapp.net|5491157935007": {
-                    "cardId": "6a6a6f6fcbdf0dbf218c62f0",
-                    "cardName": "\u00f0\u0178\u201d\u00b4 [Ayres] Sistema de turnos se tilda al imprimir comandas dobles",
-                    "shortUrl": "https://trello.com/c/mpits7UV",
-                    "ts": 1785360239844,
+                    "cardId": "6a6a92fd7dc149707f9e668f",
+                    "cardName": "\u00f0\u0178\u201d\u00b4 [Caballito] Dashboard Qlik sin datos de ayer de Caballito",
+                    "shortUrl": "https://trello.com/c/vnjDEGZi",
+                    "ts": 1785369342359,
                     "textos": [
-                        "QA ayres wa: el sistema de turnos del salon se tilda al imprimir comandas dobles"
+                        "QA qlik: el dashboard de ventas de Qlik no muestra los datos de ayer de Caballito, el indicador quedo en cero"
                     ]
                 },
                 "120363410062969047@g.us|5491171241480": {
@@ -1719,9 +1720,9 @@
     },
     "meta": null,
     "pinData": null,
-    "versionId": "32437158-d930-43a1-a518-ad7f7739f513",
-    "activeVersionId": "32437158-d930-43a1-a518-ad7f7739f513",
-    "versionCounter": 82,
+    "versionId": "ebe40ed0-4b24-4d50-873d-31390613d00c",
+    "activeVersionId": "ebe40ed0-4b24-4d50-873d-31390613d00c",
+    "versionCounter": 86,
     "triggerCount": 1,
     "shared": [
         {
@@ -1744,9 +1745,9 @@
     ],
     "tags": [],
     "activeVersion": {
-        "updatedAt": "2026-07-29T22:02:21.339Z",
-        "createdAt": "2026-07-29T22:02:21.339Z",
-        "versionId": "32437158-d930-43a1-a518-ad7f7739f513",
+        "updatedAt": "2026-07-29T23:55:12.692Z",
+        "createdAt": "2026-07-29T23:55:12.692Z",
+        "versionId": "ebe40ed0-4b24-4d50-873d-31390613d00c",
         "workflowId": "G3YDTzNlb8i1x1Z4",
         "nodes": [
             {
@@ -1851,7 +1852,7 @@
                     200
                 ],
                 "parameters": {
-                    "jsCode": "const out = [];\nfor (const item of $input.all()) {\n  const j = item.json;\n  const parts = [];\n  if (j.mediaBase64 && (j.mimeType || '').startsWith('image/')) {\n    parts.push({ inline_data: { mime_type: j.mimeType, data: j.mediaBase64 } });\n  }\n  const ctx = j.quotedContent ? `\\n\\nMensaje citado (contexto): \\\"${j.quotedContent}\\\"` : '';\n  parts.push({ text: `Sos el asistente de sistemas del grupo gastronomico El Desembarco (hamburgueserias: El Desembarco, Mr Tasty, Mila&Go; ~18 locales propios en Buenos Aires). Convertis requerimientos que llegan por WhatsApp en tickets de trabajo.\\n\\nRequerimiento recibido de ${j.sender}:\\n\\\"\\\"\\\"${j.texto}\\\"\\\"\\\"${ctx}\\n\\nSi hay una imagen adjunta, usala como contexto (ej: foto de equipo roto, pantalla con error, comprobante).\\n\\nDevolve SOLO JSON con:\\n- titulo: resumen imperativo, max 70 caracteres (ej: \\\"Reparar freidora en Palermo\\\")\\n- descripcion: el requerimiento completo, redactado claro, sin perder ningun detalle\\n- categoria: \\\"Mantenimiento\\\" | \\\"Equipamiento\\\" | \\\"Sistemas\\\" | \\\"Google Workspace\\\" (cuentas de email @eldesembarco.com, contrase\u00c3\u00b1as de Google, Drive, permisos de carpetas/archivos, Calendar, Meet, grupos de correo, licencias Workspace) | \\\"Compras\\\" | \\\"RRHH\\\" | \\\"Proveedores\\\" | \\\"Otro\\\"\\n- prioridad: \\\"Alta\\\" (urgente / bloquea la operacion) | \\\"Media\\\" | \\\"Baja\\\"\\n- local: nombre del local/sucursal si se menciona (ej: Palermo, Nunez, Recoleta, Devoto, San Telmo, Caballito, Olivos, Pacheco, Quilmes, Nordelta, Microcentro, Hurlingham, Ramos, Martinez, Merlo, San Fernando, San Martin, Belgrano, Boedo, Pacifico), sino \\\"\\\"` });\n  const geminiBody = {\n    contents: [{ role: 'user', parts }],\n    generationConfig: {\n      responseMimeType: 'application/json',\n      responseSchema: {\n        type: 'object',\n        properties: {\n          titulo: { type: 'string' },\n          descripcion: { type: 'string' },\n          categoria: { type: 'string', enum: ['Mantenimiento', 'Equipamiento', 'Sistemas', 'Google Workspace', 'Compras', 'RRHH', 'Proveedores', 'Otro'] },\n          prioridad: { type: 'string', enum: ['Alta', 'Media', 'Baja'] },\n          local: { type: 'string' }\n        },\n        required: ['titulo', 'descripcion', 'prioridad']\n      }\n    }\n  };\n  out.push({ json: { ...j, geminiBody } });\n}\nreturn out;"
+                    "jsCode": "const out = [];\nfor (const item of $input.all()) {\n  const j = item.json;\n  const parts = [];\n  if (j.mediaBase64 && (j.mimeType || '').startsWith('image/')) {\n    parts.push({ inline_data: { mime_type: j.mimeType, data: j.mediaBase64 } });\n  }\n  const ctx = j.quotedContent ? `\\n\\nMensaje citado (contexto): \\\"${j.quotedContent}\\\"` : '';\n  parts.push({ text: `Sos el asistente de sistemas del grupo gastronomico El Desembarco (hamburgueserias: El Desembarco, Mr Tasty, Mila&Go; ~18 locales propios en Buenos Aires). Convertis requerimientos que llegan por WhatsApp en tickets de trabajo.\\n\\nRequerimiento recibido de ${j.sender}:\\n\\\"\\\"\\\"${j.texto}\\\"\\\"\\\"${ctx}\\n\\nSi hay una imagen adjunta, usala como contexto (ej: foto de equipo roto, pantalla con error, comprobante).\\n\\nDevolve SOLO JSON con:\\n- titulo: resumen imperativo, max 70 caracteres (ej: \\\"Reparar freidora en Palermo\\\")\\n- descripcion: el requerimiento completo, redactado claro, sin perder ningun detalle\\n- categoria: \\\"Mantenimiento\\\" | \\\"Equipamiento\\\" | \\\"Sistemas\\\" | \\\"Google Workspace\\\" (cuentas de email @eldesembarco.com, contrase\u00c3\u00b1as de Google, Drive, permisos de carpetas/archivos, Calendar, Meet, grupos de correo, licencias Workspace) | \\\"Qlik\\\" (tableros/dashboards de Qlik, indicadores y KPIs, reportes de ventas del QS, datos que no actualizan en el dashboard, usuarios/licencias de Qlik) | \\\"Compras\\\" | \\\"RRHH\\\" | \\\"Proveedores\\\" | \\\"Otro\\\"\\n- prioridad: \\\"Alta\\\" (urgente / bloquea la operacion) | \\\"Media\\\" | \\\"Baja\\\"\\n- local: nombre del local/sucursal si se menciona (ej: Palermo, Nunez, Recoleta, Devoto, San Telmo, Caballito, Olivos, Pacheco, Quilmes, Nordelta, Microcentro, Hurlingham, Ramos, Martinez, Merlo, San Fernando, San Martin, Belgrano, Boedo, Pacifico), sino \\\"\\\"` });\n  const geminiBody = {\n    contents: [{ role: 'user', parts }],\n    generationConfig: {\n      responseMimeType: 'application/json',\n      responseSchema: {\n        type: 'object',\n        properties: {\n          titulo: { type: 'string' },\n          descripcion: { type: 'string' },\n          categoria: { type: 'string', enum: ['Mantenimiento', 'Equipamiento', 'Sistemas', 'Google Workspace', 'Qlik', 'Compras', 'RRHH', 'Proveedores', 'Otro'] },\n          prioridad: { type: 'string', enum: ['Alta', 'Media', 'Baja'] },\n          local: { type: 'string' }\n        },\n        required: ['titulo', 'descripcion', 'prioridad']\n      }\n    }\n  };\n  out.push({ json: { ...j, geminiBody } });\n}\nreturn out;"
                 }
             },
             {
@@ -1939,7 +1940,7 @@
                 ],
                 "parameters": {
                     "mode": "runOnceForEachItem",
-                    "jsCode": "const j = $json;\nconst prio = j.prioridad === 'Alta' ? '\u00f0\u0178\u201d\u00b4' : j.prioridad === 'Baja' ? '\u00f0\u0178\u0178\u00a2' : '\u00f0\u0178\u0178\u00a1';\nconst name = `${prio} ${j.local ? '[' + j.local + '] ' : ''}${j.titulo}`;\nconst desc = [\n  j.descripcion,\n  '',\n  '---',\n  `**Solicitante:** ${j.sender}${j.isFromMe ? ' (Pablo)' : ''}`,\n  `**Chat:** ${j.chatJID}`,\n  `**Categoria:** ${j.categoria} \u00c2\u00b7 **Prioridad:** ${j.prioridad}${j.local ? ' \u00c2\u00b7 **Local:** ' + j.local : ''}`,\n  `**Recibido:** ${j.recibido}`,\n  '**Via:** WhatsApp \u00e2\u2020\u2019 n8n (auto)'\n].join('\\n');\n// Los pedidos de Google Workspace caen en su propia columna; el resto en Entrantes.\nconst ENTRANTES = '6a688f0999af992e29aedfc4';\nconst WORKSPACE = '6a68efc313b85c987f319d57';\nconst idListDestino = (j.categoria === 'Google Workspace') ? WORKSPACE : ENTRANTES;\nreturn { json: { ...j, cardName: name, cardDesc: desc, idListDestino } };"
+                    "jsCode": "const j = $json;\nconst prio = j.prioridad === 'Alta' ? '\u00f0\u0178\u201d\u00b4' : j.prioridad === 'Baja' ? '\u00f0\u0178\u0178\u00a2' : '\u00f0\u0178\u0178\u00a1';\nconst name = `${prio} ${j.local ? '[' + j.local + '] ' : ''}${j.titulo}`;\nconst desc = [\n  j.descripcion,\n  '',\n  '---',\n  `**Solicitante:** ${j.sender}${j.isFromMe ? ' (Pablo)' : ''}`,\n  `**Chat:** ${j.chatJID}`,\n  `**Categoria:** ${j.categoria} \u00c2\u00b7 **Prioridad:** ${j.prioridad}${j.local ? ' \u00c2\u00b7 **Local:** ' + j.local : ''}`,\n  `**Recibido:** ${j.recibido}`,\n  '**Via:** WhatsApp \u00e2\u2020\u2019 n8n (auto)'\n].join('\\n');\n// Los pedidos de Google Workspace caen en su propia columna; el resto en Entrantes.\nconst ENTRANTES = '6a688f0999af992e29aedfc4';\nconst WORKSPACE = '6a68efc313b85c987f319d57';\nconst QLIK = '6a6a92cb2235076b929d30fa';\nconst idListDestino = (j.categoria === 'Google Workspace') ? WORKSPACE : (j.categoria === 'Qlik') ? QLIK : ENTRANTES;\nreturn { json: { ...j, cardName: name, cardDesc: desc, idListDestino } };"
                 }
             },
             {
@@ -2389,7 +2390,7 @@
                     420
                 ],
                 "parameters": {
-                    "jsCode": "const out = [];\nfor (const item of $input.all()) {\n  const j = item.json;\n  const geminiBody = {\n    contents: [{ role: 'user', parts: [{ text: `Sos el asistente de sistemas del grupo gastronomico El Desembarco. Un remitente de WhatsApp ya tiene un ticket abierto hace minutos y acaba de mandar OTRO mensaje. La gente suele partir UNA idea en varios mensajes seguidos.\\n\\nTICKET EXISTENTE: \\\"${j.cardName}\\\"\\nMensajes que lo componen:\\n\\\"\\\"\\\"${j.prevTextos}\\\"\\\"\\\"\\n\\nMENSAJE NUEVO de ${j.sender}:\\n\\\"\\\"\\\"${j.texto}\\\"\\\"\\\"\\n\\nDecidi: \u00c2\u00bfel mensaje nuevo es CONTINUACION del mismo requerimiento, o un TEMA DIFERENTE?\\n\\nDevolve SOLO JSON:\\n- esContinuacion: true si es el mismo tema/requerimiento, false si es otro pedido distinto\\n- titulo: max 70 caracteres, imperativo. Si esContinuacion, representa el requerimiento COMPLETO (mensajes previos + nuevo). Si no, representa SOLO el mensaje nuevo.\\n- descripcion: idem criterio del titulo, clara y completa sin perder detalles\\n- categoria: \\\"Mantenimiento\\\" | \\\"Equipamiento\\\" | \\\"Sistemas\\\" | \\\"Google Workspace\\\" | \\\"Compras\\\" | \\\"RRHH\\\" | \\\"Proveedores\\\" | \\\"Otro\\\"\\n- prioridad: \\\"Alta\\\" | \\\"Media\\\" | \\\"Baja\\\"\\n- local: nombre del local si se menciona, sino \\\"\\\"` }] }],\n    generationConfig: {\n      responseMimeType: 'application/json',\n      responseSchema: {\n        type: 'object',\n        properties: {\n          esContinuacion: { type: 'boolean' },\n          titulo: { type: 'string' },\n          descripcion: { type: 'string' },\n          categoria: { type: 'string', enum: ['Mantenimiento', 'Equipamiento', 'Sistemas', 'Google Workspace', 'Compras', 'RRHH', 'Proveedores', 'Otro'] },\n          prioridad: { type: 'string', enum: ['Alta', 'Media', 'Baja'] },\n          local: { type: 'string' }\n        },\n        required: ['esContinuacion', 'titulo', 'descripcion', 'prioridad']\n      }\n    }\n  };\n  out.push({ json: { ...j, geminiBody } });\n}\nreturn out;"
+                    "jsCode": "const out = [];\nfor (const item of $input.all()) {\n  const j = item.json;\n  const geminiBody = {\n    contents: [{ role: 'user', parts: [{ text: `Sos el asistente de sistemas del grupo gastronomico El Desembarco. Un remitente de WhatsApp ya tiene un ticket abierto hace minutos y acaba de mandar OTRO mensaje. La gente suele partir UNA idea en varios mensajes seguidos.\\n\\nTICKET EXISTENTE: \\\"${j.cardName}\\\"\\nMensajes que lo componen:\\n\\\"\\\"\\\"${j.prevTextos}\\\"\\\"\\\"\\n\\nMENSAJE NUEVO de ${j.sender}:\\n\\\"\\\"\\\"${j.texto}\\\"\\\"\\\"\\n\\nDecidi: \u00c2\u00bfel mensaje nuevo es CONTINUACION del mismo requerimiento, o un TEMA DIFERENTE?\\n\\nDevolve SOLO JSON:\\n- esContinuacion: true si es el mismo tema/requerimiento, false si es otro pedido distinto\\n- titulo: max 70 caracteres, imperativo. Si esContinuacion, representa el requerimiento COMPLETO (mensajes previos + nuevo). Si no, representa SOLO el mensaje nuevo.\\n- descripcion: idem criterio del titulo, clara y completa sin perder detalles\\n- categoria: \\\"Mantenimiento\\\" | \\\"Equipamiento\\\" | \\\"Sistemas\\\" | \\\"Google Workspace\\\" | \\\"Compras\\\" | \\\"RRHH\\\" | \\\"Proveedores\\\" | \\\"Otro\\\"\\n- prioridad: \\\"Alta\\\" | \\\"Media\\\" | \\\"Baja\\\"\\n- local: nombre del local si se menciona, sino \\\"\\\"` }] }],\n    generationConfig: {\n      responseMimeType: 'application/json',\n      responseSchema: {\n        type: 'object',\n        properties: {\n          esContinuacion: { type: 'boolean' },\n          titulo: { type: 'string' },\n          descripcion: { type: 'string' },\n          categoria: { type: 'string', enum: ['Mantenimiento', 'Equipamiento', 'Sistemas', 'Google Workspace', 'Qlik', 'Compras', 'RRHH', 'Proveedores', 'Otro'] },\n          prioridad: { type: 'string', enum: ['Alta', 'Media', 'Baja'] },\n          local: { type: 'string' }\n        },\n        required: ['esContinuacion', 'titulo', 'descripcion', 'prioridad']\n      }\n    }\n  };\n  out.push({ json: { ...j, geminiBody } });\n}\nreturn out;"
                 }
             },
             {
@@ -3298,18 +3299,18 @@
         "autosaved": false,
         "workflowPublishHistory": [
             {
-                "createdAt": "2026-07-29T22:02:21.397Z",
-                "id": 324,
+                "createdAt": "2026-07-29T23:55:12.740Z",
+                "id": 332,
                 "workflowId": "G3YDTzNlb8i1x1Z4",
-                "versionId": "32437158-d930-43a1-a518-ad7f7739f513",
+                "versionId": "ebe40ed0-4b24-4d50-873d-31390613d00c",
                 "event": "activated",
                 "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
             },
             {
-                "createdAt": "2026-07-29T22:02:21.382Z",
-                "id": 323,
+                "createdAt": "2026-07-29T23:55:12.725Z",
+                "id": 331,
                 "workflowId": "G3YDTzNlb8i1x1Z4",
-                "versionId": "32437158-d930-43a1-a518-ad7f7739f513",
+                "versionId": "ebe40ed0-4b24-4d50-873d-31390613d00c",
                 "event": "deactivated",
                 "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
             }
