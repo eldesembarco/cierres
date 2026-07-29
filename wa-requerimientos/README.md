@@ -155,6 +155,10 @@ Enviado `6a689b2c92e20b65c9e467c0`, Resuelto `6a688f083afd2addaf2f570e`.
 
 - Bridge: fork `whatsapp-mcp-vgp` con soporte de webhook saliente (push, sin
   polling). El MCP de WhatsApp de Claude lee la misma SQLite.
+- Extensión local al bridge (commit db3c70a del fork): `GET
+  /api/groupinvite?jid=<grupo>` (Bearer token) devuelve el link de invitación
+  del grupo. Link vigente de SOPORTE SISTEMAS:
+  https://chat.whatsapp.com/LNLwqKTWxxy7t9GCfzIJn2
 - Gemini vía Vertex AI con la credencial existente de Facturas (mismo patrón
   HTTP Request + responseSchema).
 - La cuenta Trello es la de infraestructura (gabrielasosa20), no la personal de
