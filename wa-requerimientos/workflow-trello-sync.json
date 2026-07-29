@@ -1,5 +1,5 @@
 {
-    "updatedAt": "2026-07-29T21:33:22.451Z",
+    "updatedAt": "2026-07-29T22:03:28.325Z",
     "createdAt": "2026-07-28T12:07:57.406Z",
     "id": "LHbJVS18ZULzqToG",
     "name": "WA Requerimientos - Trello Sync (mesa de ayuda + resueltos)",
@@ -80,7 +80,7 @@
                 -120
             ],
             "parameters": {
-                "jsCode": "// Mesas de ayuda por columna de Trello. Tango va por EMAIL; Ayres va por WHATSAPP.\n// Cuando Pablo pase el chat de Ayres (JID), cargarlo en AYRES_CHAT_WA y la columna se activa.\nconst AYRES_CHAT_WA = '120363427044185081@g.us'; // grupo \"P 607 00 El Desembarco - ADM Sistemas\"\nconst MESAS = {\n  '6a689b2b078eec227dc02ea5': { mesa: 'Mesa de Ayuda Tango', via: 'email', destino: 'mesadeayuda@seincomp.com.ar' },\n  '6a689bcabc131c785ef97206': { mesa: 'Mesa de Ayuda Ayres IT', via: 'wa', destino: AYRES_CHAT_WA }\n};\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.sentMesa)) sd.sentMesa = [];\nconst out = [];\nfor (const item of $input.all()) {\n  const c = item.json;\n  if (!c || !c.id) continue;\n  if (sd.sentMesa.includes(c.id)) continue; // ya enviado: la card queda en la columna sin reenviar\n  const cfg = MESAS[c.idList] || { mesa: 'Mesa de ayuda', via: 'email', destino: '' };\n  if (!cfg.destino) continue; // mesa sin canal configurado: la card queda sin enviar\n  const atts = (c.attachments || []).filter(a => a.url && a.isUpload !== false);\n  const nombre = (c.name || '').replace(/^[^0-9A-Za-z\\[\u00c3\u20ac-\u00c5\u00bf]+\\s*/, '');\n  const ref = (((c.shortUrl || '').split('/c/')[1]) || c.id);\n  const detalle = (c.desc || '').split('\\n---')[0].trim();\n  const cuerpo = ['Estimados,', '', 'Solicitamos asistencia por el siguiente requerimiento:', '', detalle, '', 'Gracias,', 'Sistemas El Desembarco'].join('\\n');\n  const waMessage = `\u00f0\u0178\u2020\u2022 *Requerimiento El Desembarco* (Ref ${ref})\\n\\n${nombre}\\n\\n${detalle}\\n\\n_Por favor responder citando este mensaje._`;\n  out.push({ json: {\n    cardId: c.id, cardName: c.name, shortUrl: c.shortUrl,\n    mesa: cfg.mesa, via: cfg.via, destino: cfg.destino,\n    asunto: ('[El Desembarco] ' + nombre).slice(0, 100) + ' (Ref ' + ref + ')',\n    cuerpo, waMessage,\n    attUrl: atts.length ? atts[0].url : '',\n    attList: atts.map(a => ({ url: a.url, name: a.fileName || a.name || 'adjunto', mime: a.mimeType || 'application/octet-stream' }))\n  } });\n}\nreturn out;"
+                "jsCode": "// Mesas de ayuda por columna de Trello. Tango va por EMAIL; Ayres va por WHATSAPP.\n// Cuando Pablo pase el chat de Ayres (JID), cargarlo en AYRES_CHAT_WA y la columna se activa.\nconst AYRES_CHAT_WA = '120363410195428550@g.us'; // grupo \"P 607 00 El Desembarco - ADM Sistemas\" (el definitivo)\nconst MESAS = {\n  '6a689b2b078eec227dc02ea5': { mesa: 'Mesa de Ayuda Tango', via: 'email', destino: 'mesadeayuda@seincomp.com.ar' },\n  '6a689bcabc131c785ef97206': { mesa: 'Mesa de Ayuda Ayres IT', via: 'wa', destino: AYRES_CHAT_WA }\n};\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.sentMesa)) sd.sentMesa = [];\nconst out = [];\nfor (const item of $input.all()) {\n  const c = item.json;\n  if (!c || !c.id) continue;\n  if (sd.sentMesa.includes(c.id)) continue; // ya enviado: la card queda en la columna sin reenviar\n  const cfg = MESAS[c.idList] || { mesa: 'Mesa de ayuda', via: 'email', destino: '' };\n  if (!cfg.destino) continue; // mesa sin canal configurado: la card queda sin enviar\n  const atts = (c.attachments || []).filter(a => a.url && a.isUpload !== false);\n  const nombre = (c.name || '').replace(/^[^0-9A-Za-z\\[\u00c3\u20ac-\u00c5\u00bf]+\\s*/, '');\n  const ref = (((c.shortUrl || '').split('/c/')[1]) || c.id);\n  const detalle = (c.desc || '').split('\\n---')[0].trim();\n  const cuerpo = ['Estimados,', '', 'Solicitamos asistencia por el siguiente requerimiento:', '', detalle, '', 'Gracias,', 'Sistemas El Desembarco'].join('\\n');\n  const waMessage = `\u00f0\u0178\u2020\u2022 *Requerimiento El Desembarco* (Ref ${ref})\\n\\n${nombre}\\n\\n${detalle}\\n\\n_Por favor responder citando este mensaje._`;\n  out.push({ json: {\n    cardId: c.id, cardName: c.name, shortUrl: c.shortUrl,\n    mesa: cfg.mesa, via: cfg.via, destino: cfg.destino,\n    asunto: ('[El Desembarco] ' + nombre).slice(0, 100) + ' (Ref ' + ref + ')',\n    cuerpo, waMessage,\n    attUrl: atts.length ? atts[0].url : '',\n    attList: atts.map(a => ({ url: a.url, name: a.fileName || a.name || 'adjunto', mime: a.mimeType || 'application/octet-stream' }))\n  } });\n}\nreturn out;"
             }
         },
         {
@@ -783,7 +783,8 @@
                 "6a6a65e33f0b1ea9c1e27425",
                 "6a6a6590cf6e94b75f1d61c7",
                 "6a6a3ff9e461cb65dd2ac65a",
-                "6a6a658fc024ab6352e18ecb"
+                "6a6a658fc024ab6352e18ecb",
+                "6a6a6586e34693b3ddeedddf"
             ],
             "sentMesa": [
                 "6a68dc2f5209629993edcc67",
@@ -791,20 +792,22 @@
                 "6a68d760896a1b709d5fc894",
                 "6a6a15d9a3fc835f9e495b82",
                 "6a6a30e1ea7422e0c80adabe",
-                "6a6a6f6fcbdf0dbf218c62f0"
+                "6a6a6f6fcbdf0dbf218c62f0",
+                "6a6a72383f2bd09c3a780e88"
             ],
             "sentMesaAt": {
                 "6a6a30e1ea7422e0c80adabe": 1785344237348,
-                "6a6a6f6fcbdf0dbf218c62f0": 1785360267390
+                "6a6a6f6fcbdf0dbf218c62f0": 1785360267390,
+                "6a6a72383f2bd09c3a780e88": 1785362577299
             },
             "alertConfirm": []
         }
     },
     "meta": null,
     "pinData": null,
-    "versionId": "e99019aa-5a08-4d1e-8d36-bc51a5090301",
-    "activeVersionId": "e99019aa-5a08-4d1e-8d36-bc51a5090301",
-    "versionCounter": 69,
+    "versionId": "93a06112-4e77-44e1-9e15-f3ed97cd5470",
+    "activeVersionId": "93a06112-4e77-44e1-9e15-f3ed97cd5470",
+    "versionCounter": 78,
     "triggerCount": 1,
     "shared": [
         {
@@ -827,9 +830,9 @@
     ],
     "tags": [],
     "activeVersion": {
-        "updatedAt": "2026-07-29T21:33:22.452Z",
-        "createdAt": "2026-07-29T21:33:22.452Z",
-        "versionId": "e99019aa-5a08-4d1e-8d36-bc51a5090301",
+        "updatedAt": "2026-07-29T22:03:28.326Z",
+        "createdAt": "2026-07-29T22:03:28.326Z",
+        "versionId": "93a06112-4e77-44e1-9e15-f3ed97cd5470",
         "workflowId": "LHbJVS18ZULzqToG",
         "nodes": [
             {
@@ -905,7 +908,7 @@
                     -120
                 ],
                 "parameters": {
-                    "jsCode": "// Mesas de ayuda por columna de Trello. Tango va por EMAIL; Ayres va por WHATSAPP.\n// Cuando Pablo pase el chat de Ayres (JID), cargarlo en AYRES_CHAT_WA y la columna se activa.\nconst AYRES_CHAT_WA = '120363427044185081@g.us'; // grupo \"P 607 00 El Desembarco - ADM Sistemas\"\nconst MESAS = {\n  '6a689b2b078eec227dc02ea5': { mesa: 'Mesa de Ayuda Tango', via: 'email', destino: 'mesadeayuda@seincomp.com.ar' },\n  '6a689bcabc131c785ef97206': { mesa: 'Mesa de Ayuda Ayres IT', via: 'wa', destino: AYRES_CHAT_WA }\n};\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.sentMesa)) sd.sentMesa = [];\nconst out = [];\nfor (const item of $input.all()) {\n  const c = item.json;\n  if (!c || !c.id) continue;\n  if (sd.sentMesa.includes(c.id)) continue; // ya enviado: la card queda en la columna sin reenviar\n  const cfg = MESAS[c.idList] || { mesa: 'Mesa de ayuda', via: 'email', destino: '' };\n  if (!cfg.destino) continue; // mesa sin canal configurado: la card queda sin enviar\n  const atts = (c.attachments || []).filter(a => a.url && a.isUpload !== false);\n  const nombre = (c.name || '').replace(/^[^0-9A-Za-z\\[\u00c3\u20ac-\u00c5\u00bf]+\\s*/, '');\n  const ref = (((c.shortUrl || '').split('/c/')[1]) || c.id);\n  const detalle = (c.desc || '').split('\\n---')[0].trim();\n  const cuerpo = ['Estimados,', '', 'Solicitamos asistencia por el siguiente requerimiento:', '', detalle, '', 'Gracias,', 'Sistemas El Desembarco'].join('\\n');\n  const waMessage = `\u00f0\u0178\u2020\u2022 *Requerimiento El Desembarco* (Ref ${ref})\\n\\n${nombre}\\n\\n${detalle}\\n\\n_Por favor responder citando este mensaje._`;\n  out.push({ json: {\n    cardId: c.id, cardName: c.name, shortUrl: c.shortUrl,\n    mesa: cfg.mesa, via: cfg.via, destino: cfg.destino,\n    asunto: ('[El Desembarco] ' + nombre).slice(0, 100) + ' (Ref ' + ref + ')',\n    cuerpo, waMessage,\n    attUrl: atts.length ? atts[0].url : '',\n    attList: atts.map(a => ({ url: a.url, name: a.fileName || a.name || 'adjunto', mime: a.mimeType || 'application/octet-stream' }))\n  } });\n}\nreturn out;"
+                    "jsCode": "// Mesas de ayuda por columna de Trello. Tango va por EMAIL; Ayres va por WHATSAPP.\n// Cuando Pablo pase el chat de Ayres (JID), cargarlo en AYRES_CHAT_WA y la columna se activa.\nconst AYRES_CHAT_WA = '120363410195428550@g.us'; // grupo \"P 607 00 El Desembarco - ADM Sistemas\" (el definitivo)\nconst MESAS = {\n  '6a689b2b078eec227dc02ea5': { mesa: 'Mesa de Ayuda Tango', via: 'email', destino: 'mesadeayuda@seincomp.com.ar' },\n  '6a689bcabc131c785ef97206': { mesa: 'Mesa de Ayuda Ayres IT', via: 'wa', destino: AYRES_CHAT_WA }\n};\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.sentMesa)) sd.sentMesa = [];\nconst out = [];\nfor (const item of $input.all()) {\n  const c = item.json;\n  if (!c || !c.id) continue;\n  if (sd.sentMesa.includes(c.id)) continue; // ya enviado: la card queda en la columna sin reenviar\n  const cfg = MESAS[c.idList] || { mesa: 'Mesa de ayuda', via: 'email', destino: '' };\n  if (!cfg.destino) continue; // mesa sin canal configurado: la card queda sin enviar\n  const atts = (c.attachments || []).filter(a => a.url && a.isUpload !== false);\n  const nombre = (c.name || '').replace(/^[^0-9A-Za-z\\[\u00c3\u20ac-\u00c5\u00bf]+\\s*/, '');\n  const ref = (((c.shortUrl || '').split('/c/')[1]) || c.id);\n  const detalle = (c.desc || '').split('\\n---')[0].trim();\n  const cuerpo = ['Estimados,', '', 'Solicitamos asistencia por el siguiente requerimiento:', '', detalle, '', 'Gracias,', 'Sistemas El Desembarco'].join('\\n');\n  const waMessage = `\u00f0\u0178\u2020\u2022 *Requerimiento El Desembarco* (Ref ${ref})\\n\\n${nombre}\\n\\n${detalle}\\n\\n_Por favor responder citando este mensaje._`;\n  out.push({ json: {\n    cardId: c.id, cardName: c.name, shortUrl: c.shortUrl,\n    mesa: cfg.mesa, via: cfg.via, destino: cfg.destino,\n    asunto: ('[El Desembarco] ' + nombre).slice(0, 100) + ' (Ref ' + ref + ')',\n    cuerpo, waMessage,\n    attUrl: atts.length ? atts[0].url : '',\n    attList: atts.map(a => ({ url: a.url, name: a.fileName || a.name || 'adjunto', mime: a.mimeType || 'application/octet-stream' }))\n  } });\n}\nreturn out;"
                 }
             },
             {
@@ -1577,18 +1580,18 @@
         "autosaved": false,
         "workflowPublishHistory": [
             {
-                "createdAt": "2026-07-29T21:33:22.505Z",
-                "id": 322,
+                "createdAt": "2026-07-29T22:03:28.368Z",
+                "id": 328,
                 "workflowId": "LHbJVS18ZULzqToG",
-                "versionId": "e99019aa-5a08-4d1e-8d36-bc51a5090301",
+                "versionId": "93a06112-4e77-44e1-9e15-f3ed97cd5470",
                 "event": "activated",
                 "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
             },
             {
-                "createdAt": "2026-07-29T21:33:22.488Z",
-                "id": 321,
+                "createdAt": "2026-07-29T22:03:28.356Z",
+                "id": 327,
                 "workflowId": "LHbJVS18ZULzqToG",
-                "versionId": "e99019aa-5a08-4d1e-8d36-bc51a5090301",
+                "versionId": "93a06112-4e77-44e1-9e15-f3ed97cd5470",
                 "event": "deactivated",
                 "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
             }
