@@ -1,5 +1,5 @@
 {
-    "updatedAt": "2026-07-29T17:11:23.804Z",
+    "updatedAt": "2026-07-29T21:18:39.016Z",
     "createdAt": "2026-07-27T17:19:45.942Z",
     "id": "G3YDTzNlb8i1x1Z4",
     "name": "WA Requerimientos \u00e2\u2020\u2019 Trello",
@@ -34,7 +34,7 @@
                 0
             ],
             "parameters": {
-                "jsCode": "// Router de eventos del bridge: token, trigger #req, continuacion de foto, reacciones, dedupe.\nconst TOKEN = '660085b0160db3effde5cbb8fe4b6fc5cda3fe70ef79dfe7d959a419f2913d68';\nconst ALWAYS_CHATS = ['120363410062969047@g.us']; // SOPORTE SISTEMAS\n// Chat de soporte de Ayres IT (atienden por WhatsApp). Cargar el JID para activar la mesa Ayres.\nconst AYRES_CHAT_WA = '';\nconst RE_TRIGGER = /^\\s*#(req|ticket|requerimiento)\\b[:\\-]?\\s*/i;\nconst WINDOW_MS = 5 * 60 * 1000; // ventana de continuacion foto\n\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.seen)) sd.seen = [];\nif (!sd.lastTicket) sd.lastTicket = {};\nif (!sd.pendingUndo) sd.pendingUndo = {};\nconst out = [];\n\nfor (const item of $input.all()) {\n  const headers = item.json.headers || {};\n  const p = item.json.body || {};\n  if ((headers['x-bridge-token'] || '') !== TOKEN) continue;\n  const chat = p.chatJID || '';\n  const sender = p.sender || '';\n  const key = chat + '|' + sender;\n\n  if (p.eventType === 'reaction') {\n    const emoji = p.reactionEmoji || p.content || '';\n    if (p.reactionRemoved) continue;\n    out.push({ json: { ruta: 'reaccion', chatJID: chat, sender, emoji, recibido: new Date().toISOString() } });\n    continue;\n  }\n\n  if (AYRES_CHAT_WA && chat === AYRES_CHAT_WA) {\n    const contentA = (p.content || '').trim();\n    if (!contentA) continue;\n    out.push({ json: { ruta: 'mesa_ayres', texto: contentA, quotedContent: p.quotedContent || '', sender, chatJID: chat, recibido: new Date().toISOString() } });\n    continue;\n  }\n\n  const content = (p.content || '').trim();\n  const m = content.match(RE_TRIGGER);\n  const isAlways = ALWAYS_CHATS.includes(chat);\n  const hasMedia = !!p.mediaBase64;\n  const texto = m ? content.replace(RE_TRIGGER, '').trim() : content;\n  const lt = sd.lastTicket[key];\n  const fresh = lt && (Date.now() - lt.ts) < WINDOW_MS;\n\n  let ruta = null;\n  if (hasMedia && fresh && !m && (!texto || texto.length < 20)) {\n    ruta = 'continuacion'; // foto suelta poco despues de un ticket del mismo remitente\n  } else if (m || isAlways) {\n    if (!texto && !hasMedia) continue;\n    // texto dentro de la ventana del ultimo ticket del remitente: Gemini decide si es el mismo tema\n    ruta = (fresh && !hasMedia && texto) ? 'merge' : 'ticket';\n  } else {\n    continue;\n  }\n\n  // Dedupe: por messageId si existe, sino hash de dia+chat+sender+contenido\n  let dedupeKey = p.messageId;\n  if (!dedupeKey) {\n    const k = `${new Date().toISOString().slice(0, 10)}|${chat}|${sender}|${content}`.slice(0, 500);\n    let h = 0;\n    for (let i = 0; i < k.length; i++) h = ((h << 5) - h + k.charCodeAt(i)) | 0;\n    dedupeKey = 'h' + h;\n  }\n  if (sd.seen.includes(dedupeKey)) continue;\n  sd.seen.push(dedupeKey);\n  if (sd.seen.length > 300) sd.seen = sd.seen.slice(-200);\n\n  const base = {\n    ruta,\n    texto,\n    sender,\n    chatJID: chat,\n    isFromMe: !!p.isFromMe,\n    msgId: p.messageId || '',\n    quotedContent: p.quotedContent || '',\n    quotedSender: p.quotedSender || '',\n    mediaBase64: p.mediaBase64 || '',\n    mimeType: p.mimeType || '',\n    mediaFilename: p.mediaFilename || '',\n    recibido: new Date().toISOString()\n  };\n  if (ruta === 'continuacion') {\n    out.push({ json: { ...base, cardId: lt.cardId, cardName: lt.cardName, shortUrl: lt.shortUrl } });\n  } else if (ruta === 'merge') {\n    out.push({ json: { ...base, cardId: lt.cardId, cardName: lt.cardName, shortUrl: lt.shortUrl, prevTextos: (lt.textos || []).join('\\n') } });\n  } else {\n    out.push({ json: base });\n  }\n}\nreturn out;"
+                "jsCode": "// Router de eventos del bridge: token, trigger #req, continuacion de foto, reacciones, dedupe.\nconst TOKEN = '660085b0160db3effde5cbb8fe4b6fc5cda3fe70ef79dfe7d959a419f2913d68';\nconst ALWAYS_CHATS = ['120363410062969047@g.us']; // SOPORTE SISTEMAS\n// Chat de soporte de Ayres IT (atienden por WhatsApp): grupo \"Implementaci\u00c3\u00b3n AYRES IT\"\nconst AYRES_CHAT_WA = '120363425972235112@g.us';\nconst RE_TRIGGER = /^\\s*#(req|ticket|requerimiento)\\b[:\\-]?\\s*/i;\nconst WINDOW_MS = 5 * 60 * 1000; // ventana de continuacion foto\n\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.seen)) sd.seen = [];\nif (!sd.lastTicket) sd.lastTicket = {};\nif (!sd.pendingUndo) sd.pendingUndo = {};\nconst out = [];\n\nfor (const item of $input.all()) {\n  const headers = item.json.headers || {};\n  const p = item.json.body || {};\n  if ((headers['x-bridge-token'] || '') !== TOKEN) continue;\n  const chat = p.chatJID || '';\n  const sender = p.sender || '';\n  const key = chat + '|' + sender;\n\n  if (p.eventType === 'reaction') {\n    const emoji = p.reactionEmoji || p.content || '';\n    if (p.reactionRemoved) continue;\n    out.push({ json: { ruta: 'reaccion', chatJID: chat, sender, emoji, recibido: new Date().toISOString() } });\n    continue;\n  }\n\n  if (AYRES_CHAT_WA && chat === AYRES_CHAT_WA) {\n    const contentA = (p.content || '').trim();\n    if (!contentA) continue;\n    out.push({ json: { ruta: 'mesa_ayres', texto: contentA, quotedContent: p.quotedContent || '', sender, chatJID: chat, recibido: new Date().toISOString() } });\n    continue;\n  }\n\n  const content = (p.content || '').trim();\n  const m = content.match(RE_TRIGGER);\n  const isAlways = ALWAYS_CHATS.includes(chat);\n  const hasMedia = !!p.mediaBase64;\n  const texto = m ? content.replace(RE_TRIGGER, '').trim() : content;\n  const lt = sd.lastTicket[key];\n  const fresh = lt && (Date.now() - lt.ts) < WINDOW_MS;\n\n  let ruta = null;\n  if (hasMedia && fresh && !m && (!texto || texto.length < 20)) {\n    ruta = 'continuacion'; // foto suelta poco despues de un ticket del mismo remitente\n  } else if (m || isAlways) {\n    if (!texto && !hasMedia) continue;\n    // texto dentro de la ventana del ultimo ticket del remitente: Gemini decide si es el mismo tema\n    ruta = (fresh && !hasMedia && texto) ? 'merge' : 'ticket';\n  } else {\n    continue;\n  }\n\n  // Dedupe: por messageId si existe, sino hash de dia+chat+sender+contenido\n  let dedupeKey = p.messageId;\n  if (!dedupeKey) {\n    const k = `${new Date().toISOString().slice(0, 10)}|${chat}|${sender}|${content}`.slice(0, 500);\n    let h = 0;\n    for (let i = 0; i < k.length; i++) h = ((h << 5) - h + k.charCodeAt(i)) | 0;\n    dedupeKey = 'h' + h;\n  }\n  if (sd.seen.includes(dedupeKey)) continue;\n  sd.seen.push(dedupeKey);\n  if (sd.seen.length > 300) sd.seen = sd.seen.slice(-200);\n\n  const base = {\n    ruta,\n    texto,\n    sender,\n    chatJID: chat,\n    isFromMe: !!p.isFromMe,\n    msgId: p.messageId || '',\n    quotedContent: p.quotedContent || '',\n    quotedSender: p.quotedSender || '',\n    mediaBase64: p.mediaBase64 || '',\n    mimeType: p.mimeType || '',\n    mediaFilename: p.mediaFilename || '',\n    recibido: new Date().toISOString()\n  };\n  if (ruta === 'continuacion') {\n    out.push({ json: { ...base, cardId: lt.cardId, cardName: lt.cardName, shortUrl: lt.shortUrl } });\n  } else if (ruta === 'merge') {\n    out.push({ json: { ...base, cardId: lt.cardId, cardName: lt.cardName, shortUrl: lt.shortUrl, prevTextos: (lt.textos || []).join('\\n') } });\n  } else {\n    out.push({ json: base });\n  }\n}\nreturn out;"
             }
         },
         {
@@ -826,7 +826,7 @@
                 560
             ],
             "parameters": {
-                "jsCode": "// Respuesta de Ayres por WhatsApp: el Ref viene en la cita (o en el texto).\nconst out = [];\nfor (const item of $input.all()) {\n  const j = item.json;\n  const fuente = (j.quotedContent || '') + '\\n' + (j.texto || '');\n  const mRef = fuente.match(/\\(Ref[:\\s]+([A-Za-z0-9]{6,12})\\)/i);\n  const esResuelto = /(resuelt|solucionad|cerrad|finalizad|\\blisto\\b)/i.test(j.texto || '');\n  if (!mRef) {\n    out.push({ json: { alerta: true, recipient: '5491157935007@s.whatsapp.net', message: `\u00e2\u0161\u00a0\u00ef\u00b8\udc8f Respuesta de Ayres IT sin vincular (no cita ning\u00c3\u00ban requerimiento):\\nDe: ${j.sender}\\n\\\"${(j.texto || '').slice(0, 200)}\\\"` } });\n  } else {\n    out.push({ json: { alerta: false, cardShort: mRef[1], esResuelto, texto: j.texto, sender: j.sender } });\n  }\n}\nreturn out;"
+                "jsCode": "// Respuesta de Ayres por WhatsApp: el Ref viene en la cita (o en el texto).\nconst out = [];\nfor (const item of $input.all()) {\n  const j = item.json;\n  const fuente = (j.quotedContent || '') + '\\n' + (j.texto || '');\n  const mRef = fuente.match(/\\(Ref[:\\s]+([A-Za-z0-9]{6,12})\\)/i);\n  const esResuelto = /(resuelt|resolvi|solucionad|cerrad|finalizad|\\blisto\\b)/i.test(j.texto || '');\n  if (!mRef) {\n    // Solo alertar si el mensaje PARECE respuesta de ticket (evita ruido de charla normal del grupo)\n    const pareceTicket = /(ticket|requerimiento|resuelt|resolvi|solucionad|caso|Ref\\s)/i.test(j.texto || '');\n    if (pareceTicket) {\n      out.push({ json: { alerta: true, recipient: '5491157935007@s.whatsapp.net', message: `\u00e2\u0161\u00a0\u00ef\u00b8\udc8f Respuesta de Ayres IT sin vincular (no cita ning\u00c3\u00ban requerimiento):\\nDe: ${j.sender}\\n\\\"${(j.texto || '').slice(0, 200)}\\\"` } });\n    }\n  } else {\n    out.push({ json: { alerta: false, cardShort: mRef[1], esResuelto, texto: j.texto, sender: j.sender } });\n  }\n}\nreturn out;"
             }
         },
         {
@@ -1591,16 +1591,22 @@
                 "QA-900",
                 "h-1464054827",
                 "h515424678",
-                "h-1861747543"
+                "h-1861747543",
+                "h1036966626",
+                "h-1825319702",
+                "h-456658273",
+                "h510808768",
+                "h-1758625071",
+                "QA-950"
             ],
             "lastTicket": {
                 "5491157935007@s.whatsapp.net|5491157935007": {
-                    "cardId": "6a6a25cf94d6f678a1ce6c43",
-                    "cardName": "\u00f0\u0178\u0178\u00a1 Reparar lector de c\u00c3\u00b3digo de barras de dep\u00c3\u00b3sito",
-                    "shortUrl": "https://trello.com/c/92M4N5e8",
-                    "ts": 1785341392141,
+                    "cardId": "6a6a6f6fcbdf0dbf218c62f0",
+                    "cardName": "\u00f0\u0178\u201d\u00b4 [Ayres] Sistema de turnos se tilda al imprimir comandas dobles",
+                    "shortUrl": "https://trello.com/c/mpits7UV",
+                    "ts": 1785360239844,
                     "textos": [
-                        "QA transiciones: el lector de codigo de barras del deposito lee salteado"
+                        "QA ayres wa: el sistema de turnos del salon se tilda al imprimir comandas dobles"
                     ]
                 },
                 "120363410062969047@g.us|5491171241480": {
@@ -1661,12 +1667,48 @@
                     ]
                 },
                 "120363410062969047@g.us|5491125901818": {
-                    "cardId": "6a6a3ff9e461cb65dd2ac65a",
-                    "cardName": "\u00f0\u0178\u201d\u00b4 [Caballito] Habilitar edici\u00c3\u00b3n de caja Mr Tasty Caballito",
-                    "shortUrl": "https://trello.com/c/TvhWRbjw",
-                    "ts": 1785348090461,
+                    "cardId": "6a6a46671c93e16f285cde10",
+                    "cardName": "\u00f0\u0178\u201d\u00b4 [Ramos Mejia] Habilitar edici\u00c3\u00b3n caja 27/7 TM Ramos Mejia",
+                    "shortUrl": "https://trello.com/c/8TtTRNPS",
+                    "ts": 1785349736117,
                     "textos": [
-                        "Buenas! \nPor favor habilitar edici\u00c3\u00b3n de la caja Mrt Caballito 28/7 TM \nGracias."
+                        "Habilitar la edici\u00c3\u00b3n de la caja 27/7 TM Ramos Mejia \nGracias!"
+                    ]
+                },
+                "120363410062969047@g.us|5491154230955": {
+                    "cardId": "6a6a6586e34693b3ddeedddf",
+                    "cardName": "\u00f0\u0178\u0178\u00a2 Verificar personal presente",
+                    "shortUrl": "https://trello.com/c/srUvuzQw",
+                    "ts": 1785357703083,
+                    "textos": [
+                        "Ac\u00c3\u00a1 est\u00c3\u00a1n todos? Falta Yani"
+                    ]
+                },
+                "120363410062969047@g.us|5491161727261": {
+                    "cardId": "6a6a658b970685895d531b2d",
+                    "cardName": "\u00f0\u0178\u0178\u00a2 Consultar sobre comentario de Rebeca",
+                    "shortUrl": "https://trello.com/c/Vu4ciYpg",
+                    "ts": 1785357707294,
+                    "textos": [
+                        "Rebeca me coment\u00c3\u00b3 por arriba"
+                    ]
+                },
+                "120363410062969047@g.us|5491127992747": {
+                    "cardId": "6a6a6590cf6e94b75f1d61c7",
+                    "cardName": "\u00f0\u0178\u0178\u00a1 [Barrio Chino] Resetear contrase\u00c3\u00b1a mail corporativo - Barrio Chino",
+                    "shortUrl": "https://trello.com/c/NqNU7Gpe",
+                    "ts": 1785357712736,
+                    "textos": [
+                        "Barrio chino!"
+                    ]
+                },
+                "120363410062969047@g.us|5491130685611": {
+                    "cardId": "6a6a65e33f0b1ea9c1e27425",
+                    "cardName": "\u00f0\u0178\u0178\u00a1 Restablecer contrase\u00c3\u00b1a de email Plottier@eldesembarco.com",
+                    "shortUrl": "https://trello.com/c/M9tv7CEU",
+                    "ts": 1785357795819,
+                    "textos": [
+                        "Hola, me podr\u00c3\u00a1n reservar la contrase\u00c3\u00b1a del Mail de Plottier Plottier@eldesembarco.con"
                     ]
                 }
             },
@@ -1675,9 +1717,9 @@
     },
     "meta": null,
     "pinData": null,
-    "versionId": "da1f8109-b497-4b31-8846-0a2070404c18",
-    "activeVersionId": "da1f8109-b497-4b31-8846-0a2070404c18",
-    "versionCounter": 61,
+    "versionId": "af8b8511-39b8-407a-bd03-4141996a95bf",
+    "activeVersionId": "af8b8511-39b8-407a-bd03-4141996a95bf",
+    "versionCounter": 74,
     "triggerCount": 1,
     "shared": [
         {
@@ -1700,9 +1742,9 @@
     ],
     "tags": [],
     "activeVersion": {
-        "updatedAt": "2026-07-29T17:11:23.806Z",
-        "createdAt": "2026-07-29T17:11:23.806Z",
-        "versionId": "da1f8109-b497-4b31-8846-0a2070404c18",
+        "updatedAt": "2026-07-29T21:18:39.018Z",
+        "createdAt": "2026-07-29T21:18:39.018Z",
+        "versionId": "af8b8511-39b8-407a-bd03-4141996a95bf",
         "workflowId": "G3YDTzNlb8i1x1Z4",
         "nodes": [
             {
@@ -1732,7 +1774,7 @@
                     0
                 ],
                 "parameters": {
-                    "jsCode": "// Router de eventos del bridge: token, trigger #req, continuacion de foto, reacciones, dedupe.\nconst TOKEN = '660085b0160db3effde5cbb8fe4b6fc5cda3fe70ef79dfe7d959a419f2913d68';\nconst ALWAYS_CHATS = ['120363410062969047@g.us']; // SOPORTE SISTEMAS\n// Chat de soporte de Ayres IT (atienden por WhatsApp). Cargar el JID para activar la mesa Ayres.\nconst AYRES_CHAT_WA = '';\nconst RE_TRIGGER = /^\\s*#(req|ticket|requerimiento)\\b[:\\-]?\\s*/i;\nconst WINDOW_MS = 5 * 60 * 1000; // ventana de continuacion foto\n\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.seen)) sd.seen = [];\nif (!sd.lastTicket) sd.lastTicket = {};\nif (!sd.pendingUndo) sd.pendingUndo = {};\nconst out = [];\n\nfor (const item of $input.all()) {\n  const headers = item.json.headers || {};\n  const p = item.json.body || {};\n  if ((headers['x-bridge-token'] || '') !== TOKEN) continue;\n  const chat = p.chatJID || '';\n  const sender = p.sender || '';\n  const key = chat + '|' + sender;\n\n  if (p.eventType === 'reaction') {\n    const emoji = p.reactionEmoji || p.content || '';\n    if (p.reactionRemoved) continue;\n    out.push({ json: { ruta: 'reaccion', chatJID: chat, sender, emoji, recibido: new Date().toISOString() } });\n    continue;\n  }\n\n  if (AYRES_CHAT_WA && chat === AYRES_CHAT_WA) {\n    const contentA = (p.content || '').trim();\n    if (!contentA) continue;\n    out.push({ json: { ruta: 'mesa_ayres', texto: contentA, quotedContent: p.quotedContent || '', sender, chatJID: chat, recibido: new Date().toISOString() } });\n    continue;\n  }\n\n  const content = (p.content || '').trim();\n  const m = content.match(RE_TRIGGER);\n  const isAlways = ALWAYS_CHATS.includes(chat);\n  const hasMedia = !!p.mediaBase64;\n  const texto = m ? content.replace(RE_TRIGGER, '').trim() : content;\n  const lt = sd.lastTicket[key];\n  const fresh = lt && (Date.now() - lt.ts) < WINDOW_MS;\n\n  let ruta = null;\n  if (hasMedia && fresh && !m && (!texto || texto.length < 20)) {\n    ruta = 'continuacion'; // foto suelta poco despues de un ticket del mismo remitente\n  } else if (m || isAlways) {\n    if (!texto && !hasMedia) continue;\n    // texto dentro de la ventana del ultimo ticket del remitente: Gemini decide si es el mismo tema\n    ruta = (fresh && !hasMedia && texto) ? 'merge' : 'ticket';\n  } else {\n    continue;\n  }\n\n  // Dedupe: por messageId si existe, sino hash de dia+chat+sender+contenido\n  let dedupeKey = p.messageId;\n  if (!dedupeKey) {\n    const k = `${new Date().toISOString().slice(0, 10)}|${chat}|${sender}|${content}`.slice(0, 500);\n    let h = 0;\n    for (let i = 0; i < k.length; i++) h = ((h << 5) - h + k.charCodeAt(i)) | 0;\n    dedupeKey = 'h' + h;\n  }\n  if (sd.seen.includes(dedupeKey)) continue;\n  sd.seen.push(dedupeKey);\n  if (sd.seen.length > 300) sd.seen = sd.seen.slice(-200);\n\n  const base = {\n    ruta,\n    texto,\n    sender,\n    chatJID: chat,\n    isFromMe: !!p.isFromMe,\n    msgId: p.messageId || '',\n    quotedContent: p.quotedContent || '',\n    quotedSender: p.quotedSender || '',\n    mediaBase64: p.mediaBase64 || '',\n    mimeType: p.mimeType || '',\n    mediaFilename: p.mediaFilename || '',\n    recibido: new Date().toISOString()\n  };\n  if (ruta === 'continuacion') {\n    out.push({ json: { ...base, cardId: lt.cardId, cardName: lt.cardName, shortUrl: lt.shortUrl } });\n  } else if (ruta === 'merge') {\n    out.push({ json: { ...base, cardId: lt.cardId, cardName: lt.cardName, shortUrl: lt.shortUrl, prevTextos: (lt.textos || []).join('\\n') } });\n  } else {\n    out.push({ json: base });\n  }\n}\nreturn out;"
+                    "jsCode": "// Router de eventos del bridge: token, trigger #req, continuacion de foto, reacciones, dedupe.\nconst TOKEN = '660085b0160db3effde5cbb8fe4b6fc5cda3fe70ef79dfe7d959a419f2913d68';\nconst ALWAYS_CHATS = ['120363410062969047@g.us']; // SOPORTE SISTEMAS\n// Chat de soporte de Ayres IT (atienden por WhatsApp): grupo \"Implementaci\u00c3\u00b3n AYRES IT\"\nconst AYRES_CHAT_WA = '120363425972235112@g.us';\nconst RE_TRIGGER = /^\\s*#(req|ticket|requerimiento)\\b[:\\-]?\\s*/i;\nconst WINDOW_MS = 5 * 60 * 1000; // ventana de continuacion foto\n\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.seen)) sd.seen = [];\nif (!sd.lastTicket) sd.lastTicket = {};\nif (!sd.pendingUndo) sd.pendingUndo = {};\nconst out = [];\n\nfor (const item of $input.all()) {\n  const headers = item.json.headers || {};\n  const p = item.json.body || {};\n  if ((headers['x-bridge-token'] || '') !== TOKEN) continue;\n  const chat = p.chatJID || '';\n  const sender = p.sender || '';\n  const key = chat + '|' + sender;\n\n  if (p.eventType === 'reaction') {\n    const emoji = p.reactionEmoji || p.content || '';\n    if (p.reactionRemoved) continue;\n    out.push({ json: { ruta: 'reaccion', chatJID: chat, sender, emoji, recibido: new Date().toISOString() } });\n    continue;\n  }\n\n  if (AYRES_CHAT_WA && chat === AYRES_CHAT_WA) {\n    const contentA = (p.content || '').trim();\n    if (!contentA) continue;\n    out.push({ json: { ruta: 'mesa_ayres', texto: contentA, quotedContent: p.quotedContent || '', sender, chatJID: chat, recibido: new Date().toISOString() } });\n    continue;\n  }\n\n  const content = (p.content || '').trim();\n  const m = content.match(RE_TRIGGER);\n  const isAlways = ALWAYS_CHATS.includes(chat);\n  const hasMedia = !!p.mediaBase64;\n  const texto = m ? content.replace(RE_TRIGGER, '').trim() : content;\n  const lt = sd.lastTicket[key];\n  const fresh = lt && (Date.now() - lt.ts) < WINDOW_MS;\n\n  let ruta = null;\n  if (hasMedia && fresh && !m && (!texto || texto.length < 20)) {\n    ruta = 'continuacion'; // foto suelta poco despues de un ticket del mismo remitente\n  } else if (m || isAlways) {\n    if (!texto && !hasMedia) continue;\n    // texto dentro de la ventana del ultimo ticket del remitente: Gemini decide si es el mismo tema\n    ruta = (fresh && !hasMedia && texto) ? 'merge' : 'ticket';\n  } else {\n    continue;\n  }\n\n  // Dedupe: por messageId si existe, sino hash de dia+chat+sender+contenido\n  let dedupeKey = p.messageId;\n  if (!dedupeKey) {\n    const k = `${new Date().toISOString().slice(0, 10)}|${chat}|${sender}|${content}`.slice(0, 500);\n    let h = 0;\n    for (let i = 0; i < k.length; i++) h = ((h << 5) - h + k.charCodeAt(i)) | 0;\n    dedupeKey = 'h' + h;\n  }\n  if (sd.seen.includes(dedupeKey)) continue;\n  sd.seen.push(dedupeKey);\n  if (sd.seen.length > 300) sd.seen = sd.seen.slice(-200);\n\n  const base = {\n    ruta,\n    texto,\n    sender,\n    chatJID: chat,\n    isFromMe: !!p.isFromMe,\n    msgId: p.messageId || '',\n    quotedContent: p.quotedContent || '',\n    quotedSender: p.quotedSender || '',\n    mediaBase64: p.mediaBase64 || '',\n    mimeType: p.mimeType || '',\n    mediaFilename: p.mediaFilename || '',\n    recibido: new Date().toISOString()\n  };\n  if (ruta === 'continuacion') {\n    out.push({ json: { ...base, cardId: lt.cardId, cardName: lt.cardName, shortUrl: lt.shortUrl } });\n  } else if (ruta === 'merge') {\n    out.push({ json: { ...base, cardId: lt.cardId, cardName: lt.cardName, shortUrl: lt.shortUrl, prevTextos: (lt.textos || []).join('\\n') } });\n  } else {\n    out.push({ json: base });\n  }\n}\nreturn out;"
                 }
             },
             {
@@ -2524,7 +2566,7 @@
                     560
                 ],
                 "parameters": {
-                    "jsCode": "// Respuesta de Ayres por WhatsApp: el Ref viene en la cita (o en el texto).\nconst out = [];\nfor (const item of $input.all()) {\n  const j = item.json;\n  const fuente = (j.quotedContent || '') + '\\n' + (j.texto || '');\n  const mRef = fuente.match(/\\(Ref[:\\s]+([A-Za-z0-9]{6,12})\\)/i);\n  const esResuelto = /(resuelt|solucionad|cerrad|finalizad|\\blisto\\b)/i.test(j.texto || '');\n  if (!mRef) {\n    out.push({ json: { alerta: true, recipient: '5491157935007@s.whatsapp.net', message: `\u00e2\u0161\u00a0\u00ef\u00b8\udc8f Respuesta de Ayres IT sin vincular (no cita ning\u00c3\u00ban requerimiento):\\nDe: ${j.sender}\\n\\\"${(j.texto || '').slice(0, 200)}\\\"` } });\n  } else {\n    out.push({ json: { alerta: false, cardShort: mRef[1], esResuelto, texto: j.texto, sender: j.sender } });\n  }\n}\nreturn out;"
+                    "jsCode": "// Respuesta de Ayres por WhatsApp: el Ref viene en la cita (o en el texto).\nconst out = [];\nfor (const item of $input.all()) {\n  const j = item.json;\n  const fuente = (j.quotedContent || '') + '\\n' + (j.texto || '');\n  const mRef = fuente.match(/\\(Ref[:\\s]+([A-Za-z0-9]{6,12})\\)/i);\n  const esResuelto = /(resuelt|resolvi|solucionad|cerrad|finalizad|\\blisto\\b)/i.test(j.texto || '');\n  if (!mRef) {\n    // Solo alertar si el mensaje PARECE respuesta de ticket (evita ruido de charla normal del grupo)\n    const pareceTicket = /(ticket|requerimiento|resuelt|resolvi|solucionad|caso|Ref\\s)/i.test(j.texto || '');\n    if (pareceTicket) {\n      out.push({ json: { alerta: true, recipient: '5491157935007@s.whatsapp.net', message: `\u00e2\u0161\u00a0\u00ef\u00b8\udc8f Respuesta de Ayres IT sin vincular (no cita ning\u00c3\u00ban requerimiento):\\nDe: ${j.sender}\\n\\\"${(j.texto || '').slice(0, 200)}\\\"` } });\n    }\n  } else {\n    out.push({ json: { alerta: false, cardShort: mRef[1], esResuelto, texto: j.texto, sender: j.sender } });\n  }\n}\nreturn out;"
                 }
             },
             {
@@ -3254,18 +3296,18 @@
         "autosaved": false,
         "workflowPublishHistory": [
             {
-                "createdAt": "2026-07-29T17:11:23.899Z",
-                "id": 312,
+                "createdAt": "2026-07-29T21:18:39.099Z",
+                "id": 314,
                 "workflowId": "G3YDTzNlb8i1x1Z4",
-                "versionId": "da1f8109-b497-4b31-8846-0a2070404c18",
+                "versionId": "af8b8511-39b8-407a-bd03-4141996a95bf",
                 "event": "activated",
                 "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
             },
             {
-                "createdAt": "2026-07-29T17:11:23.872Z",
-                "id": 311,
+                "createdAt": "2026-07-29T21:18:39.079Z",
+                "id": 313,
                 "workflowId": "G3YDTzNlb8i1x1Z4",
-                "versionId": "da1f8109-b497-4b31-8846-0a2070404c18",
+                "versionId": "af8b8511-39b8-407a-bd03-4141996a95bf",
                 "event": "deactivated",
                 "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
             }
