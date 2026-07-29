@@ -1,5 +1,5 @@
 {
-    "updatedAt": "2026-07-29T16:33:25.983Z",
+    "updatedAt": "2026-07-29T17:10:56.993Z",
     "createdAt": "2026-07-28T12:07:57.406Z",
     "id": "LHbJVS18ZULzqToG",
     "name": "WA Requerimientos - Trello Sync (mesa de ayuda + resueltos)",
@@ -264,7 +264,7 @@
                 200
             ],
             "parameters": {
-                "jsCode": "// Notifica una sola vez por card resuelta, al chat de WhatsApp de origen.\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.notified)) sd.notified = [];\nconst out = [];\nfor (const item of $input.all()) {\n  const c = item.json;\n  if (!c || !c.id) continue;\n  if (sd.notified.includes(c.id)) continue;\n  sd.notified.push(c.id);\n  if (sd.notified.length > 500) sd.notified = sd.notified.slice(-400);\n  const mChat = (c.desc || '').match(/\\*\\*Chat:\\*\\* ([^\\s\\n]+)/);\n  if (!mChat) continue; // card creada a mano, sin origen WhatsApp\n  const mSol = (c.desc || '').match(/\\*\\*Solicitante:\\*\\* ([^\\s\\n]+)/);\n  out.push({ json: {\n    cardId: c.id,\n    recipient: mChat[1],\n    message: `\u00e2\u0153\u2026 Resuelto: ${c.name}\\n${c.shortUrl}${mSol ? '\\n(solicitado por ' + mSol[1] + ')' : ''}`\n  } });\n}\nreturn out;"
+                "jsCode": "// Notifica una sola vez por card resuelta: al chat de origen y, si el origen es un\n// grupo, TAMBIEN al solicitante por privado a su numero.\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.notified)) sd.notified = [];\nconst out = [];\nfor (const item of $input.all()) {\n  const c = item.json;\n  if (!c || !c.id) continue;\n  if (sd.notified.includes(c.id)) continue;\n  sd.notified.push(c.id);\n  if (sd.notified.length > 500) sd.notified = sd.notified.slice(-400);\n  const mChat = (c.desc || '').match(/\\*\\*Chat:\\*\\* ([^\\s\\n]+)/);\n  if (!mChat) continue; // card creada a mano, sin origen WhatsApp\n  const mSol = (c.desc || '').match(/\\*\\*Solicitante:\\*\\* ([^\\s\\n]+)/);\n  const msg = `\u00e2\u0153\u2026 Resuelto: ${c.name}\\n${c.shortUrl}${mSol ? '\\n(solicitado por ' + mSol[1] + ')' : ''}`;\n  out.push({ json: { cardId: c.id, recipient: mChat[1], message: msg } });\n  if (mSol && mChat[1].endsWith('@g.us')) {\n    const solJid = mSol[1].includes('@') ? mSol[1] : mSol[1] + '@s.whatsapp.net';\n    if (solJid !== mChat[1]) out.push({ json: { cardId: c.id, recipient: solJid, message: msg } });\n  }\n}\nreturn out;"
             }
         },
         {
@@ -773,21 +773,30 @@
                 "6a689d2faa135d5a190ddc7c",
                 "6a689d6a4bb58f8c5d8d409c",
                 "6a6a15d9a3fc835f9e495b82",
-                "6a6a25cf94d6f678a1ce6c43"
+                "6a6a25cf94d6f678a1ce6c43",
+                "6a68d760896a1b709d5fc894",
+                "6a6a31e7f428004634051e58",
+                "6a6a38288d839edcda99bd8d",
+                "6a6a30e1ea7422e0c80adabe"
             ],
             "sentMesa": [
                 "6a68dc2f5209629993edcc67",
                 "6a68ca46a1a832d6a2e360ac",
                 "6a68d760896a1b709d5fc894",
-                "6a6a15d9a3fc835f9e495b82"
-            ]
+                "6a6a15d9a3fc835f9e495b82",
+                "6a6a30e1ea7422e0c80adabe"
+            ],
+            "sentMesaAt": {
+                "6a6a30e1ea7422e0c80adabe": 1785344237348
+            },
+            "alertConfirm": []
         }
     },
     "meta": null,
     "pinData": null,
-    "versionId": "5975f8a6-99fc-4c9e-8b40-fd4fb46fc959",
-    "activeVersionId": "5975f8a6-99fc-4c9e-8b40-fd4fb46fc959",
-    "versionCounter": 45,
+    "versionId": "21d545d6-dec1-45f5-80ef-ebcbd6dc44ca",
+    "activeVersionId": "21d545d6-dec1-45f5-80ef-ebcbd6dc44ca",
+    "versionCounter": 53,
     "triggerCount": 1,
     "shared": [
         {
@@ -810,9 +819,9 @@
     ],
     "tags": [],
     "activeVersion": {
-        "updatedAt": "2026-07-29T16:33:25.984Z",
-        "createdAt": "2026-07-29T16:33:25.984Z",
-        "versionId": "5975f8a6-99fc-4c9e-8b40-fd4fb46fc959",
+        "updatedAt": "2026-07-29T17:10:56.994Z",
+        "createdAt": "2026-07-29T17:10:56.994Z",
+        "versionId": "21d545d6-dec1-45f5-80ef-ebcbd6dc44ca",
         "workflowId": "LHbJVS18ZULzqToG",
         "nodes": [
             {
@@ -1072,7 +1081,7 @@
                     200
                 ],
                 "parameters": {
-                    "jsCode": "// Notifica una sola vez por card resuelta, al chat de WhatsApp de origen.\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.notified)) sd.notified = [];\nconst out = [];\nfor (const item of $input.all()) {\n  const c = item.json;\n  if (!c || !c.id) continue;\n  if (sd.notified.includes(c.id)) continue;\n  sd.notified.push(c.id);\n  if (sd.notified.length > 500) sd.notified = sd.notified.slice(-400);\n  const mChat = (c.desc || '').match(/\\*\\*Chat:\\*\\* ([^\\s\\n]+)/);\n  if (!mChat) continue; // card creada a mano, sin origen WhatsApp\n  const mSol = (c.desc || '').match(/\\*\\*Solicitante:\\*\\* ([^\\s\\n]+)/);\n  out.push({ json: {\n    cardId: c.id,\n    recipient: mChat[1],\n    message: `\u00e2\u0153\u2026 Resuelto: ${c.name}\\n${c.shortUrl}${mSol ? '\\n(solicitado por ' + mSol[1] + ')' : ''}`\n  } });\n}\nreturn out;"
+                    "jsCode": "// Notifica una sola vez por card resuelta: al chat de origen y, si el origen es un\n// grupo, TAMBIEN al solicitante por privado a su numero.\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.notified)) sd.notified = [];\nconst out = [];\nfor (const item of $input.all()) {\n  const c = item.json;\n  if (!c || !c.id) continue;\n  if (sd.notified.includes(c.id)) continue;\n  sd.notified.push(c.id);\n  if (sd.notified.length > 500) sd.notified = sd.notified.slice(-400);\n  const mChat = (c.desc || '').match(/\\*\\*Chat:\\*\\* ([^\\s\\n]+)/);\n  if (!mChat) continue; // card creada a mano, sin origen WhatsApp\n  const mSol = (c.desc || '').match(/\\*\\*Solicitante:\\*\\* ([^\\s\\n]+)/);\n  const msg = `\u00e2\u0153\u2026 Resuelto: ${c.name}\\n${c.shortUrl}${mSol ? '\\n(solicitado por ' + mSol[1] + ')' : ''}`;\n  out.push({ json: { cardId: c.id, recipient: mChat[1], message: msg } });\n  if (mSol && mChat[1].endsWith('@g.us')) {\n    const solJid = mSol[1].includes('@') ? mSol[1] : mSol[1] + '@s.whatsapp.net';\n    if (solJid !== mChat[1]) out.push({ json: { cardId: c.id, recipient: solJid, message: msg } });\n  }\n}\nreturn out;"
                 }
             },
             {
@@ -1560,18 +1569,18 @@
         "autosaved": false,
         "workflowPublishHistory": [
             {
-                "createdAt": "2026-07-29T16:33:26.061Z",
-                "id": 306,
+                "createdAt": "2026-07-29T17:10:57.060Z",
+                "id": 308,
                 "workflowId": "LHbJVS18ZULzqToG",
-                "versionId": "5975f8a6-99fc-4c9e-8b40-fd4fb46fc959",
+                "versionId": "21d545d6-dec1-45f5-80ef-ebcbd6dc44ca",
                 "event": "activated",
                 "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
             },
             {
-                "createdAt": "2026-07-29T16:33:26.041Z",
-                "id": 305,
+                "createdAt": "2026-07-29T17:10:57.036Z",
+                "id": 307,
                 "workflowId": "LHbJVS18ZULzqToG",
-                "versionId": "5975f8a6-99fc-4c9e-8b40-fd4fb46fc959",
+                "versionId": "21d545d6-dec1-45f5-80ef-ebcbd6dc44ca",
                 "event": "deactivated",
                 "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
             }

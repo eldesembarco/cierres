@@ -1,5 +1,5 @@
 {
-    "updatedAt": "2026-07-29T16:26:52.599Z",
+    "updatedAt": "2026-07-29T17:11:03.315Z",
     "createdAt": "2026-07-28T14:13:32.784Z",
     "id": "JPYTBT00v78HcBsB",
     "name": "WA Requerimientos - Respuestas Mesa de Ayuda",
@@ -230,7 +230,7 @@
                 40
             ],
             "parameters": {
-                "jsCode": "// Toda novedad de la mesa se avisa por WhatsApp al chat que origino el ticket.\n// Excepcion: cuando es RESUELTO, avisa el cron del tablero (evita doble mensaje).\nconst out = [];\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  const d = $('Decidir Movimiento').all()[i] ? $('Decidir Movimiento').all()[i].json : null;\n  if (!d || d.esResuelto) continue;\n  const mChat = (d.cardDesc || '').match(/\\*\\*Chat:\\*\\* ([^\\s\\n]+)/);\n  if (!mChat) continue; // card sin origen WhatsApp\n  const nombre = (d.cardName || '').replace(/^[^0-9A-Za-z\\[\u00c3\u20ac-\u00c5\u00bf]+\\s*/, '');\n  out.push({ json: {\n    recipient: mChat[1],\n    message: `\u00f0\u0178\u201c\u2039 Novedad de la mesa de ayuda sobre tu requerimiento \\\"${nombre}\\\":\\n${d.subject}${d.ticketNum ? ' (Ticket #' + d.ticketNum + ')' : ''}\\n\\n${(d.resumen || '').slice(0, 250)}`\n  } });\n}\nreturn out;"
+                "jsCode": "// Toda novedad de la mesa se avisa al chat de origen y, si el origen es un grupo,\n// TAMBIEN por privado al numero del solicitante.\n// Excepcion: cuando es RESUELTO, avisa el cron del tablero (evita doble mensaje).\nconst out = [];\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  const d = $('Decidir Movimiento').all()[i] ? $('Decidir Movimiento').all()[i].json : null;\n  if (!d || d.esResuelto) continue;\n  const mChat = (d.cardDesc || '').match(/\\*\\*Chat:\\*\\* ([^\\s\\n]+)/);\n  if (!mChat) continue; // card sin origen WhatsApp\n  const mSol = (d.cardDesc || '').match(/\\*\\*Solicitante:\\*\\* ([^\\s\\n]+)/);\n  const nombre = (d.cardName || '').replace(/^[^0-9A-Za-z\\[\u00c3\u20ac-\u00c5\u00bf]+\\s*/, '');\n  const msg = `\u00f0\u0178\u201c\u2039 Novedad de la mesa de ayuda sobre tu requerimiento \\\"${nombre}\\\":\\n${d.subject}${d.ticketNum ? ' (Ticket #' + d.ticketNum + ')' : ''}\\n\\n${(d.resumen || '').slice(0, 250)}`;\n  out.push({ json: { recipient: mChat[1], message: msg } });\n  if (mSol && mChat[1].endsWith('@g.us')) {\n    const solJid = mSol[1].includes('@') ? mSol[1] : mSol[1] + '@s.whatsapp.net';\n    if (solJid !== mChat[1]) out.push({ json: { recipient: solJid, message: msg } });\n  }\n}\nreturn out;"
             }
         },
         {
@@ -706,6 +706,7 @@
         "global": {
             "ticketMap": {
                 "271212": "tAnZsa3n",
+                "271318": "RscDGe7d",
                 "660001": "92M4N5e8"
             },
             "mailsVistos": [
@@ -727,7 +728,12 @@
                 "19fa4a9b2759186f",
                 "19fa4777072ac1b5",
                 "19faea4248324272",
-                "19faea511920b9fa"
+                "19faea511920b9fa",
+                "19faeb6b6b58f2ba",
+                "19faecb3668e7e46",
+                "19faecf6852f5a78",
+                "19faed1b2ff90dc1",
+                "19faf0104fdbf974"
             ],
             "mailInit": true
         },
@@ -737,9 +743,9 @@
     },
     "meta": null,
     "pinData": null,
-    "versionId": "ed939849-f756-4b41-86a0-47661230ba08",
-    "activeVersionId": "ed939849-f756-4b41-86a0-47661230ba08",
-    "versionCounter": 74,
+    "versionId": "dc5378b6-6529-4243-8edf-762fdb601339",
+    "activeVersionId": "dc5378b6-6529-4243-8edf-762fdb601339",
+    "versionCounter": 82,
     "triggerCount": 1,
     "shared": [
         {
@@ -762,9 +768,9 @@
     ],
     "tags": [],
     "activeVersion": {
-        "updatedAt": "2026-07-29T16:26:52.601Z",
-        "createdAt": "2026-07-29T16:26:52.601Z",
-        "versionId": "ed939849-f756-4b41-86a0-47661230ba08",
+        "updatedAt": "2026-07-29T17:11:03.319Z",
+        "createdAt": "2026-07-29T17:11:03.319Z",
+        "versionId": "dc5378b6-6529-4243-8edf-762fdb601339",
         "workflowId": "JPYTBT00v78HcBsB",
         "nodes": [
             {
@@ -990,7 +996,7 @@
                     40
                 ],
                 "parameters": {
-                    "jsCode": "// Toda novedad de la mesa se avisa por WhatsApp al chat que origino el ticket.\n// Excepcion: cuando es RESUELTO, avisa el cron del tablero (evita doble mensaje).\nconst out = [];\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  const d = $('Decidir Movimiento').all()[i] ? $('Decidir Movimiento').all()[i].json : null;\n  if (!d || d.esResuelto) continue;\n  const mChat = (d.cardDesc || '').match(/\\*\\*Chat:\\*\\* ([^\\s\\n]+)/);\n  if (!mChat) continue; // card sin origen WhatsApp\n  const nombre = (d.cardName || '').replace(/^[^0-9A-Za-z\\[\u00c3\u20ac-\u00c5\u00bf]+\\s*/, '');\n  out.push({ json: {\n    recipient: mChat[1],\n    message: `\u00f0\u0178\u201c\u2039 Novedad de la mesa de ayuda sobre tu requerimiento \\\"${nombre}\\\":\\n${d.subject}${d.ticketNum ? ' (Ticket #' + d.ticketNum + ')' : ''}\\n\\n${(d.resumen || '').slice(0, 250)}`\n  } });\n}\nreturn out;"
+                    "jsCode": "// Toda novedad de la mesa se avisa al chat de origen y, si el origen es un grupo,\n// TAMBIEN por privado al numero del solicitante.\n// Excepcion: cuando es RESUELTO, avisa el cron del tablero (evita doble mensaje).\nconst out = [];\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  const d = $('Decidir Movimiento').all()[i] ? $('Decidir Movimiento').all()[i].json : null;\n  if (!d || d.esResuelto) continue;\n  const mChat = (d.cardDesc || '').match(/\\*\\*Chat:\\*\\* ([^\\s\\n]+)/);\n  if (!mChat) continue; // card sin origen WhatsApp\n  const mSol = (d.cardDesc || '').match(/\\*\\*Solicitante:\\*\\* ([^\\s\\n]+)/);\n  const nombre = (d.cardName || '').replace(/^[^0-9A-Za-z\\[\u00c3\u20ac-\u00c5\u00bf]+\\s*/, '');\n  const msg = `\u00f0\u0178\u201c\u2039 Novedad de la mesa de ayuda sobre tu requerimiento \\\"${nombre}\\\":\\n${d.subject}${d.ticketNum ? ' (Ticket #' + d.ticketNum + ')' : ''}\\n\\n${(d.resumen || '').slice(0, 250)}`;\n  out.push({ json: { recipient: mChat[1], message: msg } });\n  if (mSol && mChat[1].endsWith('@g.us')) {\n    const solJid = mSol[1].includes('@') ? mSol[1] : mSol[1] + '@s.whatsapp.net';\n    if (solJid !== mChat[1]) out.push({ json: { recipient: solJid, message: msg } });\n  }\n}\nreturn out;"
                 }
             },
             {
@@ -1451,18 +1457,18 @@
         "autosaved": false,
         "workflowPublishHistory": [
             {
-                "createdAt": "2026-07-29T16:26:52.651Z",
-                "id": 304,
+                "createdAt": "2026-07-29T17:11:03.383Z",
+                "id": 310,
                 "workflowId": "JPYTBT00v78HcBsB",
-                "versionId": "ed939849-f756-4b41-86a0-47661230ba08",
+                "versionId": "dc5378b6-6529-4243-8edf-762fdb601339",
                 "event": "activated",
                 "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
             },
             {
-                "createdAt": "2026-07-29T16:26:52.633Z",
-                "id": 303,
+                "createdAt": "2026-07-29T17:11:03.362Z",
+                "id": 309,
                 "workflowId": "JPYTBT00v78HcBsB",
-                "versionId": "ed939849-f756-4b41-86a0-47661230ba08",
+                "versionId": "dc5378b6-6529-4243-8edf-762fdb601339",
                 "event": "deactivated",
                 "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
             }

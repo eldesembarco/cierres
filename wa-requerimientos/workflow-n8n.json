@@ -1,5 +1,5 @@
 {
-    "updatedAt": "2026-07-28T19:26:03.408Z",
+    "updatedAt": "2026-07-29T17:11:23.804Z",
     "createdAt": "2026-07-27T17:19:45.942Z",
     "id": "G3YDTzNlb8i1x1Z4",
     "name": "WA Requerimientos \u00e2\u2020\u2019 Trello",
@@ -914,7 +914,7 @@
             ],
             "parameters": {
                 "mode": "runOnceForEachItem",
-                "jsCode": "const src = $('Parsear Resp Ayres').item.json;\nconst card = $json;\nconst PASO_AYRES = '6a689bcabc131c785ef97206', LO_TOMO = '6a68db9427fa9384d7e8b3d0', RESUELTO = '6a688f083afd2addaf2f570e';\nlet moveTo = '';\nif (src.esResuelto) { if (card.idList && card.idList !== RESUELTO) moveTo = RESUELTO; }\nelse if (card.idList === PASO_AYRES) moveTo = LO_TOMO;\nconst comentario = `${src.esResuelto ? '\u00e2\u0153\u2026 Ayres IT dio por RESUELTO el caso' : '\u00f0\u0178\u017d\u00ab Respuesta de Ayres IT (WhatsApp)'}\\n\\nDe: ${src.sender}\\n\\n${(src.texto || '').slice(0, 400)}`;\nconst mChat = (card.desc || '').match(/\\*\\*Chat:\\*\\* ([^\\s\\n]+)/);\nconst nombre = (card.name || '').replace(/^[^0-9A-Za-z\\[\u00c3\u20ac-\u00c5\u00bf]+\\s*/, '');\nconst aviso = (!src.esResuelto && mChat) ? { recipient: mChat[1], message: `\u00f0\u0178\u201c\u2039 Novedad de Ayres IT sobre tu requerimiento \\\"${nombre}\\\":\\n${(src.texto || '').slice(0, 250)}` } : null;\nreturn { json: { cardShort: src.cardShort, comentario, moveTo, tieneAviso: !!aviso, recipient: aviso ? aviso.recipient : '', message: aviso ? aviso.message : '' } };"
+                "jsCode": "const src = $('Parsear Resp Ayres').item.json;\nconst card = $json;\nconst PASO_AYRES = '6a689bcabc131c785ef97206', LO_TOMO = '6a68db9427fa9384d7e8b3d0', RESUELTO = '6a688f083afd2addaf2f570e';\nlet moveTo = '';\nif (src.esResuelto) { if (card.idList && card.idList !== RESUELTO) moveTo = RESUELTO; }\nelse if (card.idList === PASO_AYRES) moveTo = LO_TOMO;\nconst comentario = `${src.esResuelto ? '\u00e2\u0153\u2026 Ayres IT dio por RESUELTO el caso' : '\u00f0\u0178\u017d\u00ab Respuesta de Ayres IT (WhatsApp)'}\\n\\nDe: ${src.sender}\\n\\n${(src.texto || '').slice(0, 400)}`;\nconst mChat = (card.desc || '').match(/\\*\\*Chat:\\*\\* ([^\\s\\n]+)/);\nconst nombre = (card.name || '').replace(/^[^0-9A-Za-z\\[\u00c3\u20ac-\u00c5\u00bf]+\\s*/, '');\nconst mSol = (card.desc || '').match(/\\*\\*Solicitante:\\*\\* ([^\\s\\n]+)/);\nconst aviso = (!src.esResuelto && mChat) ? { recipient: mChat[1], message: `\u00f0\u0178\u201c\u2039 Novedad de Ayres IT sobre tu requerimiento \\\"${nombre}\\\":\\n${(src.texto || '').slice(0, 250)}` } : null;\nreturn { json: { cardShort: src.cardShort, comentario, moveTo, tieneAviso: !!aviso, recipient: aviso ? aviso.recipient : '', message: aviso ? aviso.message : '', solicitante: mSol ? mSol[1] : '' } };"
             }
         },
         {
@@ -1041,8 +1041,8 @@
                 700
             ],
             "parameters": {
-                "mode": "runOnceForEachItem",
-                "jsCode": "const n = $('Armar Novedad Ayres').item.json;\nif (!n.tieneAviso) return { json: { recipient: '', message: '' } };\nreturn { json: { recipient: n.recipient, message: n.message } };"
+                "mode": "runOnceForAllItems",
+                "jsCode": "// Aviso al chat de origen y, si es grupo, tambien al solicitante por privado.\nconst out = [];\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  const n = $('Armar Novedad Ayres').all()[i] ? $('Armar Novedad Ayres').all()[i].json : null;\n  if (!n || !n.tieneAviso) continue;\n  out.push({ json: { recipient: n.recipient, message: n.message } });\n  if (n.solicitante && n.recipient.endsWith('@g.us')) {\n    const solJid = n.solicitante.includes('@') ? n.solicitante : n.solicitante + '@s.whatsapp.net';\n    if (solJid !== n.recipient) out.push({ json: { recipient: solJid, message: n.message } });\n  }\n}\nreturn out;"
             }
         },
         {
@@ -1582,16 +1582,25 @@
                 "QA-801",
                 "QA-802",
                 "QA-803",
-                "QA-804"
+                "QA-804",
+                "h1759780380",
+                "h-1314281716",
+                "h469107554",
+                "h1039613186",
+                "h-1561719950",
+                "QA-900",
+                "h-1464054827",
+                "h515424678",
+                "h-1861747543"
             ],
             "lastTicket": {
                 "5491157935007@s.whatsapp.net|5491157935007": {
-                    "cardId": "6a68f2305f0861bf5d67aef7",
-                    "cardName": "\u00f0\u0178\u0178\u00a2 [Devoto] Pedir 10 rollos de papel t\u00c3\u00a9rmico para impresora Devoto",
-                    "shortUrl": "https://trello.com/c/SfT0ik4M",
-                    "ts": 1785262640557,
+                    "cardId": "6a6a25cf94d6f678a1ce6c43",
+                    "cardName": "\u00f0\u0178\u0178\u00a1 Reparar lector de c\u00c3\u00b3digo de barras de dep\u00c3\u00b3sito",
+                    "shortUrl": "https://trello.com/c/92M4N5e8",
+                    "ts": 1785341392141,
                     "textos": [
-                        "aparte de eso, pedir 10 rollos de papel termico para la impresora de Devoto"
+                        "QA transiciones: el lector de codigo de barras del deposito lee salteado"
                     ]
                 },
                 "120363410062969047@g.us|5491171241480": {
@@ -1601,22 +1610,64 @@
                     "ts": 1785259018681
                 },
                 "120363410062969047@g.us|5491157935007": {
-                    "cardId": "6a68ca46a1a832d6a2e360ac",
-                    "cardName": "\u00f0\u0178\u0178\u00a1 [MrT Jos\u00c3\u00a9 C Paz] Atenci\u00c3\u00b3n: Servicio mobile caducar\u00c3\u00a1 en 5 d\u00c3\u00adas",
-                    "shortUrl": "https://trello.com/c/tAnZsa3n",
-                    "ts": 1785252424433
+                    "cardId": "6a6a31e7f428004634051e58",
+                    "cardName": "\u00f0\u0178\u0178\u00a1 [Ramos Mejia] Habilitar Ramos Mejia ambos turnos 28/7",
+                    "shortUrl": "https://trello.com/c/J33RddWw",
+                    "ts": 1785344487683,
+                    "textos": [
+                        "Habilitar Ramos Mejia ambos turnos 28/7"
+                    ]
                 },
                 "120363410062969047@g.us|5491153371486": {
-                    "cardId": "6a68d760896a1b709d5fc894",
-                    "cardName": "\u00f0\u0178\u0178\u00a1 Crear bot\u00c3\u00b3n delivery propio en Tango",
-                    "shortUrl": "https://trello.com/c/DhUPpH1i",
-                    "ts": 1785255776706
+                    "cardId": "6a6a15d9a3fc835f9e495b82",
+                    "cardName": "\u00f0\u0178\u201d\u00b4 [Berisso] Reparar acceso al sistema Tango en Berisso por licencia vencida",
+                    "shortUrl": "https://trello.com/c/D8Ij28pv",
+                    "ts": 1785337305561,
+                    "textos": [
+                        "Buen d\u00c3\u00ada \nBerisso no puede ingresar al sistema tango. Dice licencia vencida."
+                    ]
                 },
                 "120363410062969047@g.us|5491172361797": {
                     "cardId": "6a68f0857fccc7e05e876890",
                     "cardName": "\u00f0\u0178\u0178\u00a1 Avanzar aplicaci\u00c3\u00b3n con Tango",
                     "shortUrl": "https://trello.com/c/gROUsGIS",
                     "ts": 1785262214023
+                },
+                "120363410062969047@g.us|5491122625243": {
+                    "cardId": "6a69ebb101b0afce4bbf259b",
+                    "cardName": "\u00f0\u0178\u0178\u00a1 Crear botones y sumar c\u00c3\u00b3digos en Tango",
+                    "shortUrl": "https://trello.com/c/1NlsrCYn",
+                    "ts": 1785326513970,
+                    "textos": [
+                        "hola, necesito:\n1- Que en base a la planificaci\u00c3\u00b3n que mande por mail crees los botones para comandar en tango\n2- Que sumes los c\u00c3\u00b3digos de cada acci\u00c3\u00b3n en el listado de la planificaci\u00c3\u00b3n"
+                    ]
+                },
+                "120363410062969047@g.us|5491136863480": {
+                    "cardId": "6a6a37e6a21787967e7e04b1",
+                    "cardName": "\u00f0\u0178\u0178\u00a2 Agregar locales para auditar",
+                    "shortUrl": "https://trello.com/c/2krhKEE9",
+                    "ts": 1785346023210,
+                    "textos": [
+                        "Buenas! \nAgregar La Plata y La Plata 2 a locales para auditar. \nSolange Romero \nSromero@eldesembarco.com"
+                    ]
+                },
+                "120363410062969047@g.us|5491162087331": {
+                    "cardId": "6a6a1e12e0b5917f53eaaf3e",
+                    "cardName": "\u00f0\u0178\u0178\u00a1 Crear usuarios y accesos para nuevas aperturas y modificar Qlick",
+                    "shortUrl": "https://trello.com/c/NFZRoBDP",
+                    "ts": 1785339410341,
+                    "textos": [
+                        "Qlick: \nA m\u00c3\u00ad usuario agregarme Mrt Parque Chas \n\nLocal apertura Mr Tasty/Mila&go Plottier \n- usuario de Qlick\n- crear Email corporativo \n- crear usuario Raven \n- QR Google \nLocal apertura Mr Tasty Resistencia 2\n* Usuario Qlick\n* Crear email corporativo \n* Crear usuario Raven \n* QR Google"
+                    ]
+                },
+                "120363410062969047@g.us|5491125901818": {
+                    "cardId": "6a6a3ff9e461cb65dd2ac65a",
+                    "cardName": "\u00f0\u0178\u201d\u00b4 [Caballito] Habilitar edici\u00c3\u00b3n de caja Mr Tasty Caballito",
+                    "shortUrl": "https://trello.com/c/TvhWRbjw",
+                    "ts": 1785348090461,
+                    "textos": [
+                        "Buenas! \nPor favor habilitar edici\u00c3\u00b3n de la caja Mrt Caballito 28/7 TM \nGracias."
+                    ]
                 }
             },
             "pendingUndo": {}
@@ -1624,9 +1675,9 @@
     },
     "meta": null,
     "pinData": null,
-    "versionId": "40d64b6f-f4aa-4df8-a97d-088ee729e20b",
-    "activeVersionId": "40d64b6f-f4aa-4df8-a97d-088ee729e20b",
-    "versionCounter": 49,
+    "versionId": "da1f8109-b497-4b31-8846-0a2070404c18",
+    "activeVersionId": "da1f8109-b497-4b31-8846-0a2070404c18",
+    "versionCounter": 61,
     "triggerCount": 1,
     "shared": [
         {
@@ -1649,9 +1700,9 @@
     ],
     "tags": [],
     "activeVersion": {
-        "updatedAt": "2026-07-28T19:26:03.411Z",
-        "createdAt": "2026-07-28T19:26:03.411Z",
-        "versionId": "40d64b6f-f4aa-4df8-a97d-088ee729e20b",
+        "updatedAt": "2026-07-29T17:11:23.806Z",
+        "createdAt": "2026-07-29T17:11:23.806Z",
+        "versionId": "da1f8109-b497-4b31-8846-0a2070404c18",
         "workflowId": "G3YDTzNlb8i1x1Z4",
         "nodes": [
             {
@@ -2561,7 +2612,7 @@
                 ],
                 "parameters": {
                     "mode": "runOnceForEachItem",
-                    "jsCode": "const src = $('Parsear Resp Ayres').item.json;\nconst card = $json;\nconst PASO_AYRES = '6a689bcabc131c785ef97206', LO_TOMO = '6a68db9427fa9384d7e8b3d0', RESUELTO = '6a688f083afd2addaf2f570e';\nlet moveTo = '';\nif (src.esResuelto) { if (card.idList && card.idList !== RESUELTO) moveTo = RESUELTO; }\nelse if (card.idList === PASO_AYRES) moveTo = LO_TOMO;\nconst comentario = `${src.esResuelto ? '\u00e2\u0153\u2026 Ayres IT dio por RESUELTO el caso' : '\u00f0\u0178\u017d\u00ab Respuesta de Ayres IT (WhatsApp)'}\\n\\nDe: ${src.sender}\\n\\n${(src.texto || '').slice(0, 400)}`;\nconst mChat = (card.desc || '').match(/\\*\\*Chat:\\*\\* ([^\\s\\n]+)/);\nconst nombre = (card.name || '').replace(/^[^0-9A-Za-z\\[\u00c3\u20ac-\u00c5\u00bf]+\\s*/, '');\nconst aviso = (!src.esResuelto && mChat) ? { recipient: mChat[1], message: `\u00f0\u0178\u201c\u2039 Novedad de Ayres IT sobre tu requerimiento \\\"${nombre}\\\":\\n${(src.texto || '').slice(0, 250)}` } : null;\nreturn { json: { cardShort: src.cardShort, comentario, moveTo, tieneAviso: !!aviso, recipient: aviso ? aviso.recipient : '', message: aviso ? aviso.message : '' } };"
+                    "jsCode": "const src = $('Parsear Resp Ayres').item.json;\nconst card = $json;\nconst PASO_AYRES = '6a689bcabc131c785ef97206', LO_TOMO = '6a68db9427fa9384d7e8b3d0', RESUELTO = '6a688f083afd2addaf2f570e';\nlet moveTo = '';\nif (src.esResuelto) { if (card.idList && card.idList !== RESUELTO) moveTo = RESUELTO; }\nelse if (card.idList === PASO_AYRES) moveTo = LO_TOMO;\nconst comentario = `${src.esResuelto ? '\u00e2\u0153\u2026 Ayres IT dio por RESUELTO el caso' : '\u00f0\u0178\u017d\u00ab Respuesta de Ayres IT (WhatsApp)'}\\n\\nDe: ${src.sender}\\n\\n${(src.texto || '').slice(0, 400)}`;\nconst mChat = (card.desc || '').match(/\\*\\*Chat:\\*\\* ([^\\s\\n]+)/);\nconst nombre = (card.name || '').replace(/^[^0-9A-Za-z\\[\u00c3\u20ac-\u00c5\u00bf]+\\s*/, '');\nconst mSol = (card.desc || '').match(/\\*\\*Solicitante:\\*\\* ([^\\s\\n]+)/);\nconst aviso = (!src.esResuelto && mChat) ? { recipient: mChat[1], message: `\u00f0\u0178\u201c\u2039 Novedad de Ayres IT sobre tu requerimiento \\\"${nombre}\\\":\\n${(src.texto || '').slice(0, 250)}` } : null;\nreturn { json: { cardShort: src.cardShort, comentario, moveTo, tieneAviso: !!aviso, recipient: aviso ? aviso.recipient : '', message: aviso ? aviso.message : '', solicitante: mSol ? mSol[1] : '' } };"
                 }
             },
             {
@@ -2688,8 +2739,8 @@
                     700
                 ],
                 "parameters": {
-                    "mode": "runOnceForEachItem",
-                    "jsCode": "const n = $('Armar Novedad Ayres').item.json;\nif (!n.tieneAviso) return { json: { recipient: '', message: '' } };\nreturn { json: { recipient: n.recipient, message: n.message } };"
+                    "mode": "runOnceForAllItems",
+                    "jsCode": "// Aviso al chat de origen y, si es grupo, tambien al solicitante por privado.\nconst out = [];\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  const n = $('Armar Novedad Ayres').all()[i] ? $('Armar Novedad Ayres').all()[i].json : null;\n  if (!n || !n.tieneAviso) continue;\n  out.push({ json: { recipient: n.recipient, message: n.message } });\n  if (n.solicitante && n.recipient.endsWith('@g.us')) {\n    const solJid = n.solicitante.includes('@') ? n.solicitante : n.solicitante + '@s.whatsapp.net';\n    if (solJid !== n.recipient) out.push({ json: { recipient: solJid, message: n.message } });\n  }\n}\nreturn out;"
                 }
             },
             {
@@ -3203,18 +3254,18 @@
         "autosaved": false,
         "workflowPublishHistory": [
             {
-                "createdAt": "2026-07-28T19:26:03.570Z",
-                "id": 291,
+                "createdAt": "2026-07-29T17:11:23.899Z",
+                "id": 312,
                 "workflowId": "G3YDTzNlb8i1x1Z4",
-                "versionId": "40d64b6f-f4aa-4df8-a97d-088ee729e20b",
+                "versionId": "da1f8109-b497-4b31-8846-0a2070404c18",
                 "event": "activated",
                 "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
             },
             {
-                "createdAt": "2026-07-28T19:26:03.517Z",
-                "id": 290,
+                "createdAt": "2026-07-29T17:11:23.872Z",
+                "id": 311,
                 "workflowId": "G3YDTzNlb8i1x1Z4",
-                "versionId": "40d64b6f-f4aa-4df8-a97d-088ee729e20b",
+                "versionId": "da1f8109-b497-4b31-8846-0a2070404c18",
                 "event": "deactivated",
                 "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
             }
