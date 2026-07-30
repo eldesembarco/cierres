@@ -1,5 +1,5 @@
 {
-    "updatedAt": "2026-07-29T22:31:47.381Z",
+    "updatedAt": "2026-07-30T00:14:52.567Z",
     "createdAt": "2026-07-28T12:07:57.406Z",
     "id": "LHbJVS18ZULzqToG",
     "name": "WA Requerimientos - Trello Sync (mesa de ayuda + resueltos)",
@@ -551,6 +551,258 @@
             "retryOnFail": true,
             "maxTries": 2,
             "waitBetweenTries": 3000
+        },
+        {
+            "id": "http-cards-qlik",
+            "name": "Cards Qlik",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.4,
+            "position": [
+                220,
+                -640
+            ],
+            "parameters": {
+                "method": "GET",
+                "url": "https://api.trello.com/1/lists/6a6a92cb2235076b929d30fa/cards",
+                "authentication": "predefinedCredentialType",
+                "nodeCredentialType": "trelloApi",
+                "sendQuery": true,
+                "queryParameters": {
+                    "parameters": [
+                        {
+                            "name": "fields",
+                            "value": "name,desc,shortUrl"
+                        }
+                    ]
+                },
+                "options": {
+                    "response": {
+                        "response": {
+                            "responseFormat": "json"
+                        }
+                    },
+                    "timeout": 20000
+                }
+            },
+            "credentials": {
+                "trelloApi": {
+                    "id": "MUcIdiWUZ1Vhdf2h",
+                    "name": "Trello Desembarco"
+                }
+            }
+        },
+        {
+            "id": "code-clasif-qlik",
+            "name": "Clasificar Qlik",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                440,
+                -640
+            ],
+            "parameters": {
+                "jsCode": "// Pedidos Qlik: altas/bajas de usuarios van a la planilla semanal; el resto sale\n// directo por WhatsApp al celular de Qlik.\nconst QLIK_WA = '5491132900699@s.whatsapp.net'; // celular Mesa Qlik\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.sentMesa)) sd.sentMesa = [];\nconst out = [];\nfor (const item of $input.all()) {\n  const c = item.json;\n  if (!c || !c.id) continue;\n  if (sd.sentMesa.includes(c.id)) continue;\n  const texto = (c.name || '') + ' ' + ((c.desc || '').split('\\n---')[0]);\n  const esUsuarios = /(usuari|alta de|baja de|licencia)/i.test(texto);\n  const nombre = (c.name || '').replace(/^[^0-9A-Za-z\\[\u00c3\u20ac-\u00c5\u00bf]+\\s*/, '');\n  const ref = (((c.shortUrl || '').split('/c/')[1]) || c.id);\n  const detalle = (c.desc || '').split('\\n---')[0].trim();\n  const mSol = (c.desc || '').match(/\\*\\*Solicitante:\\*\\* ([^\\s\\n]+)/);\n  out.push({ json: {\n    tipo: esUsuarios ? 'usuarios' : 'otro',\n    cardId: c.id, cardName: c.name, ref,\n    fecha: new Date().toISOString().slice(0, 10),\n    detalle: nombre + (detalle && detalle !== nombre ? ' \u00e2\u20ac\u201d ' + detalle : ''),\n    solicitante: mSol ? mSol[1] : '',\n    recipient: QLIK_WA,\n    waMessage: `\u00f0\u0178\u2020\u2022 *Requerimiento El Desembarco - Qlik* (Ref ${ref})\\n\\n${nombre}\\n\\n${detalle}\\n\\n_Por favor responder citando este mensaje._`\n  } });\n}\nreturn out;"
+            }
+        },
+        {
+            "id": "if-qlik-usuarios",
+            "name": "Es Alta Usuarios",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2.2,
+            "position": [
+                660,
+                -640
+            ],
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "version": 2,
+                        "leftValue": "",
+                        "caseSensitive": true,
+                        "typeValidation": "loose"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                        {
+                            "leftValue": "={{ $json.tipo }}",
+                            "rightValue": "usuarios",
+                            "operator": {
+                                "type": "string",
+                                "operation": "equals"
+                            },
+                            "id": "condition-1785370019848-br2xdsf75"
+                        }
+                    ]
+                },
+                "options": {}
+            }
+        },
+        {
+            "id": "http-qlik-tabla",
+            "name": "Insertar Qlik Usuario",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.4,
+            "position": [
+                880,
+                -720
+            ],
+            "parameters": {
+                "method": "POST",
+                "url": "https://n8n.srv1312396.hstgr.cloud/api/v1/data-tables/8TuBEc9Y7hMJFwjl/rows",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "X-N8N-API-KEY",
+                            "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJiNjBkNWU1YS1lYjNmLTQ4ZTItYTZlOC1iYzUyMTUzZTFhYzMiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiZDFhY2E0YWYtYjExMS00ZmU2LTlkZTItZmIyNWE3ODk1ZDRkIiwiaWF0IjoxNzc2OTUwMjc3fQ.K3a87ubNNw-N_ri3Q7mnYgDD2etP2l9OyoMA9Ut3L5Y"
+                        },
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ JSON.stringify({ data: [{ fecha: $json.fecha, detalle: $json.detalle, solicitante: $json.solicitante, card: $json.ref }] }) }}",
+                "options": {
+                    "response": {
+                        "response": {
+                            "responseFormat": "json"
+                        }
+                    },
+                    "timeout": 20000
+                }
+            },
+            "retryOnFail": true,
+            "maxTries": 2,
+            "waitBetweenTries": 3000
+        },
+        {
+            "id": "http-qlik-com-u",
+            "name": "Comentar Qlik Usuario",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.4,
+            "position": [
+                1100,
+                -720
+            ],
+            "parameters": {
+                "method": "POST",
+                "url": "=https://api.trello.com/1/cards/{{ $('Clasificar Qlik').item.json.cardId }}/actions/comments",
+                "authentication": "predefinedCredentialType",
+                "nodeCredentialType": "trelloApi",
+                "sendQuery": true,
+                "queryParameters": {
+                    "parameters": [
+                        {
+                            "name": "text",
+                            "value": "={{ '\u00f0\u0178\u00a7\u00be Cargado en la planilla semanal de usuarios Qlik (sale el viernes) \u00e2\u20ac\u201d ' + new Date().toISOString() }}"
+                        }
+                    ]
+                },
+                "options": {
+                    "timeout": 20000
+                }
+            },
+            "credentials": {
+                "trelloApi": {
+                    "id": "MUcIdiWUZ1Vhdf2h",
+                    "name": "Trello Desembarco"
+                }
+            },
+            "onError": "continueRegularOutput"
+        },
+        {
+            "id": "http-qlik-outbox",
+            "name": "Outbox Qlik WA",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.4,
+            "position": [
+                880,
+                -560
+            ],
+            "parameters": {
+                "method": "POST",
+                "url": "https://n8n.srv1312396.hstgr.cloud/api/v1/data-tables/W7rPitDcioXfqBfb/rows",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "X-N8N-API-KEY",
+                            "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJiNjBkNWU1YS1lYjNmLTQ4ZTItYTZlOC1iYzUyMTUzZTFhYzMiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiZDFhY2E0YWYtYjExMS00ZmU2LTlkZTItZmIyNWE3ODk1ZDRkIiwiaWF0IjoxNzc2OTUwMjc3fQ.K3a87ubNNw-N_ri3Q7mnYgDD2etP2l9OyoMA9Ut3L5Y"
+                        },
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ JSON.stringify({ data: [{ recipient: $json.recipient, message: $json.waMessage, quoted_message_id: '', quoted_sender_jid: '', quoted_content: '', status: 'pending' }] }) }}",
+                "options": {
+                    "response": {
+                        "response": {
+                            "responseFormat": "json"
+                        }
+                    },
+                    "timeout": 20000
+                }
+            },
+            "onError": "continueRegularOutput",
+            "retryOnFail": true,
+            "maxTries": 2,
+            "waitBetweenTries": 3000
+        },
+        {
+            "id": "http-qlik-com-o",
+            "name": "Comentar Qlik WA",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.4,
+            "position": [
+                1100,
+                -560
+            ],
+            "parameters": {
+                "method": "POST",
+                "url": "=https://api.trello.com/1/cards/{{ $('Clasificar Qlik').item.json.cardId }}/actions/comments",
+                "authentication": "predefinedCredentialType",
+                "nodeCredentialType": "trelloApi",
+                "sendQuery": true,
+                "queryParameters": {
+                    "parameters": [
+                        {
+                            "name": "text",
+                            "value": "={{ '\u00f0\u0178\u201c\u00b1 Enviado por WhatsApp a Mesa Qlik (' + $('Clasificar Qlik').item.json.recipient + ') el ' + new Date().toISOString() }}"
+                        }
+                    ]
+                },
+                "options": {
+                    "timeout": 20000
+                }
+            },
+            "credentials": {
+                "trelloApi": {
+                    "id": "MUcIdiWUZ1Vhdf2h",
+                    "name": "Trello Desembarco"
+                }
+            },
+            "onError": "continueRegularOutput"
+        },
+        {
+            "id": "code-marcar-qlik",
+            "name": "Marcar Qlik",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1320,
+                -640
+            ],
+            "parameters": {
+                "mode": "runOnceForEachItem",
+                "jsCode": "const sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.sentMesa)) sd.sentMesa = [];\nconst src = $('Clasificar Qlik').item.json;\nif (!sd.sentMesa.includes(src.cardId)) sd.sentMesa.push(src.cardId);\nif (sd.sentMesa.length > 300) sd.sentMesa = sd.sentMesa.slice(-200);\nreturn { json: { ok: true } };"
+            }
         }
     ],
     "connections": {
@@ -569,6 +821,11 @@
                     },
                     {
                         "node": "Cards Enviar Ayres",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Cards Qlik",
                         "type": "main",
                         "index": 0
                     }
@@ -752,6 +1009,90 @@
                     }
                 ]
             ]
+        },
+        "Cards Qlik": {
+            "main": [
+                [
+                    {
+                        "node": "Clasificar Qlik",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Clasificar Qlik": {
+            "main": [
+                [
+                    {
+                        "node": "Es Alta Usuarios",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Es Alta Usuarios": {
+            "main": [
+                [
+                    {
+                        "node": "Insertar Qlik Usuario",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Outbox Qlik WA",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Insertar Qlik Usuario": {
+            "main": [
+                [
+                    {
+                        "node": "Comentar Qlik Usuario",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Comentar Qlik Usuario": {
+            "main": [
+                [
+                    {
+                        "node": "Marcar Qlik",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Outbox Qlik WA": {
+            "main": [
+                [
+                    {
+                        "node": "Comentar Qlik WA",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Comentar Qlik WA": {
+            "main": [
+                [
+                    {
+                        "node": "Marcar Qlik",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
         }
     },
     "settings": {
@@ -794,7 +1135,10 @@
                 "6a6a658fc024ab6352e18ecb",
                 "6a6a6586e34693b3ddeedddf",
                 "6a6a79c6ed6b03548ec776b9",
-                "6a6a7f809cd539bf60f8a1c4"
+                "6a6a7f809cd539bf60f8a1c4",
+                "6a6a72383f2bd09c3a780e88",
+                "6a6a37e6a21787967e7e04b1",
+                "6a6a95708b3fa69d223c8886"
             ],
             "sentMesa": [
                 "6a68dc2f5209629993edcc67",
@@ -803,7 +1147,9 @@
                 "6a6a15d9a3fc835f9e495b82",
                 "6a6a30e1ea7422e0c80adabe",
                 "6a6a6f6fcbdf0dbf218c62f0",
-                "6a6a72383f2bd09c3a780e88"
+                "6a6a72383f2bd09c3a780e88",
+                "6a6a97030a255f2f982bba03",
+                "6a6a971c7b9f056aa0f47281"
             ],
             "sentMesaAt": {
                 "6a6a30e1ea7422e0c80adabe": 1785344237348,
@@ -817,9 +1163,9 @@
     },
     "meta": null,
     "pinData": null,
-    "versionId": "9e8f0cd4-030c-42d4-adce-23d1abce085c",
-    "activeVersionId": "9e8f0cd4-030c-42d4-adce-23d1abce085c",
-    "versionCounter": 84,
+    "versionId": "3f73db42-4802-4ca9-a9e6-d67be56be7fe",
+    "activeVersionId": "3f73db42-4802-4ca9-a9e6-d67be56be7fe",
+    "versionCounter": 94,
     "triggerCount": 1,
     "shared": [
         {
@@ -842,9 +1188,9 @@
     ],
     "tags": [],
     "activeVersion": {
-        "updatedAt": "2026-07-29T22:31:47.382Z",
-        "createdAt": "2026-07-29T22:31:47.382Z",
-        "versionId": "9e8f0cd4-030c-42d4-adce-23d1abce085c",
+        "updatedAt": "2026-07-30T00:14:52.569Z",
+        "createdAt": "2026-07-30T00:14:52.569Z",
+        "versionId": "3f73db42-4802-4ca9-a9e6-d67be56be7fe",
         "workflowId": "LHbJVS18ZULzqToG",
         "nodes": [
             {
@@ -1391,6 +1737,258 @@
                 "retryOnFail": true,
                 "maxTries": 2,
                 "waitBetweenTries": 3000
+            },
+            {
+                "id": "http-cards-qlik",
+                "name": "Cards Qlik",
+                "type": "n8n-nodes-base.httpRequest",
+                "typeVersion": 4.4,
+                "position": [
+                    220,
+                    -640
+                ],
+                "parameters": {
+                    "method": "GET",
+                    "url": "https://api.trello.com/1/lists/6a6a92cb2235076b929d30fa/cards",
+                    "authentication": "predefinedCredentialType",
+                    "nodeCredentialType": "trelloApi",
+                    "sendQuery": true,
+                    "queryParameters": {
+                        "parameters": [
+                            {
+                                "name": "fields",
+                                "value": "name,desc,shortUrl"
+                            }
+                        ]
+                    },
+                    "options": {
+                        "response": {
+                            "response": {
+                                "responseFormat": "json"
+                            }
+                        },
+                        "timeout": 20000
+                    }
+                },
+                "credentials": {
+                    "trelloApi": {
+                        "id": "MUcIdiWUZ1Vhdf2h",
+                        "name": "Trello Desembarco"
+                    }
+                }
+            },
+            {
+                "id": "code-clasif-qlik",
+                "name": "Clasificar Qlik",
+                "type": "n8n-nodes-base.code",
+                "typeVersion": 2,
+                "position": [
+                    440,
+                    -640
+                ],
+                "parameters": {
+                    "jsCode": "// Pedidos Qlik: altas/bajas de usuarios van a la planilla semanal; el resto sale\n// directo por WhatsApp al celular de Qlik.\nconst QLIK_WA = '5491132900699@s.whatsapp.net'; // celular Mesa Qlik\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.sentMesa)) sd.sentMesa = [];\nconst out = [];\nfor (const item of $input.all()) {\n  const c = item.json;\n  if (!c || !c.id) continue;\n  if (sd.sentMesa.includes(c.id)) continue;\n  const texto = (c.name || '') + ' ' + ((c.desc || '').split('\\n---')[0]);\n  const esUsuarios = /(usuari|alta de|baja de|licencia)/i.test(texto);\n  const nombre = (c.name || '').replace(/^[^0-9A-Za-z\\[\u00c3\u20ac-\u00c5\u00bf]+\\s*/, '');\n  const ref = (((c.shortUrl || '').split('/c/')[1]) || c.id);\n  const detalle = (c.desc || '').split('\\n---')[0].trim();\n  const mSol = (c.desc || '').match(/\\*\\*Solicitante:\\*\\* ([^\\s\\n]+)/);\n  out.push({ json: {\n    tipo: esUsuarios ? 'usuarios' : 'otro',\n    cardId: c.id, cardName: c.name, ref,\n    fecha: new Date().toISOString().slice(0, 10),\n    detalle: nombre + (detalle && detalle !== nombre ? ' \u00e2\u20ac\u201d ' + detalle : ''),\n    solicitante: mSol ? mSol[1] : '',\n    recipient: QLIK_WA,\n    waMessage: `\u00f0\u0178\u2020\u2022 *Requerimiento El Desembarco - Qlik* (Ref ${ref})\\n\\n${nombre}\\n\\n${detalle}\\n\\n_Por favor responder citando este mensaje._`\n  } });\n}\nreturn out;"
+                }
+            },
+            {
+                "id": "if-qlik-usuarios",
+                "name": "Es Alta Usuarios",
+                "type": "n8n-nodes-base.if",
+                "typeVersion": 2.2,
+                "position": [
+                    660,
+                    -640
+                ],
+                "parameters": {
+                    "conditions": {
+                        "options": {
+                            "version": 2,
+                            "leftValue": "",
+                            "caseSensitive": true,
+                            "typeValidation": "loose"
+                        },
+                        "combinator": "and",
+                        "conditions": [
+                            {
+                                "leftValue": "={{ $json.tipo }}",
+                                "rightValue": "usuarios",
+                                "operator": {
+                                    "type": "string",
+                                    "operation": "equals"
+                                },
+                                "id": "condition-1785370019848-br2xdsf75"
+                            }
+                        ]
+                    },
+                    "options": {}
+                }
+            },
+            {
+                "id": "http-qlik-tabla",
+                "name": "Insertar Qlik Usuario",
+                "type": "n8n-nodes-base.httpRequest",
+                "typeVersion": 4.4,
+                "position": [
+                    880,
+                    -720
+                ],
+                "parameters": {
+                    "method": "POST",
+                    "url": "https://n8n.srv1312396.hstgr.cloud/api/v1/data-tables/8TuBEc9Y7hMJFwjl/rows",
+                    "sendHeaders": true,
+                    "headerParameters": {
+                        "parameters": [
+                            {
+                                "name": "X-N8N-API-KEY",
+                                "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJiNjBkNWU1YS1lYjNmLTQ4ZTItYTZlOC1iYzUyMTUzZTFhYzMiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiZDFhY2E0YWYtYjExMS00ZmU2LTlkZTItZmIyNWE3ODk1ZDRkIiwiaWF0IjoxNzc2OTUwMjc3fQ.K3a87ubNNw-N_ri3Q7mnYgDD2etP2l9OyoMA9Ut3L5Y"
+                            },
+                            {
+                                "name": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ]
+                    },
+                    "sendBody": true,
+                    "specifyBody": "json",
+                    "jsonBody": "={{ JSON.stringify({ data: [{ fecha: $json.fecha, detalle: $json.detalle, solicitante: $json.solicitante, card: $json.ref }] }) }}",
+                    "options": {
+                        "response": {
+                            "response": {
+                                "responseFormat": "json"
+                            }
+                        },
+                        "timeout": 20000
+                    }
+                },
+                "retryOnFail": true,
+                "maxTries": 2,
+                "waitBetweenTries": 3000
+            },
+            {
+                "id": "http-qlik-com-u",
+                "name": "Comentar Qlik Usuario",
+                "type": "n8n-nodes-base.httpRequest",
+                "typeVersion": 4.4,
+                "position": [
+                    1100,
+                    -720
+                ],
+                "parameters": {
+                    "method": "POST",
+                    "url": "=https://api.trello.com/1/cards/{{ $('Clasificar Qlik').item.json.cardId }}/actions/comments",
+                    "authentication": "predefinedCredentialType",
+                    "nodeCredentialType": "trelloApi",
+                    "sendQuery": true,
+                    "queryParameters": {
+                        "parameters": [
+                            {
+                                "name": "text",
+                                "value": "={{ '\u00f0\u0178\u00a7\u00be Cargado en la planilla semanal de usuarios Qlik (sale el viernes) \u00e2\u20ac\u201d ' + new Date().toISOString() }}"
+                            }
+                        ]
+                    },
+                    "options": {
+                        "timeout": 20000
+                    }
+                },
+                "credentials": {
+                    "trelloApi": {
+                        "id": "MUcIdiWUZ1Vhdf2h",
+                        "name": "Trello Desembarco"
+                    }
+                },
+                "onError": "continueRegularOutput"
+            },
+            {
+                "id": "http-qlik-outbox",
+                "name": "Outbox Qlik WA",
+                "type": "n8n-nodes-base.httpRequest",
+                "typeVersion": 4.4,
+                "position": [
+                    880,
+                    -560
+                ],
+                "parameters": {
+                    "method": "POST",
+                    "url": "https://n8n.srv1312396.hstgr.cloud/api/v1/data-tables/W7rPitDcioXfqBfb/rows",
+                    "sendHeaders": true,
+                    "headerParameters": {
+                        "parameters": [
+                            {
+                                "name": "X-N8N-API-KEY",
+                                "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJiNjBkNWU1YS1lYjNmLTQ4ZTItYTZlOC1iYzUyMTUzZTFhYzMiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiZDFhY2E0YWYtYjExMS00ZmU2LTlkZTItZmIyNWE3ODk1ZDRkIiwiaWF0IjoxNzc2OTUwMjc3fQ.K3a87ubNNw-N_ri3Q7mnYgDD2etP2l9OyoMA9Ut3L5Y"
+                            },
+                            {
+                                "name": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ]
+                    },
+                    "sendBody": true,
+                    "specifyBody": "json",
+                    "jsonBody": "={{ JSON.stringify({ data: [{ recipient: $json.recipient, message: $json.waMessage, quoted_message_id: '', quoted_sender_jid: '', quoted_content: '', status: 'pending' }] }) }}",
+                    "options": {
+                        "response": {
+                            "response": {
+                                "responseFormat": "json"
+                            }
+                        },
+                        "timeout": 20000
+                    }
+                },
+                "onError": "continueRegularOutput",
+                "retryOnFail": true,
+                "maxTries": 2,
+                "waitBetweenTries": 3000
+            },
+            {
+                "id": "http-qlik-com-o",
+                "name": "Comentar Qlik WA",
+                "type": "n8n-nodes-base.httpRequest",
+                "typeVersion": 4.4,
+                "position": [
+                    1100,
+                    -560
+                ],
+                "parameters": {
+                    "method": "POST",
+                    "url": "=https://api.trello.com/1/cards/{{ $('Clasificar Qlik').item.json.cardId }}/actions/comments",
+                    "authentication": "predefinedCredentialType",
+                    "nodeCredentialType": "trelloApi",
+                    "sendQuery": true,
+                    "queryParameters": {
+                        "parameters": [
+                            {
+                                "name": "text",
+                                "value": "={{ '\u00f0\u0178\u201c\u00b1 Enviado por WhatsApp a Mesa Qlik (' + $('Clasificar Qlik').item.json.recipient + ') el ' + new Date().toISOString() }}"
+                            }
+                        ]
+                    },
+                    "options": {
+                        "timeout": 20000
+                    }
+                },
+                "credentials": {
+                    "trelloApi": {
+                        "id": "MUcIdiWUZ1Vhdf2h",
+                        "name": "Trello Desembarco"
+                    }
+                },
+                "onError": "continueRegularOutput"
+            },
+            {
+                "id": "code-marcar-qlik",
+                "name": "Marcar Qlik",
+                "type": "n8n-nodes-base.code",
+                "typeVersion": 2,
+                "position": [
+                    1320,
+                    -640
+                ],
+                "parameters": {
+                    "mode": "runOnceForEachItem",
+                    "jsCode": "const sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.sentMesa)) sd.sentMesa = [];\nconst src = $('Clasificar Qlik').item.json;\nif (!sd.sentMesa.includes(src.cardId)) sd.sentMesa.push(src.cardId);\nif (sd.sentMesa.length > 300) sd.sentMesa = sd.sentMesa.slice(-200);\nreturn { json: { ok: true } };"
+                }
             }
         ],
         "connections": {
@@ -1409,6 +2007,11 @@
                         },
                         {
                             "node": "Cards Enviar Ayres",
+                            "type": "main",
+                            "index": 0
+                        },
+                        {
+                            "node": "Cards Qlik",
                             "type": "main",
                             "index": 0
                         }
@@ -1592,6 +2195,90 @@
                         }
                     ]
                 ]
+            },
+            "Cards Qlik": {
+                "main": [
+                    [
+                        {
+                            "node": "Clasificar Qlik",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Clasificar Qlik": {
+                "main": [
+                    [
+                        {
+                            "node": "Es Alta Usuarios",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Es Alta Usuarios": {
+                "main": [
+                    [
+                        {
+                            "node": "Insertar Qlik Usuario",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ],
+                    [
+                        {
+                            "node": "Outbox Qlik WA",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Insertar Qlik Usuario": {
+                "main": [
+                    [
+                        {
+                            "node": "Comentar Qlik Usuario",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Comentar Qlik Usuario": {
+                "main": [
+                    [
+                        {
+                            "node": "Marcar Qlik",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Outbox Qlik WA": {
+                "main": [
+                    [
+                        {
+                            "node": "Comentar Qlik WA",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Comentar Qlik WA": {
+                "main": [
+                    [
+                        {
+                            "node": "Marcar Qlik",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
             }
         },
         "authors": "Sistemas Desembarco",
@@ -1600,18 +2287,18 @@
         "autosaved": false,
         "workflowPublishHistory": [
             {
-                "createdAt": "2026-07-29T22:31:47.515Z",
-                "id": 330,
+                "createdAt": "2026-07-30T00:14:52.625Z",
+                "id": 338,
                 "workflowId": "LHbJVS18ZULzqToG",
-                "versionId": "9e8f0cd4-030c-42d4-adce-23d1abce085c",
+                "versionId": "3f73db42-4802-4ca9-a9e6-d67be56be7fe",
                 "event": "activated",
                 "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
             },
             {
-                "createdAt": "2026-07-29T22:31:47.468Z",
-                "id": 329,
+                "createdAt": "2026-07-30T00:14:52.611Z",
+                "id": 337,
                 "workflowId": "LHbJVS18ZULzqToG",
-                "versionId": "9e8f0cd4-030c-42d4-adce-23d1abce085c",
+                "versionId": "3f73db42-4802-4ca9-a9e6-d67be56be7fe",
                 "event": "deactivated",
                 "userId": "b60d5e5a-eb3f-48e2-a6e8-bc52153e1ac3"
             }
